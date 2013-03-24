@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Storage", "Raven.Storage\Raven.Storage.csproj", "{21EB6B89-0CDF-4290-8D3F-7B831425606B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Storage.Tryouts", "Raven.Storage.Tryouts\Raven.Storage.Tryouts.csproj", "{52B73242-A592-468E-92A1-FE94989017AD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{21EB6B89-0CDF-4290-8D3F-7B831425606B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21EB6B89-0CDF-4290-8D3F-7B831425606B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21EB6B89-0CDF-4290-8D3F-7B831425606B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21EB6B89-0CDF-4290-8D3F-7B831425606B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52B73242-A592-468E-92A1-FE94989017AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52B73242-A592-468E-92A1-FE94989017AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52B73242-A592-468E-92A1-FE94989017AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52B73242-A592-468E-92A1-FE94989017AD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
