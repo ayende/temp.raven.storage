@@ -32,14 +32,14 @@ namespace Raven.Storage.Comparators
 			return inner.FindSharedPrefix(a, b);
 		}
 
-		public ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> a, ArraySegment<byte> b)
+		public ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> a, ArraySegment<byte> b, byte[] scratch)
 		{
-			return inner.FindShortestSeparator(a, b);
+			return inner.FindShortestSeparator(a, b, scratch);
 		}
 
-		public ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key)
+		public ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key, byte[] scratch)
 		{
-			return inner.FindShortestSuccessor(key);
+			return inner.FindShortestSuccessor(key, scratch);
 		}
 	}
 }

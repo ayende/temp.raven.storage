@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Raven.Storage.Data;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Building

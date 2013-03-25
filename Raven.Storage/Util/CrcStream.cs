@@ -13,7 +13,7 @@ namespace Raven.Storage.Util
             this.stream = stream;
         }
 
-        Stream stream;
+	    readonly Stream stream;
 
         /// <summary>
         /// Gets the underlying stream.
@@ -99,7 +99,7 @@ namespace Raven.Storage.Util
             return crc;
         }
 
-        static private uint[] table = GenerateTable();
+        static private readonly uint[] table = GenerateTable();
 
         static private uint[] GenerateTable()
         {
@@ -155,5 +155,10 @@ namespace Raven.Storage.Util
             readCrc = unchecked(0xFFFFFFFF);
             writeCrc = unchecked(0xFFFFFFFF);
         }
+
+		public override System.Threading.Tasks.Task CopyToAsync(Stream destination, int bufferSize, System.Threading.CancellationToken cancellationToken)
+		{
+			return stream.CopyToAsync(destination, bufferSize, cancellationToken);
+		}
     }
 }

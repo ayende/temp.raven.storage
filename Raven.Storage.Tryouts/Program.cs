@@ -10,8 +10,9 @@ namespace Raven.Storage.Tryouts
         {
 	        var options = new StorageOptions();
 			using (var file = File.Create("test.sst"))
+			using(var temp = new FileStream(Path.GetTempFileName(),FileMode.CreateNew,FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.DeleteOnClose | FileOptions.SequentialScan))
 			{
-				var tblBuilder = new TableBuilder(options, file);
+				var tblBuilder = new TableBuilder(options, file, temp);
 
 				for (int i = 0; i < 100; i++)
 				{

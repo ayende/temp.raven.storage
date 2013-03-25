@@ -30,7 +30,7 @@ namespace Raven.Storage.Comparators
 			return pos;
 		}
 
-		public ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> a, ArraySegment<byte> b)
+		public ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> a, ArraySegment<byte> b, byte[] scratch)
 		{
 			var minLen = Math.Min(a.Count, b.Count);
 			var shared = FindSharedPrefix(a, b);
@@ -41,13 +41,15 @@ namespace Raven.Storage.Comparators
 			var diffByte = a.Array[a.Offset + diff];
 			if (diffByte < byte.MaxValue && diffByte < b.Array[b.Offset + diff])
 			{
-				a.Array[a.Offset + diff] = diffByte;
-				return new ArraySegment<byte>(a.Array, a.Offset, diff);
+				var buffer = diff +1 < scratch.Length ? scratch : new byte[diff+1];
+				Buffer.BlockCopy(a.Array, a.Offset, buffer, 0, diff-1);
+				buffer[diff] = diffByte;
+				return new ArraySegment<byte>(buffer);
 			}
 			return a;
 		}
 
-		public ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key)
+		public ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key, byte[] scratch)
 		{
 			for (int i = 0; i < key.Count; i++)
 			{
@@ -55,8 +57,10 @@ namespace Raven.Storage.Comparators
 				if (b != byte.MaxValue)
 				{
 					b++;
-					key.Array[key.Offset + i] = b;
-					return new ArraySegment<byte>(key.Array, key.Offset, i);
+					var buffer = i +1 < scratch.Length ? scratch : new byte[i + 1];
+					Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, i - 1);
+					buffer[i] = b;
+					return new ArraySegment<byte>(buffer);
 				}
 			}
 			// if key is a run of 0xffs.  Leave it alone.
