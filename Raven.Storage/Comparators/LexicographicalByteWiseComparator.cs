@@ -42,7 +42,8 @@ namespace Raven.Storage.Comparators
 			if (diffByte < byte.MaxValue && diffByte < b.Array[b.Offset + diff])
 			{
 				var buffer = diff +1 < scratch.Length ? scratch : new byte[diff+1];
-				Buffer.BlockCopy(a.Array, a.Offset, buffer, 0, diff-1);
+				if(diff > 0)
+					Buffer.BlockCopy(a.Array, a.Offset, buffer, 0, diff-1);
 				buffer[diff] = diffByte;
 				return new ArraySegment<byte>(buffer);
 			}
@@ -58,7 +59,8 @@ namespace Raven.Storage.Comparators
 				{
 					b++;
 					var buffer = i +1 < scratch.Length ? scratch : new byte[i + 1];
-					Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, i - 1);
+					if(i > 0)
+						Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, i - 1);
 					buffer[i] = b;
 					return new ArraySegment<byte>(buffer);
 				}
