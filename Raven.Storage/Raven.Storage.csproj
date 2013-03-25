@@ -46,10 +46,11 @@
     <Compile Include="Data\Footer.cs" />
     <Compile Include="Comparators\IComparator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Reading\Table.cs" />
     <Compile Include="StorageOptions.cs" />
     <Compile Include="Building\TableBuilder.cs" />
     <Compile Include="Util\CrcStream.cs" />
-    <Compile Include="Util\StreamExtensions.cs" />
+    <Compile Include="Util\IOExtensions.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

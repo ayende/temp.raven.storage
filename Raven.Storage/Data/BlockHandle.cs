@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.IO.MemoryMappedFiles;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Data
@@ -24,5 +25,12 @@ namespace Raven.Storage.Data
             size += stream.Write7BitEncodedLong(Count);
             return size;
         }
+
+	    public int DecodeFrom(MemoryMappedViewAccessor accessor, int pos)
+	    {
+		    Position = accessor.Read7BitEncodedLong(ref pos);
+		    Count = accessor.Read7BitEncodedLong(ref pos);
+		    return pos;
+	    }
     }
 }

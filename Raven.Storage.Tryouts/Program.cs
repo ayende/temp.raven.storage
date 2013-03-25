@@ -1,6 +1,8 @@
 ﻿using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Text;
 using Raven.Storage.Building;
+using Raven.Storage.Reading;
 
 namespace Raven.Storage.Tryouts
 {
@@ -22,6 +24,11 @@ namespace Raven.Storage.Tryouts
 				}
 
 				tblBuilder.Finish();
+			}
+
+			using (var mmf = MemoryMappedFile.CreateFromFile("test.sst", FileMode.Open))
+			{
+				var table = new Table(options, mmf, new FileInfo("test.sst").Length);
 			}
 		}
 	}
