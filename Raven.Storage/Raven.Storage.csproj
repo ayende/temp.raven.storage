@@ -39,16 +39,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlockBuilder.cs" />
+    <Compile Include="Building\BlockBuilder.cs" />
+    <Compile Include="Comparators\CaseInsensitiveComparator.cs" />
+    <Compile Include="Comparators\LexicographicalByteWiseComparator.cs" />
     <Compile Include="Data\BlockHandle.cs" />
     <Compile Include="Data\Footer.cs" />
-    <Compile Include="ICompareKeys.cs" />
+    <Compile Include="Comparators\IComparator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StorageOptions.cs" />
-    <Compile Include="TableBuilder.cs" />
+    <Compile Include="Building\TableBuilder.cs" />
     <Compile Include="Util\CrcStream.cs" />
     <Compile Include="Util\StreamExtensions.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

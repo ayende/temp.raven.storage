@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Raven.Storage.Data;
 using Raven.Storage.Util;
 
-namespace Raven.Storage
+namespace Raven.Storage.Building
 {
     public class TableBuilder
     {
@@ -49,6 +47,11 @@ namespace Raven.Storage
             get { return _stream.Position; }
         }
 
+		public void Add(string key, Stream value)
+		{
+			Add(ToArraySegment(key), value);
+		}
+
         /// <summary>
         /// Add the key and value to the table.
         /// The key's underlying array must not be changed until the _next_ call to add.
@@ -61,7 +64,7 @@ namespace Raven.Storage
             if(_closed)
                 throw new InvalidOperationException("Cannot add after the table builder was closed");
 
-            if (_lastKey != null && _storageOptions.Comparer.Compare(key, _lastKey) <= 0)
+            if (_lastKey != null && _storageOptions.Comparator.Compare(key, _lastKey) <= 0)
                 throw new InvalidOperationException("Keys must be added in increasing order");
 
             if (_pendingIndexEntry)
@@ -69,7 +72,7 @@ namespace Raven.Storage
                 if (_dataBlock.IsEmpty == false)
                     throw new InvalidOperationException("Cannot have pending index entry with a non empty data block");
 
-                var seperator = _storageOptions.Comparer.FindShortestSeparator(_lastKey, key);
+                var seperator = _storageOptions.Comparator.FindShortestSeparator(_lastKey, key);
 
                 _indexBlock.Add(seperator, _pendingHandle.AsStream());
 
@@ -87,6 +90,10 @@ namespace Raven.Storage
                 Flush();
         }
 
+		/// <summary>
+		/// Advance: Forces the creation of a new block. 
+		/// Client code should probably not call this method
+		/// </summary>
         public void Flush()
         {
             if (_dataBlock.IsEmpty)
@@ -129,7 +136,7 @@ namespace Raven.Storage
 
             if (_pendingIndexEntry)
             {
-                var newKey = _storageOptions.Comparer.FindShortestSuccessor(_lastKey);
+                var newKey = _storageOptions.Comparator.FindShortestSuccessor(_lastKey);
                 _indexBlock.Add(newKey, _pendingHandle.AsStream());
             }
             var indexBlockHandler = WriteBlock(_indexBlock);

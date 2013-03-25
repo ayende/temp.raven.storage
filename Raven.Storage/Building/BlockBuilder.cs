@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Raven.Storage.Util;
 
-namespace Raven.Storage
+namespace Raven.Storage.Building
 {
     /// <summary>
     /// BlockBuilder generates blocks where keys are prefix-compressed:
@@ -44,10 +43,10 @@ namespace Raven.Storage
 
         public BlockBuilder(Stream stream, StorageOptions storageOptions)
         {
-            if (_storageOptions.BlockRestartInterval < 1)
+			_storageOptions = storageOptions;
+			if (_storageOptions.BlockRestartInterval < 1)
                 throw new InvalidOperationException("BlockRestartInternal must be >= 1");
             _stream = new CrcStream(stream);
-            _storageOptions = storageOptions;
             IsEmpty = true;
             OriginalPosition = stream.Position;
         }
@@ -71,7 +70,7 @@ namespace Raven.Storage
             if (_finished)
                 throw new InvalidOperationException("Cannot add to a block after it has been finished");
             if (_size > 0 &&
-                (_storageOptions.Comparer.Compare(key, _lastKey) <= 0))
+                (_storageOptions.Comparator.Compare(key, _lastKey) <= 0))
                 throw new InvalidOperationException("Add must be call on items in sorted order");
 
             var valLen = value.Length - value.Position;
@@ -84,7 +83,7 @@ namespace Raven.Storage
             if (_counter < _storageOptions.BlockRestartInterval)
             {
                 // let us see how much we can share with the prev string
-                shared = _storageOptions.Comparer.FindSharedPrefix(_lastKey, key);
+                shared = _storageOptions.Comparator.FindSharedPrefix(_lastKey, key);
             }
             else
             {
