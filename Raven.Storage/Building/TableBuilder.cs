@@ -8,7 +8,8 @@ namespace Raven.Storage.Building
 {
     public class TableBuilder
     {
-	    private readonly byte[] _scratchBuffer = new byte[2048];
+	    private readonly byte[] _scratchBuffer;
+		private readonly byte[] _lastKeyBuffer;
         private readonly StorageOptions _storageOptions;
         private readonly Stream _dataStream;
 	    private readonly Stream _indexStream;
@@ -23,7 +24,7 @@ namespace Raven.Storage.Building
 
         private bool _pendingIndexEntry;  // if this is true, the data block is empty
         private BlockHandle _pendingHandle;
-	    private long _originalIndexStreamPosition;
+	    private readonly long _originalIndexStreamPosition;
 
 	    /// <summary>
 		/// Create a new table builder.
@@ -37,11 +38,14 @@ namespace Raven.Storage.Building
 			Stream dataStream,
 			Stream tempStream)
         {
-            _storageOptions = storageOptions;
+		    _storageOptions = storageOptions;
             _dataStream = dataStream;
 	        _indexStream = tempStream;
+			_originalIndexStreamPosition = _indexStream.Position;
 
-		    _originalIndexStreamPosition = _indexStream.Position;
+			_lastKeyBuffer = new byte[_storageOptions.MaximumExpectedKeySize];
+			_scratchBuffer = new byte[_storageOptions.MaximumExpectedKeySize];
+		    
 
 		    if (storageOptions.FilterPolicy != null)
             {
@@ -70,11 +74,7 @@ namespace Raven.Storage.Building
 
         /// <summary>
         /// Add the key and value to the table.
-        /// The key's underlying array must not be changed until the _next_ call to add.
-        /// The value stream can be disposed after the Add method has been returned.
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
         public void Add(ArraySegment<byte> key, Stream value)
         {
             if(_closed)
@@ -99,7 +99,8 @@ namespace Raven.Storage.Building
                 _filterBuilder.Add(key);
 
             _numEntries++;
-            _lastKey = key;
+            _lastKey = new ArraySegment<byte>(_lastKeyBuffer, 0, key.Count);
+	        Buffer.BlockCopy(key.Array, key.Offset, _lastKeyBuffer, 0, key.Count);
             _dataBlock.Add(key, value);
 
             if (_dataBlock.EstimatedSize >= _storageOptions.BlockSize)
@@ -154,12 +155,13 @@ namespace Raven.Storage.Building
             {
                 var newKey = _storageOptions.Comparator.FindShortestSuccessor(_lastKey, _scratchBuffer);
                 _indexBlock.Add(newKey, _pendingHandle.AsStream());
+	            _pendingIndexEntry = false;
             }
 
 	        var indexBlockSize = _indexBlock.Finish();
 	        _indexBlock.Stream.WriteByte(0);//write type, uncompressed
 			_indexBlock.Stream.Write32BitInt((int)_indexBlock.Stream.WriteCrc);
-	        _indexBlock.Stream.Position = 0;
+	        _indexBlock.Stream.Position = _originalIndexStreamPosition;
 
 			var indexBlockHandler = new BlockHandle
 				{

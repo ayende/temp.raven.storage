@@ -8,6 +8,14 @@ namespace Raven.Storage
     public class StorageOptions
     {
 		/// <summary>
+		/// The maximum size of key size (in bytes) that we expect
+		/// Using keys bigger than this value is going to consume a lot more memory
+		/// 
+		/// Default: 2KB
+		/// </summary>
+	    public int MaximumExpectedKeySize { get; set; }
+
+		/// <summary>
 		/// This is used to define the order of keys in the database.
 		/// Default: a comparator that uses case insensitive character matches.
 		/// 
@@ -64,6 +72,7 @@ namespace Raven.Storage
 		    BlockSize = 1024*4;
 		    BlockRestartInterval = 16;
 			Comparator = new CaseInsensitiveComparator();
+		    MaximumExpectedKeySize = 2048;
 	    }
     }
 
