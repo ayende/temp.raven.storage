@@ -1,8 +1,7 @@
 using System;
-using System.Text;
 using Raven.Storage.Data;
 
-namespace Raven.Storage.Comparators
+namespace Raven.Storage.Comparing
 {
 	public class ByteWiseComparator : IComparator
 	{

@@ -1,7 +1,6 @@
-﻿using System;
-using Raven.Storage.Data;
+﻿using Raven.Storage.Data;
 
-namespace Raven.Storage.Comparators
+namespace Raven.Storage.Comparing
 {
     public interface IComparator
     {

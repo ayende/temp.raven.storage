@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.Caching;
-using Raven.Storage.Comparators;
+using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
 

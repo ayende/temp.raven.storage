@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Threading;
-using Raven.Storage.Comparators;
+using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
 using Raven.Storage.Util;

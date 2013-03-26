@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Specialized;
-using System.IO;
 using System.Runtime.Caching;
-using Raven.Storage.Comparators;
-using Raven.Storage.Data;
+using Raven.Storage.Comparing;
 
 namespace Raven.Storage
 {
@@ -111,24 +109,5 @@ namespace Raven.Storage
 			Comparator = new CaseInsensitiveComparator();
 			MaximumExpectedKeySize = 2048;
 		}
-	}
-
-	public interface IFilterPolicy
-	{
-		IFilterBuilder CreateBuidler();
-		IFilter CreateFilter();
-		string Name { get; }
-	}
-
-	public interface IFilter
-	{
-		bool KeyMayMatch(long position, Slice key);
-	}
-
-	public interface IFilterBuilder
-	{
-		void Add(Slice key);
-		void StartBlock(long pos);
-		BlockHandle Finish(Stream stream);
 	}
 }
