@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Raven.Storage.Building;
 using Raven.Storage.Data;
+using Raven.Storage.Filtering;
 using Raven.Storage.Reading;
 using Xunit;
 
@@ -17,11 +18,12 @@ namespace Raven.Storage.Tests.SST
 		readonly List<FileStream> shouldHaveBeenDisposed = new List<FileStream>();
 
 		[Fact]
-		public void CanReadValuesBack()
+		public void CanReadValuesBackWithoutFilter()
 		{
 			var options = new StorageOptions
 			{
-				ParanoidChecks = true
+				ParanoidChecks = true,
+				FilterPolicy = null
 			};
 			string name;
 			using (var file = CreateFile())
@@ -61,11 +63,58 @@ namespace Raven.Storage.Tests.SST
 			}
 		}
 
+		[Fact]
+		public void CanReadValuesBack()
+		{
+			var options = new StorageOptions
+			{
+				ParanoidChecks = true,
+				FilterPolicy = new BloomFilterPolicy()
+			};
+			const int count = 10;
+			string name;
+			using (var file = CreateFile())
+			{
+				name = file.Name;
+				using (var tblBuilder = new TableBuilder(options, file, TempStreamGenerator))
+				{
+					for (int i = 0; i < count; i++)
+					{
+						string k = "tests/" + i.ToString("0000");
+						tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes(k)));
+					}
+
+					tblBuilder.Finish();
+					file.Flush(true);
+				}
+			}
+
+			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
+			{
+				var length = new FileInfo(name).Length;
+				var table = new Table(options, new FileData(mmf, length));
+				using (var iterator = table.CreateIterator(new ReadOptions()))
+				{
+					for (int i = 0; i < count; i++)
+					{
+						string k = "tests/" + i.ToString("0000");
+						iterator.Seek(k);
+						Assert.True(iterator.IsValid);
+						using (var stream = iterator.CreateValueStream())
+						using (var reader = new StreamReader(stream))
+						{
+							Assert.Equal(k, reader.ReadToEnd());
+						}
+					}
+				}
+			}
+		}
+
 		[MethodImpl(MethodImplOptions.NoInlining)]
 		private FileStream CreateFile()
 		{
 			var stackTrace = new StackTrace();
-			var f = File.Create(stackTrace.GetFrame(stackTrace.FrameCount - 1).GetMethod().Name + ".rsst");
+			var f = File.Create(stackTrace.GetFrame(1).GetMethod().Name + ".rsst");
 
 			shouldHaveBeenDisposed.Add(f);
 

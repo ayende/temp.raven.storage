@@ -8,6 +8,7 @@ using Raven.Storage.Data;
 using Raven.Storage.Filtering;
 using Raven.Storage.Reading;
 using Raven.Storage.Tests.Filtering;
+using Raven.Storage.Tests.SST;
 
 namespace Raven.Storage.Tryouts
 {
@@ -19,7 +20,7 @@ namespace Raven.Storage.Tryouts
 	}
 		static void Main()
 		{
-
+			new ReadWrite().CanReadValuesBack();
 		}
 	}
 }

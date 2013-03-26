@@ -128,6 +128,7 @@ namespace Raven.Storage.Building
 				throw new InvalidOperationException("Cannot call Flush when pending for an index entry");
 
 			_pendingHandle = WriteBlock(_dataBlock);
+			_dataBlock = new BlockBuilder(_dataStream, _storageOptions);
 
 			_pendingIndexEntry = true;
 			_dataStream.Flush();
@@ -205,10 +206,8 @@ namespace Raven.Storage.Building
 				};
 
 			// write trailer
-			_dataBlock.Stream.WriteByte(0); // type - uncompressed
-			_dataStream.Write32BitInt((int)_dataBlock.Stream.WriteCrc);
-
-			_dataBlock = new BlockBuilder(_dataStream, _storageOptions);
+			block.Stream.WriteByte(0); // type - uncompressed
+			_dataStream.Write32BitInt(Crc.Mask(block.Stream.WriteCrc));
 
 			return handle;
 		}

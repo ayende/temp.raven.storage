@@ -8,12 +8,12 @@
 
 		public static int Mask(uint crc)
 		{
-			return (int) (((crc >> 15) | (crc << 17)) + 0xa282ead8);
+			return (int)(((crc >> 15) | (crc << 17)) + MaskDelta);
 		}
 
 		public static uint Unmask(int crc)
 		{
-			var rot = (uint) crc - MaskDelta;
+			var rot = (uint)crc - MaskDelta;
 			return ((rot >> 17) | (rot << 15));
 		}
 
