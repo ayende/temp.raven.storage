@@ -1,8 +1,9 @@
-﻿using Raven.Storage.Data;
+﻿using System;
+using Raven.Storage.Data;
 
 namespace Raven.Storage.Filtering
 {
-	public interface IFilter
+	public interface IFilter : IDisposable
 	{
 		bool KeyMayMatch(long position, Slice key);
 	}

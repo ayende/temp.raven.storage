@@ -34,7 +34,7 @@ namespace Raven.Storage.Reading
 				_storageOptions = storageOptions;
 				_fileData = fileData;
 				if (handle.Position > fileData.Size || (handle.Position + handle.Count + BlockTrailerSize) > fileData.Size)
-					throw new CorruptedDataException("The specified handle is beyond the bounds of the provided mappedFile");
+					throw new CorruptedDataException("The specified accessor is beyond the bounds of the provided mappedFile");
 
 				_accessor = _fileData.File.CreateViewAccessor(handle.Position, handle.Count + BlockTrailerSize);
 

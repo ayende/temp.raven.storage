@@ -1,4 +1,7 @@
-﻿namespace Raven.Storage.Filtering
+﻿using System.IO.MemoryMappedFiles;
+using Raven.Storage.Data;
+
+namespace Raven.Storage.Filtering
 {
 	/// <summary>
 	/// A database can be configured with a custom FilterPolicy object.
@@ -14,7 +17,7 @@
 	public interface IFilterPolicy
 	{
 		IFilterBuilder CreateBuilder();
-		IFilter CreateFilter();
 		string Name { get; }
+		IFilter CreateFilter(MemoryMappedViewAccessor accessor);
 	}
 }

@@ -11,18 +11,15 @@ namespace Raven.Storage.Reading
 	public class Table : IDisposable
 	{
 		private readonly FileData _fileData;
-
 		private readonly StorageOptions _storageOptions;
 		private readonly Block _indexBlock;
 		private readonly IFilter _filter;
 
-		public Table(
-			StorageOptions storageOptions,
-			FileData fileData)
+		public Table(StorageOptions storageOptions, FileData fileData)
 		{
-			_fileData = fileData;
 			try
 			{
+				_fileData = fileData;
 				_storageOptions = storageOptions;
 
 				if (fileData.Size < Footer.EncodedLength)
@@ -50,8 +47,25 @@ namespace Raven.Storage.Reading
 					iterator.Seek(filterName);
 					if (iterator.IsValid && CaseInsensitiveComparator.Default.Compare(filterName, iterator.Key) == 0)
 					{
-						_filter = null;
-						throw new NotSupportedException("Reading filters hasn't been ported yet");
+						var handle = new BlockHandle();
+						using (var stream = iterator.CreateValueStream())
+						{
+							handle.DecodeFrom(stream);
+						}
+						var filterAccessor = _fileData.File.CreateViewAccessor(handle.Position, handle.Count);
+						try
+						{
+							_filter = _storageOptions.FilterPolicy.CreateFilter(filterAccessor);
+						}
+						catch (Exception)
+						{
+							if (_filter == null)
+								filterAccessor.Dispose();
+							else
+								_filter.Dispose();
+							throw;
+						}
+						
 					}
 				}
 			}
@@ -61,7 +75,6 @@ namespace Raven.Storage.Reading
 				throw;
 			}
 		}
-
 		/// <summary>
 		/// Returns a new iterator over the table contents.
 		/// The result of NewIterator() is initially invalid (caller must
@@ -158,6 +171,8 @@ namespace Raven.Storage.Reading
 				_fileData.File.Dispose();
 			if (_indexBlock != null)
 				_indexBlock.Dispose();
+			if (_filter != null)
+				_filter.Dispose();
 		}
 	}
 }
