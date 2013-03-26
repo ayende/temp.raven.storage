@@ -12,12 +12,14 @@ namespace Raven.Storage.Reading
 {
 	public class Block : IDisposable
 	{
+		public const int BlockTrailerSize = 5; // tag + crc32
+
 		private readonly BlockHandle _handle;
 		private readonly StorageOptions _storageOptions;
 		private readonly FileData _fileData;
-		public const int BlockTrailerSize = 5; // tag + crc32
-		private int usage;
 		private readonly MemoryMappedViewAccessor _accessor;
+	
+		private int usage;
 
 		public void InrementUsage()
 		{
@@ -38,16 +40,10 @@ namespace Raven.Storage.Reading
 
 				if (readOptions.VerifyChecksums)
 				{
-					//var crc = Crc.Unmask(_accessor.ReadInt32(handle.Count + 1));
-					//uint actual = unchecked(0xFFFFFFFF);
-					//var crcRange = handle.Count + 1;// data count + tag val
-					//for (int i = 0; i < crcRange; i++)
-					//{
-					//	actual = Crc.CalculateCrc(actual, _accessor.ReadByte(i));
-					//}
-					//if (crc != actual)
-					//	throw new CorruptedDataException("block checksum mismatch");
-					throw new NotSupportedException("Need to verify this codeb");
+					var crc = Crc.Unmask(_accessor.ReadInt32(handle.Count + 1));
+					var actualCrc = CalculateActualCrc(handle.Count + 1); // data + tag
+					if (crc != actualCrc)
+						throw new CorruptedDataException("block checksum mismatch");
 				}
 				RestartsCount = _accessor.ReadInt32(handle.Count - sizeof(int));
 				RestartsOffset = handle.Count - (RestartsCount * sizeof(int)) - sizeof(int);
@@ -59,6 +55,16 @@ namespace Raven.Storage.Reading
 				Dispose();
 				throw;
 			}
+		}
+
+		private uint CalculateActualCrc(long crcRange)
+		{
+			uint actual = unchecked(0xFFFFFFFF);
+			for (int i = 0; i < crcRange; i++)
+			{
+				actual = Crc.CalculateCrc(actual, _accessor.ReadByte(i));
+			}
+			return actual ^ 0xFFFFFFFF;
 		}
 
 		public long RestartsOffset { get; private set; }

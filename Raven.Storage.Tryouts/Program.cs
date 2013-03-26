@@ -13,16 +13,20 @@ namespace Raven.Storage.Tryouts
 	{
 		static void Main()
 		{
-			var options = new StorageOptions();
+			var options = new StorageOptions
+				{
+					ParanoidChecks = true
+				};
 			using (var file = File.Create("test2.sst"))
 			using (var temp = new FileStream("test.temp", FileMode.Create, FileAccess.ReadWrite,
 								FileShare.ReadWrite, 4096, FileOptions.SequentialScan))
 			{
 				var tblBuilder = new TableBuilder(options, file, temp);
 
-				for (int i = 0; i < 10; i++)
+				for (int i = 0; i < 1; i++)
 				{
-					tblBuilder.Add(("tests/" + i.ToString("0000")), new MemoryStream(Encoding.UTF8.GetBytes("Oren eini " + i)));
+					string k = "tests/" + i.ToString("0000");
+					tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes(k)));
 				}
 
 				tblBuilder.Finish();

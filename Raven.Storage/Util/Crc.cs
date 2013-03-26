@@ -39,13 +39,12 @@
 		{
 			unchecked
 			{
-				uint[] table = new uint[256];
+				uint[] theTable = new uint[256];
 
-				uint crc;
 				const uint poly = 0xEDB88320;
-				for (uint i = 0; i < table.Length; i++)
+				for (uint i = 0; i < theTable.Length; i++)
 				{
-					crc = i;
+					uint crc = i;
 					for (int j = 8; j > 0; j--)
 					{
 						if ((crc & 1) == 1)
@@ -53,10 +52,10 @@
 						else
 							crc >>= 1;
 					}
-					table[i] = crc;
+					theTable[i] = crc;
 				}
 
-				return table;
+				return theTable;
 			}
 
 		}
