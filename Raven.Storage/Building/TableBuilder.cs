@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using Raven.Storage.Data;
+using Raven.Storage.Filtering;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Building

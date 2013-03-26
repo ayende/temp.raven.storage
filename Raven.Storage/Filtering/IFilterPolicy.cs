@@ -1,4 +1,4 @@
-﻿namespace Raven.Storage
+﻿namespace Raven.Storage.Filtering
 {
 	public interface IFilterPolicy
 	{

@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using Raven.Storage.Data;
 
-namespace Raven.Storage
+namespace Raven.Storage.Filtering
 {
 	public interface IFilterBuilder
 	{

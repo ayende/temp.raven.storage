@@ -2,6 +2,7 @@
 using System.Collections.Specialized;
 using System.Runtime.Caching;
 using Raven.Storage.Comparing;
+using Raven.Storage.Filtering;
 
 namespace Raven.Storage
 {

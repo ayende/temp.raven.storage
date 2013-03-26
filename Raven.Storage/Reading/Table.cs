@@ -4,6 +4,7 @@ using System.Runtime.Caching;
 using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
+using Raven.Storage.Filtering;
 
 namespace Raven.Storage.Reading
 {
