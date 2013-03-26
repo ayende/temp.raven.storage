@@ -33,7 +33,7 @@ namespace Raven.Storage.Filtering
 			{
 				// Use double-hashing to generate a sequence of hash values.
 				// See analysis in [Kirsch,Mitzenmacher 2006].
-				var h = _bloomFilterPolicy.HashKey(key);
+				uint h = _bloomFilterPolicy.HashKey(key);
 				uint delta = (h >> 17) | (h << 15); // rotate right 17 bits
 				for (int i = 0; i < _k; i++)
 				{

@@ -57,13 +57,51 @@ namespace Raven.Storage.Tests.Filtering
 			 filterBlockBuilder.Finish(memoryStream);
 
 			 var filter = bloomFilterPolicy.CreateFilter(ToMemoryMappedViewAccessor(memoryStream));
+			 Assert.True(filter.KeyMayMatch(0, "test"));
+			 Assert.False(filter.KeyMayMatch(0, "tester"));
+		 }
+
+		 [Fact]
+		 public void CanProperlyMatchCaseInsensitive()
+		 {
+			 var bloomFilterPolicy = new BloomFilterPolicy();
+			 var builder = bloomFilterPolicy.CreateBuilder();
+			 var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
+			 filterBlockBuilder.StartBlock(0);
+			 filterBlockBuilder.Add("test");
+			 var memoryStream = new MemoryStream();
+			 filterBlockBuilder.Finish(memoryStream);
+
+			 var filter = bloomFilterPolicy.CreateFilter(ToMemoryMappedViewAccessor(memoryStream));
+			 Assert.True(filter.KeyMayMatch(0, "Test"));
+			 Assert.True(filter.KeyMayMatch(0, "TEST"));
+		 }
+
+		 [Fact]
+		 public void CanProperlyMatchComplex()
+		 {
+			 var bloomFilterPolicy = new BloomFilterPolicy(caseInsensitive: false);
+			 var builder = bloomFilterPolicy.CreateBuilder();
+			 var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
+			 filterBlockBuilder.StartBlock(0);
+			 filterBlockBuilder.Add("test/1");
+			 filterBlockBuilder.Add("test/2");
+			 filterBlockBuilder.Add("test/3");
+			 filterBlockBuilder.Add("test/142");
+			 filterBlockBuilder.Add("test/3432");
+			 var memoryStream = new MemoryStream();
+			 filterBlockBuilder.Finish(memoryStream);
+
+			 var filter = bloomFilterPolicy.CreateFilter(ToMemoryMappedViewAccessor(memoryStream));
 			 Assert.True(filter.KeyMayMatch(0, "test/1"));
-			 Assert.True(filter.KeyMayMatch(0, "test/2"));
-			 Assert.True(filter.KeyMayMatch(0, "test/231"));
-
-			 Assert.False(filter.KeyMayMatch(0, "test/23"));
-
+			 Assert.True(filter.KeyMayMatch(0, "test/142"));
+			 Assert.True(filter.KeyMayMatch(0, "test/3"));
+			 Assert.True(filter.KeyMayMatch(0, "test/3432"));
+			 Assert.False(filter.KeyMayMatch(0, "tester"));
 			 Assert.False(filter.KeyMayMatch(0, "test/5"));
+			 Assert.False(filter.KeyMayMatch(0, "test/133"));
+			 Assert.False(filter.KeyMayMatch(0, "test/133"));
+			 Assert.True(filter.KeyMayMatch(0, "test/144")); // even though this is wrong, false positives are okay with bloom filters
 		 }
 
 

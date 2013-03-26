@@ -71,6 +71,7 @@ namespace Raven.Storage.Filtering
 
 			var startPos = output.Position;
 
+			var offsetInBlock = _stream.Position;
 			_stream.Position = 0;
 			_stream.CopyTo(output);
 
@@ -78,7 +79,7 @@ namespace Raven.Storage.Filtering
 			{
 				output.Write32BitInt(filterOffset);
 			}
-			output.Write32BitInt(_filterOffsets.Count);
+			output.Write32BitInt((int)offsetInBlock);
 			output.WriteByte(FilterBaseLg);
 
 			return new BlockHandle
