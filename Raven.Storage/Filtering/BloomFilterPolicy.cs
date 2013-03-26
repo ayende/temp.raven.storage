@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using Raven.Storage.Data;
 
 namespace Raven.Storage.Filtering
@@ -14,10 +15,13 @@ namespace Raven.Storage.Filtering
 	public class BloomFilterPolicy : IFilterPolicy
 	{
 		private readonly int _bitsPerKey;
+		private readonly bool _caseInsensitive;
 		private readonly int _k;
-		public BloomFilterPolicy(int bitsPerKey = 10)
+
+		public BloomFilterPolicy(int bitsPerKey = 10, bool caseInsensitive = true)
 		{
 			_bitsPerKey = bitsPerKey;
+			_caseInsensitive = caseInsensitive;
 			// We intentionally round down to reduce probing cost a little bit
 			_k = (int)(_bitsPerKey * 0.69); //  0.69 =~ ln(2)
 			_k = Math.Max(1, Math.Min(30, _k));
@@ -25,7 +29,7 @@ namespace Raven.Storage.Filtering
 
 		public IFilterBuilder CreateBuilder()
 		{
-			return new BloomFilterBuilder(_bitsPerKey, _k);
+			return new BloomFilterBuilder(_bitsPerKey, _k, this);
 		}
 
 		public IFilter CreateFilter(MemoryMappedViewAccessor accessor)
@@ -38,101 +42,20 @@ namespace Raven.Storage.Filtering
 			if (lastWord > accessor.Capacity - 5)
 				return null;
 
-			return new BloomFilter(baseLg, lastWord, accessor);
+			return new BloomFilter(baseLg, lastWord, accessor, this);
 		}
 
 		public string Name { get { return "BuiltinBloomFilter"; } }
 
-		public void WriteFilter(List<Slice> keys, Stream output)
+
+		public uint HashKey(Slice key)
 		{
-			int bits = keys.Count * _bitsPerKey;
-			bits = Math.Max(64, bits);
-			int bytes = (bits + 7) / 8;
-			bits = bytes * 8;
-
-
-			var buffer = new byte[bytes];
-			// remember number of probes in filter
-			buffer[0] = (byte)_k;
-			foreach (var key in keys)
+			var enumerable = key.Array.Skip(key.Offset).Take(key.Count);
+			if (_caseInsensitive)
 			{
-				// Use double-hashing to generate a sequence of hash values.
-				// See analysis in [Kirsch,Mitzenmacher 2006].
-				var h = Bloom.Hash(key);
-				uint delta = (h >> 17) | (h << 15); // rotate right 17 bits
-				for (int i = 0; i < _k; i++)
-				{
-					var bitpos = (int)(h % bits);
-					buffer[bitpos / 8] |= (byte)(1 << (bitpos % 8));
-					h += delta;
-				}
+				enumerable = enumerable.Select(b => (byte) char.ToUpperInvariant((char) b));
 			}
-			output.Write(buffer, 0, bytes);
-		}
-	}
-
-	public class BloomFilter : IFilter
-	{
-		private readonly byte _baseLg;
-		private readonly MemoryMappedViewAccessor _accessor;
-		private readonly int _offset;
-		private readonly long _num;
-
-		public BloomFilter(byte baseLg, int offset, MemoryMappedViewAccessor accessor)
-		{
-			_baseLg = baseLg;
-			_accessor = accessor;
-
-			_offset = offset;
-			_num = (accessor.Capacity - 5 - offset)/sizeof (int);
-		}
-
-		public void Dispose()
-		{
-			_accessor.Dispose();
-		}
-
-		public bool KeyMayMatch(long position, Slice key)
-		{
-			int index = (int) (position >> _baseLg);
-			if (index >= _num)
-				return true; // errors are treated as potential matches
-
-			var start = _accessor.ReadInt32(_offset + index*sizeof (int));
-			var limit = _accessor.ReadInt32(_offset + index * sizeof(int) + sizeof(int));
-
-			if (start > limit || limit >= _accessor.Capacity - _offset)
-				return false; // empty filters do no match any keys
-
-			return KeyMayMatch(key, start, limit);
-		}
-
-		private bool KeyMayMatch(Slice key, int filterStart, int filterLimit)
-		{
-			int len = filterLimit - filterStart;
-			if (len < 2)
-				return false;
-
-			int bits = (len - 1)*8;
-			var k = _accessor.ReadByte(filterLimit - 1);
-			if (k > 30)
-			{
-				// Reserved for potentially new encodings for short bloom filters.
-				// Consider it a match.
-				return true;
-			}
-
-			uint h= Bloom.Hash(key);
-			uint delta = ((h >> 17) | (h << 16)); // rotate right 17 bits
-			for (var i = 0; i < k; i++)
-			{
-				var bitpos = (int) (h%bits);
-				var b = _accessor.ReadByte(filterStart + bitpos/8);
-				if ((b & (1 << (bitpos%8))) == 0)
-					return false;
-				h += delta;
-			}
-			return true;
+			return Bloom.Hash(enumerable, key.Count);
 		}
 	}
 }

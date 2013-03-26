@@ -51,6 +51,7 @@
     <Compile Include="Data\Slice.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />
     <Compile Include="Filtering\Bloom.cs" />
+    <Compile Include="Filtering\BloomFilter.cs" />
     <Compile Include="Filtering\BloomFilterBuilder.cs" />
     <Compile Include="Filtering\BloomFilterPolicy.cs" />
     <Compile Include="Filtering\FilterBlockBuilder.cs" />
