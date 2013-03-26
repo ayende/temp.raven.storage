@@ -7,7 +7,6 @@ namespace Raven.Storage.Reading
 {
 	public class TwoLevelIterator : IIterator
 	{
-		private readonly List<IDisposable> _disposables = new List<IDisposable>();
 		private readonly IIterator _indexIterator;
 		private IIterator _dataIterator;
 		private readonly Table _table;
@@ -30,11 +29,6 @@ namespace Raven.Storage.Reading
 			_indexIterator.Dispose();
 			if (_dataIterator != null)
 				_dataIterator.Dispose();
-
-			foreach (var disposable in _disposables)
-			{
-				disposable.Dispose();
-			}
 		}
 
 		public void SeekToFirst()
@@ -95,11 +89,6 @@ namespace Raven.Storage.Reading
 			if (_dataIterator == null)
 				throw new InvalidOperationException("Cannot call CreateValueStream when iterator isn't valid");
 			return _dataIterator.CreateValueStream();
-		}
-
-		public void RegisterCleanup(IDisposable item)
-		{
-			_disposables.Add(item);
 		}
 
 		private void SkipEmptyDataBlocksForward()

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Threading;
 using Raven.Storage.Comparators;
 using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
@@ -15,8 +16,13 @@ namespace Raven.Storage.Reading
 		private readonly StorageOptions _storageOptions;
 		private readonly FileData _fileData;
 		public const int BlockTrailerSize = 5; // tag + crc32
-
+		private int usage;
 		private readonly MemoryMappedViewAccessor _accessor;
+
+		public void InrementUsage()
+		{
+			Interlocked.Increment(ref usage);
+		}
 
 		public Block(StorageOptions storageOptions, ReadOptions readOptions, BlockHandle handle, FileData fileData)
 		{
@@ -62,6 +68,9 @@ namespace Raven.Storage.Reading
 
 		public void Dispose()
 		{
+			if (Interlocked.Decrement(ref usage) > 0)
+				return;
+
 			if (_accessor != null)
 				_accessor.Dispose();
 		}
@@ -70,6 +79,7 @@ namespace Raven.Storage.Reading
 		{
 			if (RestartsCount == 0)
 				return new EmptyIterator();
+			InrementUsage(); // make sure that this object won't be disposed before its iterator
 			return new BlockIterator(comparator, this);
 		}
 
@@ -80,7 +90,6 @@ namespace Raven.Storage.Reading
 			private int _restartIndex;
 			private int _offset, _size;
 			private byte[] _keyBuffer;
-			private List<IDisposable> _itemsToDispose;
 
 			public BlockIterator(IComparator comparator, Block parent)
 			{
@@ -253,23 +262,9 @@ namespace Raven.Storage.Reading
 				return _parent._fileData.File.CreateViewStream( _parent._handle.Position + _offset, _size);
 			}
 
-			public void RegisterCleanup(IDisposable item)
-			{
-				if (_itemsToDispose == null)
-					_itemsToDispose = new List<IDisposable>();
-				_itemsToDispose.Add(item);
-			}
-
 			public void Dispose()
 			{
-				if (_itemsToDispose == null)
-				{
-					return;
-				}
-				foreach (var disposable in _itemsToDispose)
-				{
-					disposable.Dispose();
-				}
+				_parent.Dispose();
 			}
 		}
 	}

@@ -58,10 +58,5 @@ namespace Raven.Storage.Reading
 		/// REQUIRES: IsValid
 		/// </summary>
 		Stream CreateValueStream();
-
-		/// <summary>
-		/// Register the specified item to be disposed at the same time that this iterator is disposed
-		/// </summary>
-		void RegisterCleanup(IDisposable item);
 	}
 }

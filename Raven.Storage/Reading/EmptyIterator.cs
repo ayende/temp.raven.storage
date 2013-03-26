@@ -39,17 +39,9 @@ namespace Raven.Storage.Reading
 			return null;
 		}
 
-		public void RegisterCleanup(IDisposable item)
-		{
-			_disposables.Add(item);
-		}
-
 		public void Dispose()
 		{
-			foreach (var disposable in _disposables)
-			{
-				disposable.Dispose();
-			}
+			
 		}
 	}
 }
