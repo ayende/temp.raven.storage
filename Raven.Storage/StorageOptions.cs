@@ -110,6 +110,7 @@ namespace Raven.Storage
 			BlockSize = 1024 * 4;
 			BlockRestartInterval = 16;
 			Comparator = new CaseInsensitiveComparator();
+			FilterPolicy = new BloomFilterPolicy();
 			MaximumExpectedKeySize = 2048;
 		}
 	}
