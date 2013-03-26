@@ -5,6 +5,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Storage", "Raven.Stor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Storage.Tryouts", "Raven.Storage.Tryouts\Raven.Storage.Tryouts.csproj", "{52B73242-A592-468E-92A1-FE94989017AD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Storage.Tests", "Raven.Storage.Tests\Raven.Storage.Tests.csproj", "{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}"
+	ProjectSection(ProjectDependencies) = postProject
+		{21EB6B89-0CDF-4290-8D3F-7B831425606B} = {21EB6B89-0CDF-4290-8D3F-7B831425606B}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -19,6 +24,10 @@ Global
 		{52B73242-A592-468E-92A1-FE94989017AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52B73242-A592-468E-92A1-FE94989017AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52B73242-A592-468E-92A1-FE94989017AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

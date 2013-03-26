@@ -50,12 +50,9 @@ namespace Raven.Storage.Filtering
 
 		public uint HashKey(Slice key)
 		{
-			var enumerable = key.Array.Skip(key.Offset).Take(key.Count);
 			if (_caseInsensitive)
-			{
-				enumerable = enumerable.Select(b => (byte) char.ToUpperInvariant((char) b));
-			}
-			return Bloom.Hash(enumerable, key.Count);
+				return Bloom.HashCaseInsensitive(key);
+			return Bloom.Hash(key);
 		}
 	}
 }

@@ -1,46 +1,84 @@
 ﻿using System;
-using System.Collections.Generic;
 using Raven.Storage.Data;
 
 namespace Raven.Storage.Filtering
 {
 	public static class Bloom
 	{
-		public static uint Hash(IEnumerable<byte> source, int count, uint seed = 0xbc9f1d34)
+		public static uint Hash(Slice key, uint seed = 0xbc9f1d34)
 		{
 			// Similar to murmur hash
 			const uint m = 0xc6a4a793;
 			const int r = 24;
-			var h = (uint)(seed ^ (count * m));
-			var buffer = new byte[4];
-			int size = 0;
-			using (var enumerator = source.GetEnumerator())
+			var h = (uint)(seed ^ (key.Count * m));
+			int current = 0;
+			for (; current + 4 < key.Count; current += 4)
 			{
-				while (enumerator.MoveNext())
-				{
-					buffer[size++] = enumerator.Current;
-					if (size == 4)// Pick up four bytes at a time
-					{
-						var w = BitConverter.ToUInt32(buffer, 0);
-						h += w;
-						h *= m;
-						h ^= (h >> 16);
-					}
-				}
+				var w = BitConverter.ToUInt32(key.Array, key.Offset + current);// Pick up four bytes at a time
+				h += w;
+				h *= m;
+				h ^= (h >> 16);
 			}
-			
 
 			// Pick up remaining bytes
-			switch (size)
+			switch (key.Count - current)
 			{
 				case 3:
-					h += (uint)(buffer[2] << 16);
+					h += (uint)(key.Array[key.Offset + current+2] << 16);
 					goto case 2;
 				case 2:
-					h += (uint)(buffer[1] << 8);
+					h += (uint)(key.Array[key.Offset + current + 1] << 8);
 					goto case 2;
 				case 1:
-					h += buffer[0];
+					h += key.Array[key.Offset + current];
+					h *= m;
+					h ^= (h >> r);
+					break;
+			}
+			return h;
+		}
+
+		private static byte ToUpper(byte b)
+		{
+			return (byte) char.ToUpperInvariant((char) b);
+		}
+
+		/// <summary>
+		/// Intentional copying of the methods, this is a high perf portion of the codebase,
+		/// and it is worth the code duplication to avoid virtual / delegate indirection
+		/// </summary>
+		public static uint HashCaseInsensitive(Slice key, uint seed = 0xbc9f1d34)
+		{
+			// Similar to murmur hash
+			const uint m = 0xc6a4a793;
+			const int r = 24;
+			var h = (uint)(seed ^ (key.Count * m));
+			int current = 0;
+			for (; current + 4< key.Count; current += 4)
+			{
+				// Pick up four bytes at a time
+				var w = (uint) (
+					        ToUpper(key.Array[key.Offset + current]) << 24 |
+					        ToUpper(key.Array[key.Offset + current + 1]) << 16 |
+					        ToUpper(key.Array[key.Offset + current + 2]) << 8 |
+					        ToUpper(key.Array[key.Offset + current + 3])
+				        );
+				h += w;
+				h *= m;
+				h ^= (h >> 16);
+			}
+
+			// Pick up remaining bytes
+			switch (key.Count - current)
+			{
+				case 3:
+					h += (uint)(ToUpper(key.Array[key.Offset + current + 2]) << 16);
+					goto case 2;
+				case 2:
+					h += (uint)(ToUpper(key.Array[key.Offset + current + 1]) << 8);
+					goto case 2;
+				case 1:
+					h += ToUpper(key.Array[key.Offset + current]);
 					h *= m;
 					h ^= (h >> r);
 					break;
