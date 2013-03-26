@@ -1,4 +1,5 @@
 ﻿using System;
+using Raven.Storage.Data;
 
 namespace Raven.Storage.Comparators
 {
@@ -8,33 +9,33 @@ namespace Raven.Storage.Comparators
 		/// <summary>
 		/// Compare the two values
 		/// </summary>
-        int Compare(ArraySegment<byte> a, ArraySegment<byte> b);
+        int Compare(Slice a, Slice b);
 
 		/// <summary>
 		/// Advanced: Used to reduce the space requirements of intenral data structures. 
-		/// Clients are urged to default to the implementation in LexicographicalByteWiseComparator.
+		/// Clients are urged to default to the implementation in ByteWiseComparator.
 		///
 		/// Find the shared prefix of those two keys.
 		/// </summary>
-        int FindSharedPrefix(ArraySegment<byte> a, ArraySegment<byte> b);
+        int FindSharedPrefix(Slice a, Slice b);
 
 		/// <summary>
 		/// Advanced: Used to reduce the space requirements of intenral data structures. 
-		/// Clients are urged to default to the implementation in LexicographicalByteWiseComparator.
+		/// Clients are urged to default to the implementation in ByteWiseComparator.
 		/// 
 		/// If start is smaller than the limit, try to return a short value that is bigger than start and smaller then limit.
 		/// Will try to use the scratch buffer as a way to avoid memory allocations if needed
 		/// </summary>
-        ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> start, ArraySegment<byte> limit, byte[] scratch);
+        Slice FindShortestSeparator(Slice start, Slice limit, ref byte[] scratch);
 
 
 		/// <summary>
 		/// Advanced: Used to reduce the space requirements of intenral data structures. 
-		/// Clients are urged to default to the implementation in LexicographicalByteWiseComparator.
+		/// Clients are urged to default to the implementation in ByteWiseComparator.
 		/// 
 		/// Return a value that is shorter than key and larger than it.
 		/// Will try to use the scratch buffer as a way to avoid memory allocations
 		/// </summary>
-		ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key, byte[] scratch);
+		Slice FindShortestSuccessor(Slice key, ref byte[] scratch);
     }
 }

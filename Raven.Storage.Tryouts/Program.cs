@@ -1,8 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
 using Raven.Storage.Building;
+using Raven.Storage.Data;
 using Raven.Storage.Reading;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Tryouts
 {
@@ -11,24 +14,30 @@ namespace Raven.Storage.Tryouts
 		static void Main()
 		{
 			var options = new StorageOptions();
-			using (var file = File.Create("test.sst"))
-			using (var temp = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite,
-								FileShare.None, 4096, FileOptions.DeleteOnClose | FileOptions.SequentialScan))
+			using (var file = File.Create("test2.sst"))
+			using (var temp = new FileStream("test.temp", FileMode.Create, FileAccess.ReadWrite,
+								FileShare.ReadWrite, 4096, FileOptions.SequentialScan))
 			{
 				var tblBuilder = new TableBuilder(options, file, temp);
 
-				for (int i = 0; i < 100; i++)
+				for (int i = 0; i < 1; i++)
 				{
-					var key = "tests/" + i.ToString("0000");
-					tblBuilder.Add(key, new MemoryStream(Encoding.UTF8.GetBytes(key)));
+					tblBuilder.Add(("tests/" + i.ToString("0000")), new MemoryStream(Encoding.UTF8.GetBytes("tests/" + i.ToString("0000"))));
 				}
 
 				tblBuilder.Finish();
+				file.Flush(true);
 			}
 
-			using (var mmf = MemoryMappedFile.CreateFromFile("test.sst", FileMode.Open))
+			using (var mmf = MemoryMappedFile.CreateFromFile("test2.sst", FileMode.Open))
 			{
-				var table = new Table(options, mmf, new FileInfo("test.sst").Length);
+				var length = new FileInfo("test2.sst").Length;
+				var table = new Table(options, new FileData(mmf, length));
+				using (var iterator = table.CreateIterator(new ReadOptions()))
+				{
+					iterator.Seek("tests/0000");
+					Console.WriteLine(iterator.IsValid);
+				}
 			}
 		}
 	}

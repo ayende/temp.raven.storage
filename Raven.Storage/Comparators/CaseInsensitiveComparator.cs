@@ -1,10 +1,11 @@
 using System;
+using Raven.Storage.Data;
 
 namespace Raven.Storage.Comparators
 {
 	public class CaseInsensitiveComparator : IComparator
-	{
-		readonly LexicographicalByteWiseComparator inner = new LexicographicalByteWiseComparator();
+	{	
+		public static readonly CaseInsensitiveComparator Default = new CaseInsensitiveComparator();
 
 		public string Name { get { return "CaseInsensitiveComparator"; }}
 
@@ -12,7 +13,7 @@ namespace Raven.Storage.Comparators
 		/// Note that this probably won't do very well for case insensitive chars that uses
 		/// more than a single byte. That is good enough for now.
 		/// </summary>
-		public int Compare(ArraySegment<byte> a, ArraySegment<byte> b)
+		public int Compare(Slice a, Slice b)
 		{
 			var minLen = Math.Min(a.Count, b.Count);
 			for (int i = 0; i < minLen; i++)
@@ -27,19 +28,19 @@ namespace Raven.Storage.Comparators
 			return a.Count - b.Count;
 		}
 
-		public int FindSharedPrefix(ArraySegment<byte> a, ArraySegment<byte> b)
+		public int FindSharedPrefix(Slice a, Slice b)
 		{
-			return inner.FindSharedPrefix(a, b);
+			return ByteWiseComparator.Default.FindSharedPrefix(a, b);
 		}
 
-		public ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> a, ArraySegment<byte> b, byte[] scratch)
+		public Slice FindShortestSeparator(Slice a, Slice b, ref byte[] scratch)
 		{
-			return inner.FindShortestSeparator(a, b, scratch);
+			return ByteWiseComparator.Default.FindShortestSeparator(a, b, ref scratch);
 		}
 
-		public ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key, byte[] scratch)
+		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
 		{
-			return inner.FindShortestSuccessor(key, scratch);
+			return ByteWiseComparator.Default.FindShortestSuccessor(key, ref scratch);
 		}
 	}
 }

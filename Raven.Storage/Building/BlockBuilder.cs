@@ -37,9 +37,8 @@ namespace Raven.Storage.Building
         private readonly StorageOptions _storageOptions;
         readonly List<int> _restarts = new List<int> { 0 };// first restart at offset 0
         private int _counter;
-        private ArraySegment<byte> _lastKey = new ArraySegment<byte>();
+        private Slice _lastKey;
         private int _size;
-        private readonly byte[] _buffer = new byte[4];
         private bool _finished;
 
         public BlockBuilder(Stream stream, StorageOptions storageOptions)
@@ -66,7 +65,7 @@ namespace Raven.Storage.Building
 
         public bool IsEmpty { get; private set; }
 
-        public void Add(ArraySegment<byte> key, Stream value)
+        public void Add(Slice key, Stream value)
         {
             if (_finished)
                 throw new InvalidOperationException("Cannot add to a block after it has been finished");

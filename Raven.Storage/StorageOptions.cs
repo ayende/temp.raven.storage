@@ -1,19 +1,23 @@
 ﻿using System;
+using System.Collections.Specialized;
 using System.IO;
+using System.Runtime.Caching;
 using Raven.Storage.Comparators;
 using Raven.Storage.Data;
 
 namespace Raven.Storage
 {
-    public class StorageOptions
-    {
+	public class StorageOptions
+	{
+		private ObjectCache _blockCache;
+
 		/// <summary>
 		/// The maximum size of key size (in bytes) that we expect
 		/// Using keys bigger than this value is going to consume a lot more memory
 		/// 
 		/// Default: 2KB
 		/// </summary>
-	    public int MaximumExpectedKeySize { get; set; }
+		public int MaximumExpectedKeySize { get; set; }
 
 		/// <summary>
 		/// This is used to define the order of keys in the database.
@@ -22,8 +26,8 @@ namespace Raven.Storage
 		/// REQUIRED: The database must always be opened using the same comparator that
 		/// created it.
 		/// </summary>
-        public IComparator Comparator { get; set; }
-        
+		public IComparator Comparator { get; set; }
+
 		/// <summary>
 		/// If set to a non null value, will use the specified filter policy to reduce 
 		/// disk read. 
@@ -35,7 +39,7 @@ namespace Raven.Storage
 		/// 
 		/// Default: 4Kb
 		/// </summary>
-        public int BlockSize { get; set; }
+		public int BlockSize { get; set; }
 
 		/// <summary>
 		/// Number of keys between restart points for delta encoding of keys.
@@ -44,7 +48,7 @@ namespace Raven.Storage
 		/// 
 		/// Default: 16
 		/// </summary>
-        public int BlockRestartInterval { get; set; }
+		public int BlockRestartInterval { get; set; }
 
 		/// <summary>
 		/// If true, the database will be created it if doesn't exists
@@ -66,26 +70,65 @@ namespace Raven.Storage
 		/// </summary>
 		public bool ParanoidChecks { get; set; }
 
-	    public StorageOptions()
-	    {
-		    CreateIfMissing = true;
-		    BlockSize = 1024*4;
-		    BlockRestartInterval = 16;
+		/// <summary>
+		/// Control over blocks (user data is stored in a set of blocks, and
+		/// a block is the unit of reading from disk).
+		/// 
+		/// If non-NULL, use the specified cache for blocks.
+		/// If NULL, will use a default cache
+		/// </summary>
+		public System.Runtime.Caching.ObjectCache BlockCache
+		{
+			get
+			{
+				if (_blockCache == null)
+				{
+					_blockCache = new MemoryCache("Raven.Storage.Default", new NameValueCollection
+						{
+							{"physicalMemoryLimitPercentage", "10"},
+							{"pollingInterval", "00:05:00"},
+							{"cacheMemoryLimitMegabytes", "256"}
+						});
+				}
+				return _blockCache;
+			}
+			set
+			{
+				var disposable = _blockCache as IDisposable;
+				if (disposable != null)
+				{
+					disposable.Dispose();
+				}
+				_blockCache = value;
+			}
+		}
+
+		public StorageOptions()
+		{
+			CreateIfMissing = true;
+			BlockSize = 1024 * 4;
+			BlockRestartInterval = 16;
 			Comparator = new CaseInsensitiveComparator();
-		    MaximumExpectedKeySize = 2048;
-	    }
-    }
+			MaximumExpectedKeySize = 2048;
+		}
+	}
 
-    public interface IFilterPolicy
-    {
-        IFilterBuilder CreateBuidler();
-        string Name { get; }
-    }
+	public interface IFilterPolicy
+	{
+		IFilterBuilder CreateBuidler();
+		IFilter CreateFilter();
+		string Name { get; }
+	}
 
-    public interface IFilterBuilder
-    {
-        void Add(ArraySegment<byte> key);
-        void StartBlock(long pos);
-        BlockHandle Finish(Stream stream);
-    }
+	public interface IFilter
+	{
+		bool KeyMayMatch(long position, Slice key);
+	}
+
+	public interface IFilterBuilder
+	{
+		void Add(Slice key);
+		void StartBlock(long pos);
+		BlockHandle Finish(Stream stream);
+	}
 }

@@ -78,7 +78,7 @@ namespace Raven.Storage.Util
         public override int Read(byte[] buffer, int offset, int count)
         {
             count = stream.Read(buffer, offset, count);
-            readCrc = CalculateCrc(readCrc, buffer, offset, count);
+            readCrc = Crc.CalculateCrc(readCrc, buffer, offset, count);
             return count;
         }
 
@@ -86,47 +86,10 @@ namespace Raven.Storage.Util
         {
             stream.Write(buffer, offset, count);
 
-            writeCrc = CalculateCrc(writeCrc, buffer, offset, count);
+            writeCrc = Crc.CalculateCrc(writeCrc, buffer, offset, count);
         }
 
-        uint CalculateCrc(uint crc, byte[] buffer, int offset, int count)
-        {
-            unchecked
-            {
-                for (int i = offset, end = offset + count; i < end; i++)
-                    crc = (crc >> 8) ^ table[(crc ^ buffer[i]) & 0xFF];
-            }
-            return crc;
-        }
-
-        static private readonly uint[] table = GenerateTable();
-
-        static private uint[] GenerateTable()
-        {
-            unchecked
-            {
-                uint[] table = new uint[256];
-
-                uint crc;
-                const uint poly = 0xEDB88320;
-                for (uint i = 0; i < table.Length; i++)
-                {
-                    crc = i;
-                    for (int j = 8; j > 0; j--)
-                    {
-                        if ((crc & 1) == 1)
-                            crc = (crc >> 1) ^ poly;
-                        else
-                            crc >>= 1;
-                    }
-                    table[i] = crc;
-                }
-
-                return table;
-            }
-
-        }
-
+       
         uint readCrc = unchecked(0xFFFFFFFF);
 
         /// <summary>
@@ -139,7 +102,7 @@ namespace Raven.Storage.Util
 
         uint writeCrc = unchecked(0xFFFFFFFF);
 
-        /// <summary>
+	    /// <summary>
         /// Gets the CRC checksum of the data that was written to the stream thus far.
         /// </summary>
         public uint WriteCrc

@@ -1,13 +1,16 @@
 using System;
 using System.Text;
+using Raven.Storage.Data;
 
 namespace Raven.Storage.Comparators
 {
-	public class LexicographicalByteWiseComparator : IComparator
+	public class ByteWiseComparator : IComparator
 	{
-		public string Name { get { return "LexicographicalByteWiseComparator"; } }
+		public readonly static ByteWiseComparator  Default = new ByteWiseComparator();
 
-		public int Compare(ArraySegment<byte> a, ArraySegment<byte> b)
+		public string Name { get { return "ByteWiseComparator"; } }
+
+		public int Compare(Slice a, Slice b)
 		{
 			var minLen = Math.Min(a.Count, b.Count);
 			for (int i = 0; i < minLen; i++)
@@ -19,7 +22,7 @@ namespace Raven.Storage.Comparators
 			return a.Count - b.Count;
 		}
 
-		public int FindSharedPrefix(ArraySegment<byte> a, ArraySegment<byte> b)
+		public int FindSharedPrefix(Slice a, Slice b)
 		{
 			int pos = 0;
 			var minLen = Math.Min(a.Count, b.Count);
@@ -30,7 +33,7 @@ namespace Raven.Storage.Comparators
 			return pos;
 		}
 
-		public ArraySegment<byte> FindShortestSeparator(ArraySegment<byte> a, ArraySegment<byte> b, byte[] scratch)
+		public Slice FindShortestSeparator(Slice a, Slice b, ref byte[] scratch)
 		{
 			var minLen = Math.Min(a.Count, b.Count);
 			var shared = FindSharedPrefix(a, b);
@@ -41,16 +44,16 @@ namespace Raven.Storage.Comparators
 			var diffByte = a.Array[a.Offset + diff];
 			if (diffByte < byte.MaxValue && diffByte < b.Array[b.Offset + diff])
 			{
-				var buffer = diff +1 < scratch.Length ? scratch : new byte[diff+1];
+				scratch  = diff + 1 < scratch.Length ? scratch : new byte[diff + 1];
 				if(diff > 0)
-					Buffer.BlockCopy(a.Array, a.Offset, buffer, 0, diff-1);
-				buffer[diff] = diffByte;
-				return new ArraySegment<byte>(buffer);
+					Buffer.BlockCopy(a.Array, a.Offset, scratch, 0, diff - 1);
+				scratch[diff] = diffByte;
+				return new Slice(scratch, a.Offset, diff + 1);
 			}
 			return a;
 		}
 
-		public ArraySegment<byte> FindShortestSuccessor(ArraySegment<byte> key, byte[] scratch)
+		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
 		{
 			for (int i = 0; i < key.Count; i++)
 			{
@@ -58,11 +61,11 @@ namespace Raven.Storage.Comparators
 				if (b != byte.MaxValue)
 				{
 					b++;
-					var buffer = i +1 < scratch.Length ? scratch : new byte[i + 1];
+					scratch = i + 1 < scratch.Length ? scratch : new byte[i + 1];
 					if(i > 0)
-						Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, i - 1);
-					buffer[i] = b;
-					return new ArraySegment<byte>(buffer);
+						Buffer.BlockCopy(key.Array, key.Offset, scratch, 0, i - 1);
+					scratch[i] = b;
+					return new Slice(scratch, key.Offset, i+1);
 				}
 			}
 			// if key is a run of 0xffs.  Leave it alone.

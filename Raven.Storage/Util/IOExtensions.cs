@@ -8,32 +8,92 @@ namespace Raven.Storage.Util
     {
 		public static int Read7BitEncodedInt(this MemoryMappedViewAccessor accessor, ref int pos)
 		{
+			int ret = 0;
 			int shift = 0;
-			int val = 0;
-			while (shift < 35)
+			int len;
+
+			for (len = 0; len < 5; ++len)
 			{
-				var b = accessor.ReadByte(pos++);
-				val |= ((b & 0x7f) << shift);
-				if ((b & 0x80) == 0)
-					return val;
+				byte b = accessor.ReadByte(pos++);
+
+				ret = ret | ((b & 0x7f) << shift);
 				shift += 7;
+				if ((b & 0x80) == 0)
+					break;
 			}
-			throw new FormatException("Too many bytes in for a 7 bit encoded Int32.");
+
+			if (len < 5)
+				return ret;
+			throw new FormatException("Too many bytes in what should have been a 7 bit encoded Int32.");
+		}
+
+		public static int Read7BitEncodedInt(this Stream stream)
+		{
+			int ret = 0;
+			int shift = 0;
+			int len;
+
+			for (len = 0; len < 5; ++len)
+			{
+				int b = stream.ReadByte();
+				if (b == -1)
+					throw new EndOfStreamException();
+
+				ret = ret | (((byte)b & 0x7f) << shift);
+				shift += 7;
+				if ((b & 0x80) == 0)
+					break;
+			}
+
+			if (len < 5)
+				return ret;
+			throw new FormatException("Too many bytes in what should have been a 7 bit encoded Int32.");
 		}
 
 		public static long Read7BitEncodedLong(this MemoryMappedViewAccessor accessor, ref int pos)
 		{
+			long ret = 0;
 			int shift = 0;
-			long val = 0;
-			while (shift < 70)
+			int len;
+
+			for (len = 0; len < 9; ++len)
 			{
-				var b = accessor.ReadByte(pos++);
-				val |= ((b & 0x7f) << shift);
-				if ((b & 0x80) == 0)
-					return val;
+				byte b = accessor.ReadByte(pos++);
+
+				ret = ret | ((b & 0x7fU) << shift);
 				shift += 7;
+				if ((b & 0x80) == 0)
+					break;
 			}
-			throw new FormatException("Too many bytes in for a 7 bit encoded Int32.");
+
+			if (len < 9)
+				return ret;
+			throw new FormatException("Too many bytes in what should have been a 7 bit encoded Int64.");
+	
+		}
+
+		public static long Read7BitEncodedLong(this Stream stream)
+		{
+			long ret = 0;
+			int shift = 0;
+			int len;
+
+			for (len = 0; len < 5; ++len)
+			{
+				int b = stream.ReadByte();
+				if (b == -1)
+					throw new EndOfStreamException();
+
+				ret = ret | (((byte)b & 0x7fU) << shift);
+				shift += 7;
+				if ((b & 0x80) == 0)
+					break;
+			}
+
+			if (len < 5)
+				return ret;
+			throw new FormatException("Too many bytes in what should have been a 7 bit encoded Int64.");
+	
 		}
 
         public static int Write7BitEncodedInt(this Stream stream, int value)
