@@ -20,9 +20,9 @@ namespace Raven.Storage.Tryouts
 			{
 				var tblBuilder = new TableBuilder(options, file, temp);
 
-				for (int i = 0; i < 1; i++)
+				for (int i = 0; i < 10; i++)
 				{
-					tblBuilder.Add(("tests/" + i.ToString("0000")), new MemoryStream(Encoding.UTF8.GetBytes("tests/" + i.ToString("0000"))));
+					tblBuilder.Add(("tests/" + i.ToString("0000")), new MemoryStream(Encoding.UTF8.GetBytes("Oren eini " + i)));
 				}
 
 				tblBuilder.Finish();
@@ -35,8 +35,13 @@ namespace Raven.Storage.Tryouts
 				var table = new Table(options, new FileData(mmf, length));
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
-					iterator.Seek("tests/0000");
+					iterator.Seek("teSTS/0005");
 					Console.WriteLine(iterator.IsValid);
+					using(var stream = iterator.CreateValueStream())
+					using(var reader = new StreamReader(stream))
+					{
+						Console.WriteLine(reader.ReadToEnd());
+					}
 				}
 			}
 		}
