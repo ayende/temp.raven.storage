@@ -114,7 +114,7 @@ namespace Raven.Storage.Tests.Filtering
 			using(var mms = memoryMappedFile.CreateViewStream(0, stream.Length))
 				stream.CopyTo(mms);
 
-			var accessor = memoryMappedFile.CreateViewAccessor(0, stream.Length);
+			var accessor = memoryMappedFile.CreateViewAccessor(0, stream.Length, MemoryMappedFileAccess.Read);
 			disposables.Add(accessor);
 			return accessor;
 		}

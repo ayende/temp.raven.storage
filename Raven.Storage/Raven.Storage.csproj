@@ -68,6 +68,7 @@
     <Compile Include="Building\TableBuilder.cs" />
     <Compile Include="Util\Crc.cs" />
     <Compile Include="Util\CrcStream.cs" />
+    <Compile Include="Util\Info.cs" />
     <Compile Include="Util\IOExtensions.cs" />
   </ItemGroup>
   <ItemGroup />
