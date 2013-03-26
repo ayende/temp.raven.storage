@@ -156,15 +156,23 @@ namespace Raven.Storage.Reading
 				return currentOffset + read;
 			}
 
+			// trying to make this method small enough so it would be inlined
+			// for the happy case of not having to grow the buffer
 			private void EnsureKeyBufferSize(int shared, int nonShared)
 			{
 				var keyBuffer = _keyBuffer;
-				if (shared + nonShared > keyBuffer.Length)
-				{
-					keyBuffer = new byte[shared + nonShared];
-					Buffer.BlockCopy(_keyBuffer, 0, keyBuffer, 0, shared);
-					_keyBuffer = keyBuffer;
-				}
+				if (shared + nonShared <= keyBuffer.Length)
+					return;
+
+				CreateNewBuffer(shared, nonShared);
+			}
+
+			private void CreateNewBuffer(int shared, int nonShared)
+			{
+				int size = Info.GetPowerOfTwo(shared + nonShared);
+				byte[] keyBuffer = new byte[size];
+				Buffer.BlockCopy(_keyBuffer, 0, keyBuffer, 0, shared);
+				_keyBuffer = keyBuffer;
 			}
 
 			public bool IsValid { get; private set; }
