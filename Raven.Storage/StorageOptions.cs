@@ -9,6 +9,7 @@ namespace Raven.Storage
 	public class StorageOptions
 	{
 		private ObjectCache _blockCache;
+		private bool _blockCacheSet;
 
 		/// <summary>
 		/// The maximum size of key size (in bytes) that we expect
@@ -73,14 +74,14 @@ namespace Raven.Storage
 		/// Control over blocks (user data is stored in a set of blocks, and
 		/// a block is the unit of reading from disk).
 		/// 
-		/// If non-NULL, use the specified cache for blocks.
-		/// If NULL, will use a default cache
+		/// If set, use the specified cache for blocks, or not use any, if set to null
+		/// If not set, will use a default cache
 		/// </summary>
-		public System.Runtime.Caching.ObjectCache BlockCache
+		public ObjectCache BlockCache
 		{
 			get
 			{
-				if (_blockCache == null)
+				if (_blockCache == null && _blockCacheSet == false)
 				{
 					_blockCache = new MemoryCache("Raven.Storage.Default", new NameValueCollection
 						{
@@ -88,6 +89,7 @@ namespace Raven.Storage
 							{"pollingInterval", "00:05:00"},
 							{"cacheMemoryLimitMegabytes", "256"}
 						});
+					_blockCacheSet = true;
 				}
 				return _blockCache;
 			}
