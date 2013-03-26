@@ -42,8 +42,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CaseInsensitiveHashing.cs" />
-    <Compile Include="Hashing.cs" />
+    <Compile Include="Filtering\BloomFilterTest.cs" />
+    <Compile Include="Hashing\CaseInsensitiveHashing.cs" />
+    <Compile Include="Hashing\Hashing.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

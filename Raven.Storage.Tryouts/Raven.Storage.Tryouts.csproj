@@ -48,6 +48,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Raven.Storage.Tests\Raven.Storage.Tests.csproj">
+      <Project>{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}</Project>
+      <Name>Raven.Storage.Tests</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">
       <Project>{21EB6B89-0CDF-4290-8D3F-7B831425606B}</Project>
       <Name>Raven.Storage</Name>

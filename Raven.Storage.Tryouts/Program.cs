@@ -5,6 +5,7 @@ using System.Text;
 using Raven.Storage.Building;
 using Raven.Storage.Data;
 using Raven.Storage.Reading;
+using Raven.Storage.Tests.Filtering;
 
 namespace Raven.Storage.Tryouts
 {
@@ -12,6 +13,8 @@ namespace Raven.Storage.Tryouts
 	{
 		static void Main()
 		{
+			new BloomFilterTest().CanProperlyMatch();
+
 			var options = new StorageOptions
 				{
 					ParanoidChecks = true
