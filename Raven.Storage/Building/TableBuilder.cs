@@ -7,7 +7,7 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage.Building
 {
-	public class TableBuilder
+	public class TableBuilder : IDisposable
 	{
 		private byte[] _scratchBuffer;
 		private readonly byte[] _lastKeyBuffer;
@@ -17,7 +17,7 @@ namespace Raven.Storage.Building
 		private bool _closed;
 
 		private Slice _lastKey;
-		private readonly IFilterBuilder _filterBuilder;
+		private readonly FilterBlockBuilder _filterBuilder;
 		private int _numEntries;
 		private readonly BlockBuilder _indexBlock;
 
@@ -26,6 +26,7 @@ namespace Raven.Storage.Building
 		private bool _pendingIndexEntry;  // if this is true, the data block is empty
 		private BlockHandle _pendingHandle;
 		private readonly long _originalIndexStreamPosition;
+		private readonly Stream _filterBlockStream;
 
 		/// <summary>
 		/// Create a new table builder.
@@ -37,25 +38,35 @@ namespace Raven.Storage.Building
 		/// </summary>
 		public TableBuilder(StorageOptions storageOptions,
 			Stream dataStream,
-			Stream tempStream)
+			Func<Stream> tempStreamGenerator)
 		{
-			_storageOptions = storageOptions;
-			_dataStream = dataStream;
-			_indexStream = tempStream;
-			_originalIndexStreamPosition = _indexStream.Position;
-
-			_lastKeyBuffer = new byte[_storageOptions.MaximumExpectedKeySize];
-			_scratchBuffer = new byte[_storageOptions.MaximumExpectedKeySize];
-
-
-			if (storageOptions.FilterPolicy != null)
+			try
 			{
-				_filterBuilder = storageOptions.FilterPolicy.CreateBuidler();
-				_filterBuilder.StartBlock(0);
-			}
+				_storageOptions = storageOptions;
+				_dataStream = dataStream;
+				_indexStream = tempStreamGenerator();
+				_originalIndexStreamPosition = _indexStream.Position;
 
-			_indexBlock = new BlockBuilder(_indexStream, storageOptions);
-			_dataBlock = new BlockBuilder(_dataStream, storageOptions);
+				_lastKeyBuffer = new byte[_storageOptions.MaximumExpectedKeySize];
+				_scratchBuffer = new byte[_storageOptions.MaximumExpectedKeySize];
+
+
+				if (storageOptions.FilterPolicy != null)
+				{
+					var filterBuilder = storageOptions.FilterPolicy.CreateBuilder();
+					_filterBlockStream = tempStreamGenerator();
+					_filterBuilder = new FilterBlockBuilder(_filterBlockStream, filterBuilder);
+					_filterBuilder.StartBlock(0);
+				}
+
+				_indexBlock = new BlockBuilder(_indexStream, storageOptions);
+				_dataBlock = new BlockBuilder(_dataStream, storageOptions);
+			}
+			catch (Exception)
+			{
+				Dispose();
+				throw;
+			}
 		}
 
 		public int NumEntries
@@ -200,6 +211,14 @@ namespace Raven.Storage.Building
 			_dataBlock = new BlockBuilder(_dataStream, _storageOptions);
 
 			return handle;
+		}
+
+		public void Dispose()
+		{
+			if (_indexStream != null)
+				_indexStream.Dispose();
+			if (_filterBlockStream != null)
+				_filterBlockStream.Dispose();
 		}
 	}
 }

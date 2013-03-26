@@ -1,12 +1,11 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using Raven.Storage.Data;
 
 namespace Raven.Storage.Filtering
 {
 	public interface IFilterBuilder
 	{
-		void Add(Slice key);
-		void StartBlock(long pos);
-		BlockHandle Finish(Stream stream);
+		void CreateFilter(List<Slice> keys, Stream output);
 	}
 }

@@ -18,19 +18,18 @@ namespace Raven.Storage.Tryouts
 					ParanoidChecks = true
 				};
 			using (var file = File.Create("test2.sst"))
-			using (var temp = new FileStream("test.temp", FileMode.Create, FileAccess.ReadWrite,
-								FileShare.ReadWrite, 4096, FileOptions.SequentialScan))
 			{
-				var tblBuilder = new TableBuilder(options, file, temp);
-
-				for (int i = 0; i < 1; i++)
+				using (var tblBuilder = new TableBuilder(options, file, TempStreamGenerator))
 				{
-					string k = "tests/" + i.ToString("0000");
-					tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes(k)));
-				}
+					for (int i = 0; i < 1; i++)
+					{
+						string k = "tests/" + i.ToString("0000");
+						tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes(k)));
+					}
 
-				tblBuilder.Finish();
-				file.Flush(true);
+					tblBuilder.Finish();
+					file.Flush(true);
+				}
 			}
 
 			using (var mmf = MemoryMappedFile.CreateFromFile("test2.sst", FileMode.Open))
@@ -48,6 +47,12 @@ namespace Raven.Storage.Tryouts
 					}
 				}
 			}
+		}
+
+		private static Stream TempStreamGenerator()
+		{
+			return new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite, 4096,
+			                      FileOptions.SequentialScan | FileOptions.DeleteOnClose);
 		}
 	}
 }
