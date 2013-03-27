@@ -13,12 +13,12 @@ namespace Raven.Storage.Memtable
 	///  while the read is in progress.  Apart from that, reads progress
 	///  without any internal locking or synchronization.
 	/// </summary>
-	public class SkipList<TKey>
+	public class SkipList<TKey, TVal>
 	{
 		private readonly Comparison<TKey> _comparer;
 		public const int SkipListMaxHeight = 12;
 
-		private Node head = new Node(default(TKey), SkipListMaxHeight);
+		private Node head = new Node(default(TKey), default(TVal), SkipListMaxHeight);
 
 		// Modified only by Insert, allowed to be read racily by readers
 		private int _maxHeight = 1;
@@ -42,7 +42,7 @@ namespace Raven.Storage.Memtable
 			return (x != null && Equal(key, x.Key));
 		}
 
-		public void Insert(TKey key)
+		public void Insert(TKey key, TVal val)
 		{
 			// TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual() here since Insert() is externally synchronized.
 			Node[] prev = new Node[SkipListMaxHeight];
@@ -70,7 +70,7 @@ namespace Raven.Storage.Memtable
 				_maxHeight = height;
 			}
 
-			x = new Node(key,height);
+			x = new Node(key, val, height);
 			for (int i = 0; i < height; i++)
 			{
 				// NoBarrier_SetNext() suffices since we will add a barrier when
@@ -183,13 +183,20 @@ namespace Raven.Storage.Memtable
 
 		public class Node
 		{
+			private readonly TVal _val;
 			public TKey Key { get; private set; }
 			private readonly Node[] next;
 
-			public Node(TKey key, int height)
+			public Node(TKey key, TVal val, int height)
 			{
+				_val = val;
 				Key = key;
 				next = new Node[height];
+			}
+
+			public TVal Val
+			{
+				get { return _val; }
 			}
 
 			public Node Next(int i)
@@ -215,10 +222,10 @@ namespace Raven.Storage.Memtable
 
 		public class Iterator
 		{
-			public SkipList<TKey> parent;
+			public SkipList<TKey, TVal> parent;
 			private Node node;
 
-			public Iterator(SkipList<TKey> parent)
+			public Iterator(SkipList<TKey, TVal> parent)
 			{
 				this.parent = parent;
 			}
@@ -237,6 +244,11 @@ namespace Raven.Storage.Memtable
 				{
 					return node.Key;
 				}
+			}
+
+			public TVal Val
+			{
+				get { return node.Val; }
 			}
 
 			public void Next()
@@ -278,6 +290,19 @@ namespace Raven.Storage.Memtable
 		public Iterator NewIterator()
 		{
 			return new Iterator(this);
+		}
+	}
+
+	public class SkipList<TKey> : SkipList<TKey, TKey>
+	{
+		public SkipList(Comparison<TKey> comparer)
+			: base(comparer)
+		{
+		}
+
+		public void Insert(TKey key)
+		{
+			Insert(key, key);
 		}
 	}
 }

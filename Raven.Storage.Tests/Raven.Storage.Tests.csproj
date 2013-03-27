@@ -45,6 +45,7 @@
     <Compile Include="Filtering\BloomFilterTest.cs" />
     <Compile Include="Hashing\CaseInsensitiveHashing.cs" />
     <Compile Include="Hashing\Hashing.cs" />
+    <Compile Include="Memtable\CanStoreAndGetValues.cs" />
     <Compile Include="Memtable\SkipListTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SST\ReadWrite.cs" />

@@ -110,9 +110,9 @@ namespace Raven.Storage.Building
         {
             foreach (var restart in _restarts)
             {
-                _stream.Write32BitInt(restart);
+                _stream.WriteInt32(restart);
             }
-            _stream.Write32BitInt(_restarts.Count);
+            _stream.WriteInt32(_restarts.Count);
             _size += (_restarts.Count + 1) * 4;
             _finished = true;
 

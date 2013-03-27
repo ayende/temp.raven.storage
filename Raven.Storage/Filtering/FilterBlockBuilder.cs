@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Raven.Storage.Data;
+using Raven.Storage.Memtable;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Filtering
@@ -14,9 +15,9 @@ namespace Raven.Storage.Filtering
 		const int FilterBase = 1 << FilterBaseLg;
 
 		private readonly List<int> _filterOffsets = new List<int>(); 
-		private readonly LinkedList<byte[]> _bufferPool = new LinkedList<byte[]>();
 		private readonly Stream _stream;
 		private readonly IFilterBuilder _filterBuilder;
+		private readonly BufferPool _bufferPool = new BufferPool();
 
 		readonly List<Slice> _slices = new List<Slice>();
 
@@ -28,7 +29,7 @@ namespace Raven.Storage.Filtering
 
 		public void Add(Slice key)
 		{
-			var buffer = GetBufferFromPool(key.Count);
+			var buffer = _bufferPool.Take(key.Count);
 			Buffer.BlockCopy(key.Array, key.Offset, buffer,0, key.Count);
 			_slices.Add(new Slice(buffer,0, key.Count));
 		}
@@ -56,7 +57,7 @@ namespace Raven.Storage.Filtering
 			_filterBuilder.CreateFilter(_slices, _stream);
 			foreach (var slice in _slices)
 			{
-				_bufferPool.AddLast(slice.Array);
+				_bufferPool.Return(slice.Array);
 			}
 			_slices.Clear();
 			
@@ -77,9 +78,9 @@ namespace Raven.Storage.Filtering
 
 			foreach (var filterOffset in _filterOffsets)
 			{
-				output.Write32BitInt(filterOffset);
+				output.WriteInt32(filterOffset);
 			}
-			output.Write32BitInt((int)offsetInBlock);
+			output.WriteInt32((int)offsetInBlock);
 			output.WriteByte(FilterBaseLg);
 
 			return new BlockHandle
@@ -89,37 +90,6 @@ namespace Raven.Storage.Filtering
 				};
 		}
 
-		private byte[] GetBufferFromPool(int size)
-		{
-			size = Info.GetPowerOfTwo(size);
-			var node = _bufferPool.First;
-			// first pass, try to find exact match
-			while (node != null)
-			{
-				if (node.Value.Length == size)
-				{
-					_bufferPool.Remove(node);
-					break;
-				}
-				node = node.Next;
-			}
-			if (node == null)
-			{
-				node = _bufferPool.First;
-				// second pass, try to find anything that matches
-
-				while (node != null)
-				{
-					if (node.Value.Length <= size)
-					{
-						_bufferPool.Remove(node);
-						break;
-					}
-					node = node.Next;
-				}
-			}
-
-			return node != null ? node.Value : new byte[size];
-		}
+		
 	}
 }

@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Runtime.Caching;
 using Raven.Storage.Comparing;
 using Raven.Storage.Filtering;
+using Raven.Storage.Util;
 
 namespace Raven.Storage
 {
@@ -40,6 +41,21 @@ namespace Raven.Storage
 		/// Default: 4Kb
 		/// </summary>
 		public int BlockSize { get; set; }
+
+
+		/// <summary>
+		///  Amount of data to build up in memory (backed by an unsorted log
+		///  on disk) before converting to a sorted on-disk file.
+		/// 
+		///  Larger values increase performance, especially during bulk loads.
+		///  Up to two write buffers may be held in memory at the same time,
+		///  so you may wish to adjust this parameter to control memory usage.
+		///  Also, a larger write buffer will result in a longer recovery time
+		///  the next time the database is opened.
+		/// 
+		///  Default: 4MB
+		/// </summary>
+		public int WriteBatchSize { get; set; }
 
 		/// <summary>
 		/// Number of keys between restart points for delta encoding of keys.
@@ -104,6 +120,11 @@ namespace Raven.Storage
 			}
 		}
 
+		/// <summary>
+		/// The buffer pool to use
+		/// </summary>
+		public BufferPool BufferPool { get; set; }
+
 		public StorageOptions()
 		{
 			CreateIfMissing = true;
@@ -112,6 +133,8 @@ namespace Raven.Storage
 			Comparator = new CaseInsensitiveComparator();
 			FilterPolicy = new BloomFilterPolicy();
 			MaximumExpectedKeySize = 2048;
+			WriteBatchSize = 1024*1024*4;
+			BufferPool = new BufferPool();
 		}
 	}
 }

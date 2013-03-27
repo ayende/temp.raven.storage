@@ -125,7 +125,7 @@ namespace Raven.Storage.Util
             return size + 1;
         }
 
-        public static void Write32BitInt(this Stream stream, int value)
+        public static void WriteInt32(this Stream stream, int value)
         {
             var buffer = new byte[4]
                 {
@@ -135,6 +135,24 @@ namespace Raven.Storage.Util
                     (byte) (value >> 24)
                 };
             stream.Write(buffer, 0, 4);
-        } 
+        }
+
+		public static void WriteLong(this byte[] array, int offset, ulong value)
+		{
+			for (int i = 0; i < sizeof(ulong); i++)
+			{
+				array[offset + i] = (byte) (value >> i*8);
+			}
+		}
+
+		public static ulong ReadLong(this byte[] array, int offset)
+		{
+			ulong val = 0;
+			for (int i = 0; i < sizeof(ulong); i++)
+			{
+				val |= (ulong) array[offset + i] << i*8;
+			}
+			return val;
+		} 
     }
 }

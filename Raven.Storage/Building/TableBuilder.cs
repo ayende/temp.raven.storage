@@ -168,7 +168,7 @@ namespace Raven.Storage.Building
 
 			var indexBlockSize = _indexBlock.Finish();
 			_indexBlock.Stream.WriteByte(0);//write type, uncompressed
-			_indexBlock.Stream.Write32BitInt(Crc.Mask(_indexBlock.Stream.WriteCrc));
+			_indexBlock.Stream.WriteInt32(Crc.Mask(_indexBlock.Stream.WriteCrc));
 			_indexBlock.Stream.Position = _originalIndexStreamPosition;
 
 			var indexBlockHandler = new BlockHandle
@@ -207,7 +207,7 @@ namespace Raven.Storage.Building
 
 			// write trailer
 			block.Stream.WriteByte(0); // type - uncompressed
-			_dataStream.Write32BitInt(Crc.Mask(block.Stream.WriteCrc));
+			_dataStream.WriteInt32(Crc.Mask(block.Stream.WriteCrc));
 
 			return handle;
 		}
