@@ -45,7 +45,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				var table = new Table(options, new FileData(mmf, length));
+				using (var table = new Table(options, new FileData(mmf, length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < 10; i++)
@@ -71,7 +71,7 @@ namespace Raven.Storage.Tests.SST
 				ParanoidChecks = true,
 				FilterPolicy = new BloomFilterPolicy()
 			};
-			const int count = 10;
+			const int count = 5;
 			string name;
 			using (var file = CreateFile())
 			{
@@ -81,7 +81,7 @@ namespace Raven.Storage.Tests.SST
 					for (int i = 0; i < count; i++)
 					{
 						string k = "tests/" + i.ToString("0000");
-						tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes(k)));
+						tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes("values/" + i)));
 					}
 
 					tblBuilder.Finish();
@@ -92,7 +92,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				var table = new Table(options, new FileData(mmf, length));
+				using(var table = new Table(options, new FileData(mmf, length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < count; i++)
@@ -103,7 +103,7 @@ namespace Raven.Storage.Tests.SST
 						using (var stream = iterator.CreateValueStream())
 						using (var reader = new StreamReader(stream))
 						{
-							Assert.Equal(k, reader.ReadToEnd());
+							Assert.Equal("values/" + i, reader.ReadToEnd());
 						}
 					}
 				}
