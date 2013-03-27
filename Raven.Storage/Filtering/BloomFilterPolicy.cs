@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
 using Raven.Storage.Data;
+using Raven.Storage.Memory;
 
 namespace Raven.Storage.Filtering
 {
@@ -32,12 +33,12 @@ namespace Raven.Storage.Filtering
 			return new BloomFilterBuilder(_bitsPerKey, _k, this);
 		}
 
-		public IFilter CreateFilter(MemoryMappedViewAccessor accessor)
+		public IFilter CreateFilter(IArrayAccessor accessor)
 		{
 			if (accessor.Capacity < 5) // 1 byte for base, 4 for start of offset array
 				return null;
 
-			var baseLg = accessor.ReadByte(accessor.Capacity - 1);
+			var baseLg = accessor[accessor.Capacity - 1];
 			var lastWord = accessor.ReadInt32(accessor.Capacity - 5);
 			if (lastWord > accessor.Capacity - 5)
 				return null;

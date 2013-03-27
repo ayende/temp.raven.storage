@@ -27,7 +27,7 @@ namespace Raven.Storage.Reading
 					throw new CorruptedDataException("File is too short to be an sstable");
 
 				var footer = new Footer();
-				using (var accessor = fileData.File.CreateViewAccessor(fileData.Size - Footer.EncodedLength, Footer.EncodedLength, MemoryMappedFileAccess.Read))
+				using (var accessor = fileData.File.CreateAccessor(fileData.Size - Footer.EncodedLength, Footer.EncodedLength))
 				{
 					footer.DecodeFrom(accessor);
 				}
@@ -53,7 +53,7 @@ namespace Raven.Storage.Reading
 						{
 							handle.DecodeFrom(stream);
 						}
-						var filterAccessor = _fileData.File.CreateViewAccessor(handle.Position, handle.Count, MemoryMappedFileAccess.Read);
+						var filterAccessor = _fileData.File.CreateAccessor(handle.Position, handle.Count);
 						try
 						{
 							_filter = _storageOptions.FilterPolicy.CreateFilter(filterAccessor);

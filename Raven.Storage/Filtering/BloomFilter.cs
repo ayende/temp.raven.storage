@@ -1,17 +1,18 @@
 ﻿using System.IO.MemoryMappedFiles;
 using Raven.Storage.Data;
+using Raven.Storage.Memory;
 
 namespace Raven.Storage.Filtering
 {
 	public class BloomFilter : IFilter
 	{
 		private readonly byte _baseLg;
-		private readonly MemoryMappedViewAccessor _accessor;
+		private readonly IArrayAccessor _accessor;
 		private readonly BloomFilterPolicy _bloomFilterPolicy;
 		private readonly int _offset;
 		private readonly long _num;
 
-		public BloomFilter(byte baseLg, int offset, MemoryMappedViewAccessor accessor, BloomFilterPolicy bloomFilterPolicy)
+		public BloomFilter(byte baseLg, int offset, IArrayAccessor accessor, BloomFilterPolicy bloomFilterPolicy)
 		{
 			_baseLg = baseLg;
 			_accessor = accessor;
@@ -48,7 +49,7 @@ namespace Raven.Storage.Filtering
 				return false;
 
 			int bits = (len - 1)*8;
-			var k = _accessor.ReadByte(filterLimit - 1);
+			var k = _accessor[filterLimit - 1];
 			if (k > 30)
 			{
 				// Reserved for potentially new encodings for short bloom filters.
@@ -61,7 +62,7 @@ namespace Raven.Storage.Filtering
 			for (var i = 0; i < k; i++)
 			{
 				var bitpos = (int) (h%bits);
-				var b = _accessor.ReadByte(filterStart + bitpos/8);
+				var b = _accessor[filterStart + bitpos/8];
 				if ((b & (1 << (bitpos%8))) == 0)
 					return false;
 				h += delta;

@@ -8,6 +8,7 @@ using System.Text;
 using Raven.Storage.Building;
 using Raven.Storage.Data;
 using Raven.Storage.Filtering;
+using Raven.Storage.Memory;
 using Raven.Storage.Reading;
 using Xunit;
 
@@ -45,7 +46,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				using (var table = new Table(options, new FileData(mmf, length)))
+				using (var table = new Table(options, new FileData(new MemoryMappedFileAccessor(mmf), length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < 10; i++)
@@ -92,7 +93,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				using(var table = new Table(options, new FileData(mmf, length)))
+				using (var table = new Table(options, new FileData(new MemoryMappedFileAccessor(mmf), length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < count; i++)

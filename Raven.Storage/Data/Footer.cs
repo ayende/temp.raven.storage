@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using Raven.Storage.Memory;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Data
@@ -36,11 +37,11 @@ namespace Raven.Storage.Data
             stream.Write(_tableMagicBytes, 0, _tableMagicBytes.Length);
         }
 
-	    public void DecodeFrom(MemoryMappedViewAccessor accessor)
+	    public void DecodeFrom(IArrayAccessor accessor)
 	    {
 		    for (int i = 0; i < _tableMagicBytes.Length; i++)
 		    {
-			    var b = accessor.ReadByte(EncodedLength - _tableMagicBytes.Length + i);
+			    var b = accessor[EncodedLength - _tableMagicBytes.Length + i];
 				if( b != _tableMagicBytes[i])
 					throw new InvalidOperationException("Not a sstable (bad magic number)");
 		    }

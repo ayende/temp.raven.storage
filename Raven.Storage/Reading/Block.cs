@@ -6,6 +6,7 @@ using System.Threading;
 using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
+using Raven.Storage.Memory;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Reading
@@ -17,7 +18,7 @@ namespace Raven.Storage.Reading
 		private readonly BlockHandle _handle;
 		private readonly StorageOptions _storageOptions;
 		private readonly FileData _fileData;
-		private readonly MemoryMappedViewAccessor _accessor;
+		private readonly IArrayAccessor _accessor;
 	
 		private int usage;
 
@@ -36,8 +37,7 @@ namespace Raven.Storage.Reading
 				if (handle.Position > fileData.Size || (handle.Position + handle.Count + BlockTrailerSize) > fileData.Size)
 					throw new CorruptedDataException("The specified accessor is beyond the bounds of the provided mappedFile");
 
-				_accessor = _fileData.File.CreateViewAccessor(handle.Position, handle.Count + BlockTrailerSize,
-				                                              MemoryMappedFileAccess.Read);
+				_accessor = _fileData.File.CreateAccessor(handle.Position, handle.Count + BlockTrailerSize);
 
 				if (readOptions.VerifyChecksums)
 				{
@@ -63,7 +63,7 @@ namespace Raven.Storage.Reading
 			uint actual = unchecked(0xFFFFFFFF);
 			for (int i = 0; i < crcRange; i++)
 			{
-				actual = Crc.CalculateCrc(actual, _accessor.ReadByte(i));
+				actual = Crc.CalculateCrc(actual, _accessor[i]);
 			}
 			return actual ^ 0xFFFFFFFF;
 		}
@@ -274,7 +274,7 @@ namespace Raven.Storage.Reading
 				if (_offset + _size > _parent._handle.Count)
 					throw new CorruptedDataException("Attempted to read beyond the boundaries of the current block");
 
-				return _parent._fileData.File.CreateViewStream( _parent._handle.Position + _offset, _size,MemoryMappedFileAccess.Read);
+				return _parent._fileData.File.CreateStream( _parent._handle.Position + _offset, _size);
 			}
 
 			public void Dispose()

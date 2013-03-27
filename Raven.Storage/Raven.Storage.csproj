@@ -58,6 +58,10 @@
     <Compile Include="Filtering\IFilter.cs" />
     <Compile Include="Filtering\IFilterBuilder.cs" />
     <Compile Include="Filtering\IFilterPolicy.cs" />
+    <Compile Include="Memory\IAccessor.cs" />
+    <Compile Include="Memory\IArrayAccessor.cs" />
+    <Compile Include="Memory\MemoryMappedFileAccessor.cs" />
+    <Compile Include="Memory\MemoryMappedFileArrayAccessor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Reading\Block.cs" />
     <Compile Include="Reading\EmptyIterator.cs" />

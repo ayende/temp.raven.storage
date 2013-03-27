@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.MemoryMappedFiles;
 using Raven.Storage.Data;
 using Raven.Storage.Filtering;
+using Raven.Storage.Memory;
 using Xunit;
 
 namespace Raven.Storage.Tests.Filtering
@@ -105,7 +106,7 @@ namespace Raven.Storage.Tests.Filtering
 		 }
 
 
-		private MemoryMappedViewAccessor ToMemoryMappedViewAccessor(Stream stream)
+		private IArrayAccessor ToMemoryMappedViewAccessor(Stream stream)
 		{
 			var memoryMappedFile = MemoryMappedFile.CreateNew(Guid.NewGuid().ToString(), stream.Length);
 			disposables.Add(memoryMappedFile);
@@ -116,7 +117,7 @@ namespace Raven.Storage.Tests.Filtering
 
 			var accessor = memoryMappedFile.CreateViewAccessor(0, stream.Length, MemoryMappedFileAccess.Read);
 			disposables.Add(accessor);
-			return accessor;
+			return new MemoryMappedFileArrayAccessor(accessor);
 		}
 
 		public void Dispose()

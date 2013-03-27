@@ -1,12 +1,13 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using Raven.Storage.Memory;
 
 namespace Raven.Storage.Util
 {
     public static class IOExtensions
     {
-		public static int Read7BitEncodedInt(this MemoryMappedViewAccessor accessor, ref int pos)
+		public static int Read7BitEncodedInt(this IArrayAccessor accessor, ref int pos)
 		{
 			int ret = 0;
 			int shift = 0;
@@ -14,7 +15,7 @@ namespace Raven.Storage.Util
 
 			for (len = 0; len < 5; ++len)
 			{
-				byte b = accessor.ReadByte(pos++);
+				byte b = accessor[pos++];
 
 				ret = ret | ((b & 0x7f) << shift);
 				shift += 7;
@@ -50,7 +51,7 @@ namespace Raven.Storage.Util
 			throw new FormatException("Too many bytes in what should have been a 7 bit encoded Int32.");
 		}
 
-		public static long Read7BitEncodedLong(this MemoryMappedViewAccessor accessor, ref int pos)
+		public static long Read7BitEncodedLong(this IArrayAccessor accessor, ref int pos)
 		{
 			long ret = 0;
 			int shift = 0;
@@ -58,7 +59,7 @@ namespace Raven.Storage.Util
 
 			for (len = 0; len < 9; ++len)
 			{
-				byte b = accessor.ReadByte(pos++);
+				byte b = accessor[pos++];
 
 				ret = ret | ((b & 0x7fU) << shift);
 				shift += 7;

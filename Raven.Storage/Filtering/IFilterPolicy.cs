@@ -1,5 +1,6 @@
 ﻿using System.IO.MemoryMappedFiles;
 using Raven.Storage.Data;
+using Raven.Storage.Memory;
 
 namespace Raven.Storage.Filtering
 {
@@ -18,6 +19,6 @@ namespace Raven.Storage.Filtering
 	{
 		IFilterBuilder CreateBuilder();
 		string Name { get; }
-		IFilter CreateFilter(MemoryMappedViewAccessor accessor);
+		IFilter CreateFilter(IArrayAccessor accessor);
 	}
 }
