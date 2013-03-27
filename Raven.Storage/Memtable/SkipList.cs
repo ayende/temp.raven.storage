@@ -14,7 +14,6 @@ namespace Raven.Storage.Memtable
 	///  without any internal locking or synchronization.
 	/// </summary>
 	public class SkipList<TKey>
-		where TKey : class
 	{
 		private readonly Comparison<TKey> _comparer;
 		public const int SkipListMaxHeight = 12;
@@ -185,7 +184,7 @@ namespace Raven.Storage.Memtable
 		public class Node
 		{
 			public TKey Key { get; private set; }
-			private Node[] next;
+			private readonly Node[] next;
 
 			public Node(TKey key, int height)
 			{

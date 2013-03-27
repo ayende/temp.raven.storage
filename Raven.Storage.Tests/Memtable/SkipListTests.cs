@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using Raven.Storage.Memtable;
 using Xunit;
 using System.Linq;
@@ -85,7 +88,7 @@ namespace Raven.Storage.Tests.Memtable
 					var item = i.ToString(CultureInfo.InvariantCulture);
 					iter.Seek(item);
 
-					var indexOf = orderedKeys.FindIndex(s => String.Compare(item, s, StringComparison.Ordinal)  <= 0);
+					var indexOf = orderedKeys.FindIndex(s => String.Compare(item, s, StringComparison.Ordinal) <= 0);
 					for (int j = 0; j < 3; j++)
 					{
 						if (indexOf == -1 || indexOf >= orderedKeys.Count)
@@ -113,6 +116,69 @@ namespace Raven.Storage.Tests.Memtable
 				}
 				Assert.False(iter.IsValid);
 			}
+		}
+
+		[Fact]
+		public void ConcurrentTest()
+		{
+			var c = new ConcurrentDictionary<int, string>();
+			var list = new SkipList<string>(String.Compare);
+
+			var reading = true;
+			// we have one thread doing writes, and we make sure that all of the readers are always
+			// able to read _at least_ the values that were present at the list at the time of read start
+
+			const int readersCount = 10;
+			var allReadersDone = new CountdownEvent(readersCount);
+			var reader = (Action)(() =>
+				{
+					try
+					{
+						var rnd = new Random();
+						while (Volatile.Read(ref reading))
+						{
+							var count = c.Count;
+							if (count == 0)
+								continue;
+							var next = rnd.Next(0, count);
+							Assert.True(list.Contains(c[next]));
+							var iter = list.NewIterator();
+							iter.Seek(c[next]);
+							Assert.True(iter.IsValid);
+							Assert.Equal(c[next], iter.Key);
+							var shouldBeThere = new HashSet<string>(Enumerable.Range(next, count - next)
+																			  .Select(i => c[i])
+																			  .Where(x => String.CompareOrdinal(x, iter.Key) >= 0));
+							while (iter.IsValid)
+							{
+								shouldBeThere.Remove(iter.Key);
+								iter.Next();
+							}
+							Assert.Empty(shouldBeThere);
+						}
+					}
+					finally
+					{
+						allReadersDone.Signal();
+					}
+				});
+
+			var tasks = new List<Task>();
+			for (int i = 0; i < readersCount; i++)
+			{
+				tasks.Add(Task.Factory.StartNew(reader));
+			}
+
+			for (int i = 0; i < 1000; i++)
+			{
+				var key = i.ToString(CultureInfo.InvariantCulture);
+				list.Insert(key);
+				c[i] = key;
+			}
+			Volatile.Write(ref reading, false);
+			allReadersDone.Wait();
+
+			Task.WaitAll(tasks.ToArray());
 		}
 	}
 }
