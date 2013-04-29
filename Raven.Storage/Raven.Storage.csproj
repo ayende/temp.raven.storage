@@ -34,6 +34,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Web.Services" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -53,6 +54,17 @@
     <Compile Include="Data\ItemType.cs" />
     <Compile Include="Data\ReadOptions.cs" />
     <Compile Include="Data\Slice.cs" />
+    <Compile Include="Data\Snapshot.cs" />
+    <Compile Include="Impl\AsyncLock.cs" />
+    <Compile Include="Impl\AsyncManualResetEvent.cs" />
+    <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
+    <Compile Include="Impl\Config.cs" />
+    <Compile Include="Impl\FileSystem.cs" />
+    <Compile Include="Impl\LogWriter.cs" />
+    <Compile Include="Impl\StorageState.cs" />
+    <Compile Include="Impl\StorageWriter.cs" />
+    <Compile Include="Impl\VersionSet.cs" />
+    <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />
     <Compile Include="Filtering\Bloom.cs" />
     <Compile Include="Filtering\BloomFilter.cs" />
@@ -82,6 +94,7 @@
     <Compile Include="Util\CrcStream.cs" />
     <Compile Include="Util\Info.cs" />
     <Compile Include="Util\IOExtensions.cs" />
+    <Compile Include="WriteBatch.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

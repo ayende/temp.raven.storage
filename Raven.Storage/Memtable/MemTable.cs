@@ -24,18 +24,24 @@ namespace Raven.Storage.Memtable
 			_table = new SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>(_internalKeyComparator.Compare);
 		}
 
-		public void Add(ulong seq, ItemType type,
-		                Slice key, Stream value)
+		public int ApproximateMemoryUsage { get; private set; }
+
+		public UnamangedMemoryAccessor.MemoryHandle Write(Stream value)
+		{
+			if (value == null)
+				return null;
+			var memoryHandle = _memoryAccessor.Write(value);
+			ApproximateMemoryUsage += memoryHandle.Size;
+			return memoryHandle;
+		}
+
+		public void Add(ulong seq, ItemType type, Slice key, UnamangedMemoryAccessor.MemoryHandle memoryHandle)
 		{
 			var buffer = new byte[key.Count + 8];
 			Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, key.Count);
 			buffer.WriteLong(key.Count, Format.PackSequenceAndType(seq, type));
 
 			var internalKey = new Slice(buffer);
-
-			UnamangedMemoryAccessor.MemoryHandle memoryHandle = null;
-			if (value != null)
-				memoryHandle = _memoryAccessor.Write(value);
 
 			_table.Insert(internalKey, memoryHandle);
 		}

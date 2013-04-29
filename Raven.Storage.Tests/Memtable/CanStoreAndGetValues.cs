@@ -23,7 +23,7 @@ namespace Raven.Storage.Tests.Memtable
 		 {
 			using (var memtable = new MemTable(new StorageOptions()))
 			{
-				memtable.Add(1, ItemType.Value, "test", new MemoryStream(new byte[] {1, 2, 3}));
+				memtable.Add(1, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
 				Assert.True(memtable.TryGet("test", 1, out stream));
 				using (stream)
@@ -41,7 +41,7 @@ namespace Raven.Storage.Tests.Memtable
 		{
 			using (var memtable = new MemTable(new StorageOptions()))
 			{
-				memtable.Add(1, ItemType.Value, "test", new MemoryStream(new byte[] { 1, 2, 3 }));
+				memtable.Add(1, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
 				Assert.True(memtable.TryGet("test", 2, out stream));
 				using (stream)
@@ -59,7 +59,7 @@ namespace Raven.Storage.Tests.Memtable
 		{
 			using (var memtable = new MemTable(new StorageOptions()))
 			{
-				memtable.Add(2, ItemType.Value, "test", new MemoryStream(new byte[] { 1, 2, 3 }));
+				memtable.Add(2, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
 				Assert.False(memtable.TryGet("test", 1, out stream));
 			}
@@ -71,7 +71,7 @@ namespace Raven.Storage.Tests.Memtable
 		{
 			using (var memtable = new MemTable(new StorageOptions()))
 			{
-				memtable.Add(2, ItemType.Value, "test", new MemoryStream(new byte[] { 1, 2, 3 }));
+				memtable.Add(2, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				memtable.Add(3, ItemType.Deletion, "test", null);
 
 				Stream stream;

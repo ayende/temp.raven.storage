@@ -55,7 +55,8 @@ namespace Raven.Storage.Memory
 		public unsafe Stream Read(MemoryHandle handle)
 		{
 			var unamagedMemory = _memHandles[handle.Index];
-			return new UnmanagedMemoryStream((byte*) unamagedMemory.Ptr + handle.Pos, handle.Size, handle.Size, FileAccess.Read);
+			var pos = unamagedMemory.Ptr + handle.Pos;
+			return new UnmanagedMemoryStream((byte*) pos, handle.Size, handle.Size, FileAccess.Read);
 		}
 
 		public MemoryHandle Write(Stream stream)
