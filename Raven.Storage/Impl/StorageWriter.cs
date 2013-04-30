@@ -67,45 +67,52 @@ namespace Raven.Storage.Impl
 			{
 				_writeCompletedEvent.Reset();
 
-				if (mine.Done())
-					return;
-
-				await MakeRoomForWrite(force: false, lockScope: locker);
-
-				var lastSequence = _state.VersionSet.LastSequence;
-
-				var list = BuildBatchGroup(mine);
-
-				var currentSequence = lastSequence + 1;
-
-				lastSequence += (ulong)list.Count;
-
-				// Add to log and apply to memtable.  We can release the lock
-				// during this phase since mine is currently responsible for logging
-				// and protects against concurrent loggers and concurrent writes
-				// into the mem table.
-
-				locker.Exit();
+				try
 				{
-					foreach (var write in list)
+					if (mine.Done())
+						return;
+
+					await MakeRoomForWrite(force: false, lockScope: locker);
+
+					var lastSequence = _state.VersionSet.LastSequence;
+
+					var list = BuildBatchGroup(mine);
+
+					var currentSequence = lastSequence + 1;
+
+					lastSequence += (ulong)list.Count;
+
+					// Add to log and apply to memtable.  We can release the lock
+					// during this phase since mine is currently responsible for logging
+					// and protects against concurrent loggers and concurrent writes
+					// into the mem table.
+
+					locker.Exit();
 					{
-						write.Batch.Prepare(_state.MemTable);
+						foreach (var write in list)
+						{
+							write.Batch.Prepare(_state.MemTable);
+						}
+
+						_state.LogWriter.AddRecord(list.Select(x => x.Batch));
+
+						foreach (var write in list)
+						{
+							write.Batch.Apply(_state.MemTable, currentSequence);
+						}
 					}
+					await locker.LockAsync();
+					_state.VersionSet.LastSequence = lastSequence;
 
-					_state.LogWriter.AddRecord(list.Select(x => x.Batch));
-
-					foreach (var write in list)
+					foreach (var outstandingWrite in list)
 					{
-						write.Batch.Apply(_state.MemTable, currentSequence);
+						// notify items we already worked on...
+						outstandingWrite.Result.SetResult(null);
 					}
 				}
-				await locker.LockAsync();
-				_state.VersionSet.LastSequence = lastSequence;
-
-				foreach (var outstandingWrite in list)
+				finally
 				{
-					// notify items we already worked on...
-					outstandingWrite.Result.SetResult(null);
+					_writeCompletedEvent.Set();	
 				}
 			}
 		}

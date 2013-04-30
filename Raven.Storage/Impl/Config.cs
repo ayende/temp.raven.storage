@@ -11,5 +11,11 @@
 		/// Maximum number of level-0 files.  We stop writes at this point.
 		/// </summary>
 		public const int StopWritesTrigger = 12;
+
+		/// <summary>
+		/// Header is checksum (4 bytes), type (1 byte), length (2 bytes).
+		/// </summary>
+		public const int HeaderSize = 4 + 1 + 2;
+
 	}
 }
