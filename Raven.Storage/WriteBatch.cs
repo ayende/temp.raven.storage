@@ -1,9 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Raven.Storage.Data;
 using System.Linq;
+using Raven.Storage.Impl;
+using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memory;
 using Raven.Storage.Memtable;
+using Raven.Storage.Util;
 
 namespace Raven.Storage
 {
@@ -48,7 +53,7 @@ namespace Raven.Storage
 				});
 		}
 
-		public void Apply(MemTable memTable, ulong seq)
+		internal void Apply(MemTable memTable, ulong seq)
 		{
 			foreach (var operation in _operations)
 			{
@@ -57,12 +62,38 @@ namespace Raven.Storage
 			}
 		}
 
-		public void Prepare(MemTable memTable)
+		internal void Prepare(MemTable memTable)
 		{
 			foreach (var operation in _operations)
 			{
 				operation.Handle = memTable.Write(operation.Value);
 			}
+		}
+
+		internal static async Task WriteToLog(WriteBatch[] writes, ulong seq, StorageState state)
+		{
+			var opCount = writes.Sum(x => x._operations.Count);
+
+			// we explicitly do not dispose this.
+			var bufferedStream = new BufferedStream(state.LogWriter, LogWriterStream.BlockSize);
+			var buffer = BitConverter.GetBytes(seq);
+			await bufferedStream.WriteAsync(buffer, 0, buffer.Length);
+			buffer = BitConverter.GetBytes(opCount);
+			await bufferedStream.WriteAsync(buffer, 0, buffer.Length);
+
+			foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
+			{
+				buffer[0] = (byte) operation.Op;
+				await bufferedStream.WriteAsync(buffer, 0, 1);
+				await bufferedStream.Write7BitEncodedIntAsync(operation.Key.Count);
+				await bufferedStream.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
+				if (operation.Op != Operations.Put)
+					continue;
+				using(var stream = state.MemTable.Read(operation.Handle))
+					await stream.CopyToAsync(stream);
+			}
+
+			await bufferedStream.FlushAsync();
 		}
 	}
 }

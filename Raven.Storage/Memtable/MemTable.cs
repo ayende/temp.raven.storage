@@ -93,5 +93,10 @@ namespace Raven.Storage.Memtable
 		{
 			_memoryAccessor.Dispose();
 		}
+
+		public Stream Read(UnamangedMemoryAccessor.MemoryHandle handle)
+		{
+			return _memoryAccessor.Read(handle);
+		}
 	}
 }

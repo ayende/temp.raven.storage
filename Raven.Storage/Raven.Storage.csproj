@@ -60,7 +60,7 @@
     <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
     <Compile Include="Impl\Config.cs" />
     <Compile Include="Impl\FileSystem.cs" />
-    <Compile Include="Impl\LogWriter.cs" />
+    <Compile Include="Impl\Streams\LogWriterStream.cs" />
     <Compile Include="Impl\StorageState.cs" />
     <Compile Include="Impl\StorageWriter.cs" />
     <Compile Include="Impl\VersionSet.cs" />

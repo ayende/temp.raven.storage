@@ -1,8 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace Raven.Storage.Impl
 {
-	public class FileSystem
+	public class FileSystem : IDisposable
 	{
 		public virtual Stream NewWritable(string name)
 		{
@@ -12,6 +13,11 @@ namespace Raven.Storage.Impl
 		public Stream NewWritable(string name, int num, string ext)
 		{
 			return NewWritable(string.Format("{0}{1:000000}.{2}", name, num, ext));
+		}
+
+		public void Dispose()
+		{
+			
 		}
 	}
 }

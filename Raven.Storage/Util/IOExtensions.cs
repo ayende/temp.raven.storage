@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Threading.Tasks;
 using Raven.Storage.Memory;
 
 namespace Raven.Storage.Util
@@ -111,6 +112,21 @@ namespace Raven.Storage.Util
             return size + 1;
         }
 
+		public static async Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)
+		{
+			var buffer = new byte[5];
+			int size = 0;
+			var num = (uint)value;
+			while (num >= 128U)
+			{
+				buffer[size++] = ((byte)(num | 128U));
+				num >>= 7;
+			}
+			buffer[size++] = (byte) num;
+			await stream.WriteAsync(buffer, 0, size);
+			return size;
+		}
+
         public static int Write7BitEncodedLong(this Stream stream, long value)
         {
             int size = 0;
@@ -136,6 +152,7 @@ namespace Raven.Storage.Util
                 };
             stream.Write(buffer, 0, 4);
         }
+
 
 		public static void WriteLong(this byte[] array, int offset, ulong value)
 		{

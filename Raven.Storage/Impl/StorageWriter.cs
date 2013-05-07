@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
+using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Impl
@@ -94,7 +95,7 @@ namespace Raven.Storage.Impl
 							write.Batch.Prepare(_state.MemTable);
 						}
 
-						_state.LogWriter.AddRecord(list.Select(x => x.Batch));
+						await WriteBatch.WriteToLog(list.Select(x => x.Batch).ToArray(), currentSequence, _state);
 
 						foreach (var write in list)
 						{
@@ -162,21 +163,8 @@ namespace Raven.Storage.Impl
 					// Attempt to switch to a new memtable and trigger compaction of old
 					Debug.Assert(_state.VersionSet.PrevLogNumber == 0);
 
-					var newFileNumber = _state.VersionSet.NewFileNumber();
-					Stream file;
-					try
-					{
-						file = _state.FileSystem.NewWritable(_state.DatabaseName, newFileNumber, "log");
-					}
-					catch (Exception)
-					{
-						// Avoid chewing through file number space in a tight loop.
-						_state.VersionSet.ReuseFileNumber(newFileNumber);
-						throw;
-					}
+					_state.CreateNewLog();
 					_state.LogWriter.Dispose();
-					_state.LogWriter = new LogWriter(file);
-					_state.LogFileNumber = newFileNumber;
 					_state.ImmutableMemTable = _state.MemTable;
 					_state.MemTable = new MemTable(_state.Options);
 					force = false;
