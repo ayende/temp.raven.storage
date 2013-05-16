@@ -63,6 +63,7 @@
     <Compile Include="Impl\Streams\LogWriterStream.cs" />
     <Compile Include="Impl\StorageState.cs" />
     <Compile Include="Impl\StorageWriter.cs" />
+    <Compile Include="Impl\Version.cs" />
     <Compile Include="Impl\VersionSet.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />

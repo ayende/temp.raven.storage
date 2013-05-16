@@ -6,6 +6,7 @@ namespace Raven.Storage.Impl
 	public class VersionSet
 	{
 		private ulong _lastSequence;
+		private Version _current = new Version();
 
 		/// <summary>
 		/// Return the last sequence number.
@@ -28,7 +29,11 @@ namespace Raven.Storage.Impl
 
 		public bool NeedsCompaction
 		{
-			get { throw new NotImplementedException(); }
+			get
+			{
+				var v = _current;
+				return v.CompactionScore >= 1 || v.FileToCompact != null;
+			}
 		}
 
 		public int GetNumberOfFilesAtLevel(int level)
