@@ -10,8 +10,4 @@ namespace Raven.Storage.Impl
 
 		public List<FileMetadata>[] Files { get; set; }
 	}
-
-	public class FileMetadata
-	{
-	}
 }

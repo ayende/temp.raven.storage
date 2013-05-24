@@ -10,7 +10,7 @@ namespace Raven.Storage.Impl
 			return File.OpenWrite(name);
 		}
 
-		public Stream NewWritable(string name, int num, string ext)
+		public Stream NewWritable(string name, ulong num, string ext)
 		{
 			return NewWritable(string.Format("{0}{1:000000}.{2}", name, num, ext));
 		}

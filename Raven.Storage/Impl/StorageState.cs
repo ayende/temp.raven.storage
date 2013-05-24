@@ -20,7 +20,7 @@ namespace Raven.Storage.Impl
 		public StorageOptions Options;
 		public FileSystem FileSystem;
 		public string DatabaseName;
-		public int LogFileNumber;
+		public ulong LogFileNumber { get; private set; }
 
 		public void CreateNewLog()
 		{

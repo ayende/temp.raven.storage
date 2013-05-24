@@ -59,11 +59,17 @@
     <Compile Include="Impl\AsyncManualResetEvent.cs" />
     <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
     <Compile Include="Impl\Config.cs" />
+    <Compile Include="Impl\Constants.cs" />
+    <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
+    <Compile Include="Impl\FileType.cs" />
+    <Compile Include="Impl\Status.cs" />
+    <Compile Include="Impl\StatusCode.cs" />
     <Compile Include="Impl\Streams\LogWriterStream.cs" />
     <Compile Include="Impl\StorageState.cs" />
     <Compile Include="Impl\StorageWriter.cs" />
     <Compile Include="Impl\Version.cs" />
+    <Compile Include="Impl\VersionEdit.cs" />
     <Compile Include="Impl\VersionSet.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />

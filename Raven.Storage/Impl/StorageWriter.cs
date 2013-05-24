@@ -10,10 +10,16 @@ using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Impl
 {
+	using Raven.Storage.Comparing;
+	using Raven.Storage.Data;
+
 	public class StorageWriter
 	{
 		private readonly StorageState _state;
 		private readonly ConcurrentQueue<OutstandingWrite> _pendingWrites = new ConcurrentQueue<OutstandingWrite>();
+
+		private readonly IList<ulong> pendingOutputs = new List<ulong>();
+
 		private readonly AsyncManualResetEvent _writeCompletedEvent = new AsyncManualResetEvent();
 
 		private class OutstandingWrite
@@ -113,7 +119,7 @@ namespace Raven.Storage.Impl
 				}
 				finally
 				{
-					_writeCompletedEvent.Set();	
+					_writeCompletedEvent.Set();
 				}
 			}
 		}
@@ -163,8 +169,9 @@ namespace Raven.Storage.Impl
 					// Attempt to switch to a new memtable and trigger compaction of old
 					Debug.Assert(_state.VersionSet.PrevLogNumber == 0);
 
-					_state.CreateNewLog();
 					_state.LogWriter.Dispose();
+
+					_state.CreateNewLog();
 					_state.ImmutableMemTable = _state.MemTable;
 					_state.MemTable = new MemTable(_state.Options);
 					force = false;
@@ -196,6 +203,172 @@ namespace Raven.Storage.Impl
 		}
 
 		private void RunCompaction()
+		{
+			if (_state.ImmutableMemTable != null)
+			{
+				CompactMemTable();
+				return;
+			}
+
+
+		}
+
+		/// <summary>
+		/// Compact the in-memory write buffer to disk.  Switches to a new
+		/// log-file/memtable and writes a new descriptor iff successful.
+		/// </summary>
+		private Status CompactMemTable()
+		{
+			if (_state.ImmutableMemTable == null)
+				throw new InvalidOperationException("ImmutableMemTable cannot be null.");
+
+			var immutableMemTable = _state.ImmutableMemTable;
+
+			VersionEdit edit;
+
+			Version currentVersion = this._state.VersionSet.Current;
+			Status status = WriteLevel0Table(immutableMemTable, out edit, currentVersion);
+
+			if (status.IsOK())
+			{
+				edit.SetPrevLogNumber(0);
+				edit.SetLogNumber(_state.LogFileNumber);
+				status = this._state.VersionSet.LogAndApply(edit); // maybe add mutex?
+			}
+
+			if (status.IsOK())
+			{
+				this._state.ImmutableMemTable = null;
+				DeleteObsoleteFiles();
+			}
+
+			return status;
+		}
+
+		private void DeleteObsoleteFiles()
+		{
+			var live = pendingOutputs;
+			_state.VersionSet.AddLiveFiles(live);
+
+			var databaseName = _state.DatabaseName;
+			var databaseFiles = new DirectoryInfo(databaseName).GetFiles();
+
+			foreach (var file in databaseFiles)
+			{
+				ulong number;
+				FileType fileType;
+				if (TryParseDatabaseFile(file, out number, out fileType))
+				{
+					var keep = true;
+					switch (fileType)
+					{
+						case FileType.LogFile:
+							keep = ((number >= _state.VersionSet.LogNumber) || (number == _state.VersionSet.PrevLogNumber));
+							break;
+						case FileType.DescriptorFile:
+							// Keep my manifest file, and any newer incarnations'
+							// (in case there is a race that allows other incarnations)
+							keep = (number >= _state.VersionSet.ManifestFileNumber);
+							break;
+						case FileType.TableFile:
+							keep = (live.IndexOf(number) != live.Count() - 1);
+							break;
+						case FileType.TempFile:
+							// Any temp files that are currently being written to must
+							// be recorded in pending_outputs_, which is inserted into "live"
+							keep = (live.IndexOf(number) != live.Count() - 1);
+							break;
+						case FileType.CurrentFile:
+						case FileType.DBLockFile:
+						case FileType.InfoLogFile:
+							break;
+						default:
+							throw new NotSupportedException(fileType.ToString());
+					}
+
+					if (!keep)
+					{
+						if (fileType == FileType.TableFile)
+						{
+							//table_cache_->Evict(number);
+						}
+
+						//Log(options_.info_log, "Delete type=%d #%lld\n",
+						//int(type),
+						//static_cast<unsigned long long>(number));
+
+						File.Delete(string.Format("{0}/{1}", databaseName, file));
+					}
+				}
+			}
+
+		}
+
+		private bool TryParseDatabaseFile(FileInfo file, out ulong number, out FileType fileType)
+		{
+			number = 0;
+			fileType = FileType.Unknown;
+
+			if (file.FullName.Equals(Constants.Files.CurrentFile, StringComparison.InvariantCultureIgnoreCase))
+			{
+				number = 0;
+				fileType = FileType.CurrentFile;
+			}
+			else if (file.FullName.Equals(Constants.Files.DBLockFile, StringComparison.InvariantCultureIgnoreCase))
+			{
+				number = 0;
+				fileType = FileType.DBLockFile;
+			}
+			else if (file.FullName.Equals(Constants.Files.LogFile) || file.FullName.Equals(Constants.Files.CurrentFile + ".old"))
+			{
+				number = 0;
+				fileType = FileType.InfoLogFile;
+			}
+			else if (file.FullName.StartsWith(Constants.Files.ManifestPrefix, StringComparison.InvariantCultureIgnoreCase))
+			{
+				if (!string.IsNullOrEmpty(file.Extension))
+				{
+					return false;
+				}
+
+				var prefixLength = Constants.Files.ManifestPrefix.Length;
+				if (!ulong.TryParse(file.FullName.Substring(prefixLength, file.FullName.Length - prefixLength), out number))
+				{
+					return false;
+				}
+
+				fileType = FileType.DescriptorFile;
+			}
+			else
+			{
+				ulong extractedNumber;
+				if (!ulong.TryParse(file.Name, out extractedNumber))
+				{
+					return false;
+				}
+
+				switch (file.Extension.ToUpperInvariant())
+				{
+					case Constants.Files.Extensions.LogFile:
+						fileType = FileType.LogFile;
+						break;
+					case Constants.Files.Extensions.TableFile:
+						fileType = FileType.TableFile;
+						break;
+					case Constants.Files.Extensions.TempFile:
+						fileType = FileType.TempFile;
+						break;
+					default:
+						return false;
+				}
+
+				number = extractedNumber;
+			}
+
+			return true;
+		}
+
+		private Status WriteLevel0Table(MemTable immutableMemTable, out VersionEdit edit, Version currentVersion)
 		{
 			throw new NotImplementedException();
 		}
