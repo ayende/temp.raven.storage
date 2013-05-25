@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using Raven.Imports.Newtonsoft.Json;
+using System.Linq;
 
 namespace Raven.Storage.Data
 {
@@ -39,7 +41,17 @@ namespace Raven.Storage.Data
 
 		public string DebugVal
 		{
-			get { return Encoding.UTF8.GetString(Array, Offset, Count); }
+			get
+			{
+				var end = Offset;
+				for (; end < Count; end++)
+				{
+					if (Array[end] < 0x20 || Array[end] > 127)
+						break;
+				}
+				var s = Encoding.UTF8.GetString(Array, Offset, end);
+				return s;
+			}
 		}
 
 		public static implicit operator Slice(string val)

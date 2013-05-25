@@ -1,34 +1,29 @@
-﻿using System.Threading;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Raven.Storage.Impl
 {
-	public class AsyncManualResetEvent
+	public class AsyncMonitor
 	{
-		private volatile TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+		private ConcurrentQueue<TaskCompletionSource<object>> _pending =
+			new ConcurrentQueue<TaskCompletionSource<object>>();
 
 		public Task WaitAsync()
 		{
-			return _tcs.Task;
+			var item = new TaskCompletionSource<object>();
+			_pending.Enqueue(item);
+			return item.Task;
 		}
 
-		public void Set()
+		public void Pulse()
 		{
-			_tcs.TrySetResult(true);
-		}
-
-		public void Reset()
-		{
-			while (true)
+			TaskCompletionSource<object> source;
+			var current = _pending;
+			_pending = new ConcurrentQueue<TaskCompletionSource<object>>();
+			while (current.TryDequeue(out source))
 			{
-				var tcs = _tcs;
-				if (!tcs.Task.IsCompleted)
-					return;
-				
-#pragma warning disable 420
-				if(Interlocked.CompareExchange(ref this._tcs, new TaskCompletionSource<bool>(), tcs) == tcs)
-					return;
-#pragma warning restore 420
+				source.TrySetResult(null);
 			}
 		}
 	}

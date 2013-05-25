@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -6,22 +7,42 @@ namespace Raven.Storage.Impl
 {
 	public class AsyncLock : IDisposable
 	{
-		private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
-		
+		private readonly object locker = new object();
+		private readonly Queue<TaskCompletionSource<object>> waiters = new Queue<TaskCompletionSource<object>>();
+		private bool locked;
+
 		public void Exit()
 		{
-			_semaphoreSlim.Release();
+			lock (locker)
+			{
+				locked = false;
+				if (waiters.Count == 0)
+					return;
+				var taskCompletionSource = waiters.Dequeue();
+				taskCompletionSource.SetResult(null);
+			}
 		}
 
 		public async Task<LockScope> LockAsync()
 		{
-			await _semaphoreSlim.WaitAsync();
+			TaskCompletionSource<object> taskCompletionSource;
+			lock (locker)
+			{
+				if (locked == false)
+				{
+					locked = true;
+					return new LockScope(this);
+				}
+
+				taskCompletionSource = new TaskCompletionSource<object>();
+				waiters.Enqueue(taskCompletionSource);
+			}
+			await taskCompletionSource.Task;
 			return new LockScope(this);
 		}
 		
 		public void Dispose()
 		{
-			_semaphoreSlim.Dispose();
 		}
 
 		public class LockScope: IDisposable
@@ -52,15 +73,9 @@ namespace Raven.Storage.Impl
 			{
 				if (locked)
 					return;
-				await _asyncLock._semaphoreSlim.WaitAsync();
+				await _asyncLock.LockAsync();
 				locked = true;
 			}
-		}
-
-		public async Task WaitReleaseAsync()
-		{
-			await _semaphoreSlim.WaitAsync();
-			_semaphoreSlim.Release();
 		}
 	}
 }

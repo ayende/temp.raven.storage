@@ -10,7 +10,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void Empty()
 		{
-			using (var memtable = new MemTable(new StorageOptions()))
+			StorageOptions storageOptions = new StorageOptions();
+			using (var memtable = new MemTable(storageOptions))
 			{
 				Stream stream;
 				Assert.False(memtable.TryGet("test", 1, out stream));
@@ -20,8 +21,9 @@ namespace Raven.Storage.Tests.Memtable
 
 		[Fact]
 		 public void CanAddAndGet()
-		 {
-			using (var memtable = new MemTable(new StorageOptions()))
+		{
+			StorageOptions storageOptions = new StorageOptions();
+			using (var memtable = new MemTable(storageOptions))
 			{
 				memtable.Add(1, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
@@ -34,12 +36,13 @@ namespace Raven.Storage.Tests.Memtable
 				}
 				
 			}
-		 }
+		}
 
 		[Fact]
 		public void CanAddAndGetUsingLaterSnapshot()
 		{
-			using (var memtable = new MemTable(new StorageOptions()))
+			StorageOptions storageOptions = new StorageOptions();
+			using (var memtable = new MemTable(storageOptions))
 			{
 				memtable.Add(1, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
@@ -57,7 +60,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void WillNotShowValueFromLaterSnapshot()
 		{
-			using (var memtable = new MemTable(new StorageOptions()))
+			StorageOptions storageOptions = new StorageOptions();
+			using (var memtable = new MemTable(storageOptions))
 			{
 				memtable.Add(2, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
@@ -69,7 +73,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void DeletesWillHideValues()
 		{
-			using (var memtable = new MemTable(new StorageOptions()))
+			StorageOptions storageOptions = new StorageOptions();
+			using (var memtable = new MemTable(storageOptions))
 			{
 				memtable.Add(2, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				memtable.Add(3, ItemType.Deletion, "test", null);

@@ -1,30 +1,42 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Memory;
+using Raven.Storage.Reading;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Memtable
 {
 	public class MemTable : IDisposable
 	{
-		private readonly StorageOptions _storageOptions;
+		private readonly BufferPool _bufferPool;
 		private readonly SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle> _table;
 		private readonly UnamangedMemoryAccessor _memoryAccessor;
 		private readonly InternalKeyComparator _internalKeyComparator;
 
-		public MemTable(StorageOptions storageOptions)
+		public DateTime CreatedAt { get; private set; }
+
+		public MemTable(StorageOptions options)
+			: this(options.WriteBatchSize, options.Comparator, options.BufferPool)
 		{
-			_memoryAccessor = new UnamangedMemoryAccessor(storageOptions.WriteBatchSize);
 
-			_storageOptions = storageOptions;
+		}
 
-			_internalKeyComparator = new InternalKeyComparator(_storageOptions.Comparator);
+		public MemTable(int writeBatchSize, IComparator comparator, BufferPool bufferPool)
+		{
+			CreatedAt = DateTime.UtcNow;
+			_bufferPool = bufferPool;
+			_memoryAccessor = new UnamangedMemoryAccessor(writeBatchSize);
+
+			_internalKeyComparator = new InternalKeyComparator(comparator);
 			_table = new SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>(_internalKeyComparator.Compare);
 		}
 
 		public int ApproximateMemoryUsage { get; private set; }
+
+		public int Count { get { return _table.Count; } }
 
 		public UnamangedMemoryAccessor.MemoryHandle Write(Stream value)
 		{
@@ -33,6 +45,11 @@ namespace Raven.Storage.Memtable
 			var memoryHandle = _memoryAccessor.Write(value);
 			ApproximateMemoryUsage += memoryHandle.Size;
 			return memoryHandle;
+		}
+
+		public IIterator NewIterator()
+		{
+			return new MemoryIterator(this, _table.NewIterator());
 		}
 
 		public void Add(ulong seq, ItemType type, Slice key, UnamangedMemoryAccessor.MemoryHandle memoryHandle)
@@ -53,7 +70,7 @@ namespace Raven.Storage.Memtable
 		/// </summary>
 		public bool TryGet(Slice userKey, ulong sequence, out Stream stream)
 		{
-			var buffer = _storageOptions.BufferPool.Take(userKey.Count + 8);
+			var buffer = _bufferPool.Take(userKey.Count + 8);
 			try
 			{
 				Buffer.BlockCopy(userKey.Array, userKey.Offset, buffer, 0, userKey.Count);
@@ -84,7 +101,7 @@ namespace Raven.Storage.Memtable
 			}
 			finally
 			{
-				_storageOptions.BufferPool.Return(buffer);
+				_bufferPool.Return(buffer);
 			}
 		}
 

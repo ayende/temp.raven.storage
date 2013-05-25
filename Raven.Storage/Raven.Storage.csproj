@@ -54,6 +54,7 @@
     <Compile Include="Data\ItemType.cs" />
     <Compile Include="Data\ReadOptions.cs" />
     <Compile Include="Data\Slice.cs" />
+    <Compile Include="Data\SliceJsonConverter.cs" />
     <Compile Include="Data\Snapshot.cs" />
     <Compile Include="Impl\AsyncLock.cs" />
     <Compile Include="Impl\AsyncManualResetEvent.cs" />
@@ -65,6 +66,8 @@
     <Compile Include="Impl\StorageWriter.cs" />
     <Compile Include="Impl\Version.cs" />
     <Compile Include="Impl\VersionSet.cs" />
+    <Compile Include="Memory\MemoryAccessor.cs" />
+    <Compile Include="Memtable\MemoryIterator.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />
     <Compile Include="Filtering\Bloom.cs" />
@@ -97,7 +100,12 @@
     <Compile Include="Util\IOExtensions.cs" />
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\ravendb-2.5\Raven.Abstractions\Raven.Abstractions.csproj">
+      <Project>{41AC479E-1EB2-4D23-AAF2-E4C8DF1BC2BA}</Project>
+      <Name>Raven.Abstractions</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

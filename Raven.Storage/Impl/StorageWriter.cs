@@ -14,7 +14,7 @@ namespace Raven.Storage.Impl
 	{
 		private readonly StorageState _state;
 		private readonly ConcurrentQueue<OutstandingWrite> _pendingWrites = new ConcurrentQueue<OutstandingWrite>();
-		private readonly AsyncManualResetEvent _writeCompletedEvent = new AsyncManualResetEvent();
+		private readonly AsyncMonitor _writeCompletedEvent = new AsyncMonitor();
 
 		private class OutstandingWrite
 		{
@@ -66,8 +66,6 @@ namespace Raven.Storage.Impl
 
 			using (var locker = await _state.Lock.LockAsync())
 			{
-				_writeCompletedEvent.Reset();
-
 				try
 				{
 					if (mine.Done())
@@ -113,7 +111,7 @@ namespace Raven.Storage.Impl
 				}
 				finally
 				{
-					_writeCompletedEvent.Set();	
+					_writeCompletedEvent.Pulse();	
 				}
 			}
 		}
