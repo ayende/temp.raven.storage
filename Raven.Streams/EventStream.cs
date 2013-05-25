@@ -12,6 +12,7 @@ using Raven.Json.Linq;
 using Raven.Storage.Building;
 using Raven.Storage.Data;
 using Raven.Storage.Impl;
+using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memtable;
 using Raven.Storage.Reading;
 
@@ -21,8 +22,8 @@ namespace Raven.Streams
 	{
 		private volatile bool disposed;
 		private readonly StreamOptions _options;
-		private CurrentStatus.MemRange _memTable;
-		private CurrentStatus.MemRange _immutableMemTable;
+		private MemRange _memTable;
+		private MemRange _immutableMemTable;
 		private Task _flushingMemTable;
 		private int _currentBufferSize;
 		private readonly AsyncLock _asyncLock = new AsyncLock();
@@ -71,10 +72,13 @@ namespace Raven.Streams
 			_options = options;
 			_options.Initialize();
 			_currentBufferSize = _options.InitialInMemoryBuffer;
-			_memTable = new CurrentStatus.MemRange
+			long log;
+			_memTable = new MemRange
 				{
 					MemTable = new MemTable(_currentBufferSize, options.Comparator, _options.BufferPool),
-					Start = EtagToSlice(Etag.Empty)
+					Start = EtagToSlice(Etag.Empty),
+					Log = new LogWriterStream(_options.CreateNewLogFile(out log)),
+					LogNumber = log
 				};
 		}
 
@@ -312,19 +316,25 @@ namespace Raven.Streams
 
 			var imm = _memTable;
 
-			_flushingMemTable = Task.Factory.StartNew(() => WriteMemTableToDisk(imm.MemTable));
+			_flushingMemTable = Task.Factory.StartNew(() => WriteMemTableToDisk(imm));
 
 			lock (_metadataLocker)
 			{
-				_immutableMemTable = new CurrentStatus.MemRange
-				{
-					MemTable = _memTable.MemTable,
-					Start = _memTable.Start
-				};
-				_memTable = new CurrentStatus.MemRange
+				_immutableMemTable = _memTable;
+				_flushingMemTable = _flushingMemTable.ContinueWith(task =>
+					{
+						using (imm)
+						{
+							_immutableMemTable = null;
+						}
+					});
+				long log;
+				_memTable = new MemRange
 					{
 						MemTable = new MemTable(_currentBufferSize, _options.Comparator, _options.BufferPool),
-						Start = EtagToSlice(newEtag)
+						Start = EtagToSlice(newEtag),
+						Log = new LogWriterStream(_options.CreateNewLogFile(out log)),
+						LogNumber = log
 					};
 			}
 		}
@@ -335,13 +345,13 @@ namespace Raven.Streams
 		}
 
 
-		private void WriteMemTableToDisk(MemTable imm)
+		private void WriteMemTableToDisk(MemRange range)
 		{
 			string fileName;
 			Slice first = new Slice(), last = new Slice();
 			using (var stream = _options.CreateNewTableFile(out fileName))
 			using (var builder = new TableBuilder(_options, stream, _options.Storage.CreateTemp))
-			using (var it = imm.NewIterator())
+			using (var it = range.MemTable.NewIterator())
 			{
 				it.SeekToFirst();
 				while (it.IsValid)
@@ -365,11 +375,11 @@ namespace Raven.Streams
 								End = last,
 								Name = fileName,
 								Start = first,
-								Count = imm.Count
+								Count = range.MemTable.Count
 							}
 					};
+				_options.Status.LastCompletedLog = range.LogNumber;
 				_options.FlushStatus();
-				_immutableMemTable = null;
 			}
 		}
 
@@ -386,11 +396,39 @@ namespace Raven.Streams
 			flushingMemTable = _flushingMemTable;
 			if (flushingMemTable != null)
 				await flushingMemTable;
+
+			using(_memTable)
+			using (_immutableMemTable)
+			{
+				foreach (var table in _tables.Values)
+				{
+					if(table.IsValueCreated)
+						table.Value.Dispose();
+				}
+			}
 		}
 
 		public void Dispose()
 		{
 			DisposeAsync().Wait();
+		}
+
+
+		public class MemRange : IDisposable
+		{
+			public Slice Start { get; set; }
+			public MemTable MemTable { get; set; }
+			public LogWriterStream Log { get; set; }
+			public long LogNumber { get; set; }
+
+			public void Dispose()
+			{
+				using(Log)
+				using (MemTable)
+				{
+					
+				}
+			}
 		}
 	}
 }

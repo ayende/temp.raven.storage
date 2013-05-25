@@ -143,5 +143,11 @@ namespace Raven.Streams
 		{
 			return string.Format("status.{0:00000000}", version);
 		}
+
+		public Stream CreateNewLogFile(out long log)
+		{
+			var file = Status.CreateNewLogFileName(out log);
+			return Storage.Create(file);
+		}
 	}
 }

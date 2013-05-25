@@ -11,10 +11,18 @@ namespace Raven.Streams
 	{
 		private long currentEtag;
 		private long fileBase;
+		private long logBase;
 		private long nextSeq;
 		private long etagBase;
 
 		public long Version { get; set; }
+
+		public long LogBase
+		{
+			get { return logBase; }
+			set { logBase = value; }
+		}
+
 		public long FileBase
 		{
 			get { return fileBase; }
@@ -49,7 +57,15 @@ namespace Raven.Streams
 			return string.Format("0-{0:00000000}.sst", counter);
 		}
 
+		public string CreateNewLogFileName(out long log)
+		{
+			log = Interlocked.Increment(ref logBase);
+			return string.Format("{0:00000000}.log", log);
+		}
+
 		public List<SstRange> Ranges { get; set; }
+
+		public long LastCompletedLog { get; set; }
 
 		public CurrentStatus()
 		{
@@ -63,12 +79,6 @@ namespace Raven.Streams
 			public Slice End { get; set; }
 			public string Name { get; set; }
 			public int Count { get; set; }
-		}
-
-		public class MemRange
-		{
-			public Slice Start { get; set; }
-			public MemTable MemTable { get; set; }
 		}
 	}
 
