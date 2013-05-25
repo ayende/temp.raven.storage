@@ -73,15 +73,21 @@ namespace Raven.Streams
 		{
 			private readonly string _name;
 			private readonly InMemoryLowLevelStorage _storage;
-
+			private bool disposed;
 			public InMemoryFileStream(BufferPool bufferPool, string name, InMemoryLowLevelStorage storage) : base(bufferPool)
 			{
 				_name = name;
 				_storage = storage;
+				Tuple<byte[], long> value;
+				if(_storage._files.TryRemove(name, out value))
+					_storage._bufferPool.Return(value.Item1);
 			}
 
 			protected override void Dispose(bool disposing)
 			{
+				if (disposed)
+					return;
+				disposed = true;
 				if(_storage._files.TryAdd(_name, Tuple.Create(_buffer, _length)) == false)
 					throw new InvalidOperationException("Cannot add file: " + _name + ", already exists");
 			}
