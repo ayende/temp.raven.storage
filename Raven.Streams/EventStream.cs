@@ -15,6 +15,7 @@ using Raven.Storage.Impl;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memtable;
 using Raven.Storage.Reading;
+using Raven.Storage.Util;
 
 namespace Raven.Streams
 {
@@ -234,7 +235,12 @@ namespace Raven.Streams
 					{
 						var memoryHandle = _memTable.MemTable.Write(write.Stream);
 
-						// TODO: write to log
+						await _memTable.Log.Write7BitEncodedIntAsync(memoryHandle.Size);
+
+						using (var stream = _memTable.MemTable.Read(memoryHandle))
+						{
+							await stream.CopyToAsync(_memTable.Log);
+						}
 
 						_memTable.MemTable.Add(seq, ItemType.Value, EtagToSlice(write.Etag), memoryHandle);
 
