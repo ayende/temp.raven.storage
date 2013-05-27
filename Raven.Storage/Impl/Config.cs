@@ -17,5 +17,21 @@
 		/// </summary>
 		public const int HeaderSize = 4 + 1 + 2;
 
+		public const int NumberOfLevels = 7;
+
+		/// <summary>
+		/// Level-0 compaction is started when we hit this many files.
+		/// </summary>
+		public const int Level0CompactionTrigger = 4;
+
+		/// <summary>
+		/// Maximum level to which a new compacted memtable is pushed if it
+		/// does not create overlap.  We try to push to level 2 to avoid the
+		/// relatively expensive level 0=>1 compactions and to avoid some
+		/// expensive manifest file operations.  We do not push all the way to
+		/// the largest level since that can generate a lot of wasted disk
+		/// space if the same key space is being repeatedly overwritten.
+		/// </summary>
+		public const int MaxMemCompactLevel = 2;
 	}
 }

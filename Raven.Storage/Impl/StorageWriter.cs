@@ -215,7 +215,7 @@ namespace Raven.Storage.Impl
 
 		/// <summary>
 		/// Compact the in-memory write buffer to disk.  Switches to a new
-		/// log-file/memtable and writes a new descriptor iff successful.
+		/// log-file/memtable and writes a new descriptor if successful.
 		/// </summary>
 		private Status CompactMemTable()
 		{
@@ -224,18 +224,19 @@ namespace Raven.Storage.Impl
 
 			var immutableMemTable = _state.ImmutableMemTable;
 
-			VersionEdit edit;
-
+			VersionEdit edit = new VersionEdit();
 			Version currentVersion = this._state.VersionSet.Current;
-			Status status = WriteLevel0Table(immutableMemTable, out edit, currentVersion);
 
+			Status status = WriteLevel0Table(immutableMemTable, edit, currentVersion);
+
+			// Replace immutable memtable with the generated Table
 			if (status.IsOK())
 			{
 				edit.SetPrevLogNumber(0);
 				edit.SetLogNumber(_state.LogFileNumber);
-				status = this._state.VersionSet.LogAndApply(edit); // maybe add mutex?
+				status = this._state.LogAndApply(edit); // maybe add mutex?
 			}
-
+			
 			if (status.IsOK())
 			{
 				this._state.ImmutableMemTable = null;
@@ -257,7 +258,7 @@ namespace Raven.Storage.Impl
 			{
 				ulong number;
 				FileType fileType;
-				if (TryParseDatabaseFile(file, out number, out fileType))
+				if (_state.FileSystem.TryParseDatabaseFile(file, out number, out fileType))
 				{
 					var keep = true;
 					switch (fileType)
@@ -301,76 +302,41 @@ namespace Raven.Storage.Impl
 					}
 				}
 			}
-
 		}
 
-		private bool TryParseDatabaseFile(FileInfo file, out ulong number, out FileType fileType)
+		private Status WriteLevel0Table(MemTable memTable, VersionEdit edit, Version currentVersion)
 		{
-			number = 0;
-			fileType = FileType.Unknown;
+			var stopwatch = Stopwatch.StartNew();
+			var fileNumber = this._state.VersionSet.NewFileNumber();
 
-			if (file.FullName.Equals(Constants.Files.CurrentFile, StringComparison.InvariantCultureIgnoreCase))
+			pendingOutputs.Add(fileNumber);
+
+			var fileMetadata = _state.BuildTable(memTable, fileNumber);
+
+			pendingOutputs.Remove(fileNumber);
+
+			int level = 0;
+			if (fileMetadata.FileSize > 0)
 			{
-				number = 0;
-				fileType = FileType.CurrentFile;
-			}
-			else if (file.FullName.Equals(Constants.Files.DBLockFile, StringComparison.InvariantCultureIgnoreCase))
-			{
-				number = 0;
-				fileType = FileType.DBLockFile;
-			}
-			else if (file.FullName.Equals(Constants.Files.LogFile) || file.FullName.Equals(Constants.Files.CurrentFile + ".old"))
-			{
-				number = 0;
-				fileType = FileType.InfoLogFile;
-			}
-			else if (file.FullName.StartsWith(Constants.Files.ManifestPrefix, StringComparison.InvariantCultureIgnoreCase))
-			{
-				if (!string.IsNullOrEmpty(file.Extension))
+				var smallestKey = fileMetadata.SmallestKey;
+				var largestKey = fileMetadata.LargestKey;
+
+				if (currentVersion != null)
 				{
-					return false;
+					level = currentVersion.PickLevelForMemTableOutput(smallestKey, largestKey);
 				}
 
-				var prefixLength = Constants.Files.ManifestPrefix.Length;
-				if (!ulong.TryParse(file.FullName.Substring(prefixLength, file.FullName.Length - prefixLength), out number))
-				{
-					return false;
-				}
-
-				fileType = FileType.DescriptorFile;
-			}
-			else
-			{
-				ulong extractedNumber;
-				if (!ulong.TryParse(file.Name, out extractedNumber))
-				{
-					return false;
-				}
-
-				switch (file.Extension.ToUpperInvariant())
-				{
-					case Constants.Files.Extensions.LogFile:
-						fileType = FileType.LogFile;
-						break;
-					case Constants.Files.Extensions.TableFile:
-						fileType = FileType.TableFile;
-						break;
-					case Constants.Files.Extensions.TempFile:
-						fileType = FileType.TempFile;
-						break;
-					default:
-						return false;
-				}
-
-				number = extractedNumber;
+				edit.AddFile(level, fileMetadata);
 			}
 
-			return true;
-		}
+			_state.CompactionStats[level].Add(new CompactionStats
+				                                  {
+					                                  Micros = stopwatch.ElapsedMilliseconds,
+													  BytesRead = 0,
+													  BytesWritten = fileMetadata.FileSize
+				                                  });
 
-		private Status WriteLevel0Table(MemTable immutableMemTable, out VersionEdit edit, Version currentVersion)
-		{
-			throw new NotImplementedException();
+			return Status.OK();
 		}
 
 		private List<OutstandingWrite> BuildBatchGroup(OutstandingWrite mine)

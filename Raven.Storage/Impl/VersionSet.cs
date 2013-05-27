@@ -1,22 +1,25 @@
-﻿using System;
-using System.Diagnostics;
-
-namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl
 {
+	using System;
 	using System.Collections.Generic;
+	using System.Diagnostics;
+
+	using Raven.Storage.Data;
 
 	public class VersionSet
 	{
 		private ulong _lastSequence;
 		private Version _current = new Version();
 
-		private ulong nextFileNumber;
+		public Slice[] CompactionPointers { get; private set; }
 
 		public VersionSet()
 		{
-			nextFileNumber = 2;
+			NextFileNumber = 2;
 			LogNumber = 0;
 			ManifestFileNumber = 0;
+
+			CompactionPointers = new Slice[Config.NumberOfLevels];
 		}
 
 		/// <summary>
@@ -44,7 +47,7 @@ namespace Raven.Storage.Impl
 		/// Return the log file number for the log file that is currently
 		/// being compacted, or zero if there is no such log file.
 		/// </summary>
-		public ulong PrevLogNumber { get; set; }
+		public ulong PrevLogNumber { get; private set; }
 
 		public ulong LogNumber { get; private set; }
 
@@ -59,6 +62,8 @@ namespace Raven.Storage.Impl
 
 		public ulong ManifestFileNumber { get; private set; }
 
+		public ulong NextFileNumber { get; private set; }
+
 		public int GetNumberOfFilesAtLevel(int level)
 		{
 			throw new NotImplementedException();
@@ -66,25 +71,35 @@ namespace Raven.Storage.Impl
 
 		public ulong NewFileNumber()
 		{
-			return nextFileNumber++;
+			return NextFileNumber++;
 		}
 
 		public void ReuseFileNumber(ulong number)
 		{
-			if (nextFileNumber == number + 1)
+			if (NextFileNumber == number + 1)
 			{
-				nextFileNumber = number;
+				NextFileNumber = number;
 			}
-		}
-
-		public Status LogAndApply(VersionEdit edit)
-		{
-			throw new NotImplementedException();
 		}
 
 		public void AddLiveFiles(IList<ulong> live)
 		{
 			throw new NotImplementedException();
+		}
+
+		public void SetLogNumber(ulong number)
+		{
+			LogNumber = number;
+		}
+
+		public void SetPrevLogNumber(ulong number)
+		{
+			PrevLogNumber = number;
+		}
+
+		public void AppendVersion(Version version)
+		{
+			_current = version;
 		}
 	}
 }

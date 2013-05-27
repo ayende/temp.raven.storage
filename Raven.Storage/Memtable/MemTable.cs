@@ -98,5 +98,10 @@ namespace Raven.Storage.Memtable
 		{
 			return _memoryAccessor.Read(handle);
 		}
+
+		public SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>.Iterator NewIterator()
+		{
+			return _table.NewIterator();
+		}
 	}
 }

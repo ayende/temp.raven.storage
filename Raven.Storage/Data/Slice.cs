@@ -2,7 +2,6 @@
 {
 	using System;
 	using System.Diagnostics;
-	using System.Linq;
 	using System.Text;
 
 	using Raven.Storage.Comparing;
@@ -75,6 +74,11 @@
 
 			_offset += prefixLength;
 			_count -= prefixLength;
+		}
+
+		public bool IsEmpty()
+		{
+			return _count <= 0;
 		}
 	}
 }

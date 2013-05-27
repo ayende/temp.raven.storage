@@ -1,8 +1,11 @@
 ﻿namespace Raven.Storage.Impl
 {
 	using System;
+	using System.Collections.Generic;
+	using System.IO;
 
 	using Raven.Storage.Data;
+	using Raven.Storage.Util;
 
 	public class VersionEdit
 	{
@@ -14,19 +17,19 @@
 			}
 		}
 
-		private bool HasLogNumber
+		public bool HasLogNumber
 		{
 			get
 			{
-				return logNumber > 0;
+				return LogNumber > 0;
 			}
 		}
 
-		private bool HasPrevLogNumber
+		public bool HasPrevLogNumber
 		{
 			get
 			{
-				return prevLogNumber > 0;
+				return PrevLogNumber > 0;
 			}
 		}
 
@@ -38,23 +41,29 @@
 			}
 		}
 
-		//private bool HasLastSequence
-		//{
-		//	get
-		//	{
-		//		return lastSequence != null;
-		//	}
-		//}
+		private bool HasLastSequence
+		{
+			get
+			{
+				return lastSequence > 0;
+			}
+		}
 
 		private string comparator;
 
-		private ulong logNumber;
+		public ulong LogNumber { get; private set; }
 
-		private ulong prevLogNumber;
+		public ulong PrevLogNumber { get; private set; }
 
 		private ulong nextFileNumber;
 
-		//private SequenceNumber lastSequence;
+		private ulong lastSequence;
+
+		public IDictionary<int, IList<Slice>> CompactionPointers { get; private set; }
+
+		public IDictionary<int, IList<ulong>> DeletedFiles { get; set; }
+
+		public IDictionary<int, IList<FileMetadata>> NewFiles { get; set; }
 
 		public VersionEdit()
 		{
@@ -63,57 +72,117 @@
 
 		private void Clear()
 		{
-			throw new NotImplementedException();
+			comparator = null;
+			LogNumber = 0;
+			PrevLogNumber = 0;
+			lastSequence = 0;
+			nextFileNumber = 0;
+
+			this.CompactionPointers = new Dictionary<int, IList<Slice>>();
+			this.DeletedFiles = new Dictionary<int, IList<ulong>>();
+			this.NewFiles = new Dictionary<int, IList<FileMetadata>>();
+
+			for (int level = 0; level < Config.NumberOfLevels; level++)
+			{
+				this.CompactionPointers.Add(level, new List<Slice>());
+				this.DeletedFiles.Add(level, new List<ulong>());
+				this.NewFiles.Add(level, new List<FileMetadata>());
+			}
 		}
 
-		private void SetComparatorName(Slice name)
+		public void SetComparatorName(Slice name)
 		{
 			comparator = name.ToString();
 		}
 
 		public void SetLogNumber(ulong number)
 		{
-			logNumber = number;
+			LogNumber = number;
 		}
 
 		public void SetPrevLogNumber(ulong number)
 		{
-			prevLogNumber = number;
+			PrevLogNumber = number;
 		}
 
-		private void SetNextFile(ulong number)
+		public void SetNextFile(ulong number)
 		{
 			nextFileNumber = number;
 		}
 
-		//private void SetLastSequence(SequenceNumber sequence)
-		//{
-		//	lastSequence = sequence;
-		//}
+		public void SetLastSequence(ulong sequence)
+		{
+			lastSequence = sequence;
+		}
 
-		//private void SetCompactorPointer(int level, InternalKey key)
-		//{
-		//	throw new NotImplementedException();
-		//}
-
-		//private void AddFile(int level, ulong file, ulong fileSize, InternalKey smallest, InternalKey largest)
-		//{
-		//	throw new NotImplementedException();
-		//}
-
-		private void DeleteFile(int level, ulong file)
+		public void SetCompactionPointer(int level, Slice key)
 		{
 			throw new NotImplementedException();
 		}
 
-		private void EncodeTo(Slice dst)
+		public void AddFile(int level, FileMetadata file)
 		{
 			throw new NotImplementedException();
 		}
 
-		Status DecodeFrom(Slice src)
+		public void EncodeTo(Stream stream)
 		{
-			throw new NotImplementedException();
+			if (HasComparator)
+			{
+				stream.Write7BitEncodedInt((int)Tag.Comparator);
+				stream.WriteLengthPrefixedSlice(comparator);
+			}
+
+			if (HasLogNumber)
+			{
+				stream.Write7BitEncodedInt((int)Tag.LogNumber);
+				stream.Write7BitEncodedLong(LogNumber);
+			}
+
+			if (HasPrevLogNumber)
+			{
+				stream.Write7BitEncodedInt((int)Tag.PrevLogNumber);
+				stream.Write7BitEncodedLong(PrevLogNumber);
+			}
+
+			if (HasNextFileNumber)
+			{
+				stream.Write7BitEncodedInt((int)Tag.NextFileNumber);
+				stream.Write7BitEncodedLong(nextFileNumber);
+			}
+
+			if (HasLastSequence)
+			{
+				stream.Write7BitEncodedInt((int)Tag.LastSequence);
+				stream.Write7BitEncodedLong(lastSequence);
+			}
+
+			for (int level = 0; level < Config.NumberOfLevels; level++)
+			{
+				foreach (var compactionPointer in CompactionPointers[level])
+				{
+					stream.Write7BitEncodedInt((int)Tag.CompactPointer);
+					stream.Write7BitEncodedInt(level);
+					stream.WriteLengthPrefixedSlice(compactionPointer);
+				}
+
+				foreach (var fileNumber in DeletedFiles[level])
+				{
+					stream.Write7BitEncodedInt((int)Tag.DeletedFile);
+					stream.Write7BitEncodedInt(level);
+					stream.Write7BitEncodedLong(fileNumber);
+				}
+
+				foreach (var fileMetadata in NewFiles[level])
+				{
+					stream.Write7BitEncodedInt((int)Tag.NewFile);
+					stream.Write7BitEncodedInt(level);
+					stream.Write7BitEncodedLong(fileMetadata.FileNumber);
+					stream.Write7BitEncodedLong(fileMetadata.FileSize);
+					stream.WriteLengthPrefixedSlice(fileMetadata.SmallestKey);
+					stream.WriteLengthPrefixedSlice(fileMetadata.LargestKey);
+				}
+			}
 		}
 	}
 }

@@ -31,6 +31,7 @@ namespace Raven.Storage
 
 		private void Init()
 		{
+			//_storageState.Recover();
 			_storageState.CreateNewLog();
 			_storageWriter = new StorageWriter(_storageState);
 		}
