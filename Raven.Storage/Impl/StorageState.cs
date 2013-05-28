@@ -193,10 +193,10 @@ namespace Raven.Storage.Impl
 					while (iterator.IsValid)
 					{
 						var key = iterator.Key;
-						var value = iterator.Val;
+						var stream = iterator.CreateValueStream();
 
 						meta.LargestKey = key;
-						builder.Add(key, memTable.Read(value));
+						builder.Add(key, stream);
 
 						iterator.Next();
 					}

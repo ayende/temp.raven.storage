@@ -49,7 +49,7 @@
     <Compile Include="StreamOptions.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ravendb-2.5\Raven.Abstractions\Raven.Abstractions.csproj">
+    <ProjectReference Include="..\..\RavenDB\ravendb_ppekrol2\Raven.Abstractions\Raven.Abstractions.csproj">
       <Project>{41AC479E-1EB2-4D23-AAF2-E4C8DF1BC2BA}</Project>
       <Name>Raven.Abstractions</Name>
     </ProjectReference>
