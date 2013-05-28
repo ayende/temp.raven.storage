@@ -10,6 +10,8 @@ using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Impl
 {
+	using System.Threading;
+
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 
@@ -202,14 +204,37 @@ namespace Raven.Storage.Impl
 			_state.BackgroundTask = Task.Factory.StartNew(RunCompaction);
 		}
 
-		private void RunCompaction()
+		private async void RunCompaction()
+		{
+			var status = this.BackgroundCompaction();
+			if (status.IsOK())
+			{
+				// Success
+			}
+			else
+			{
+				// Wait a little bit before retrying background compaction in
+				// case this is an environmental problem and we do not want to
+				// chew up resources for failed compactions for the duration of
+				// the problem.
+
+				Thread.Sleep(1000000);
+			}
+
+			using (var locker = await _state.Lock.LockAsync())
+			{
+				this.MaybeScheduleCompaction(locker);
+			}
+		}
+
+		private Status BackgroundCompaction()
 		{
 			if (_state.ImmutableMemTable != null)
 			{
-				CompactMemTable();
-				return;
+				return CompactMemTable();
 			}
 
+			Compaction compaction;
 
 		}
 

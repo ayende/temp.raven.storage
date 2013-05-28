@@ -65,6 +65,7 @@
     <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
     <Compile Include="Impl\FileType.cs" />
+    <Compile Include="Impl\ManualCompaction.cs" />
     <Compile Include="Impl\Snapshot.cs" />
     <Compile Include="Impl\Status.cs" />
     <Compile Include="Impl\StatusCode.cs" />

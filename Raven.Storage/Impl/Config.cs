@@ -33,5 +33,11 @@
 		/// space if the same key space is being repeatedly overwritten.
 		/// </summary>
 		public const int MaxMemCompactLevel = 2;
+
+		public const int TargetFileSize = 2 * 1048576;
+
+		// Maximum bytes of overlaps in grandparent (i.e., level+2) before we
+		// stop building a single file in a level->level+1 compaction.
+		public const long MaxGrandParentOverlapBytes = 10 * TargetFileSize;
 	}
 }

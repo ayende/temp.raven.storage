@@ -184,5 +184,10 @@
 				}
 			}
 		}
+
+		public void DeleteFile(int level, ulong fileNumber)
+		{
+			DeletedFiles[level].Add(fileNumber);
+		}
 	}
 }
