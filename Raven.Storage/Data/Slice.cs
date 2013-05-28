@@ -41,7 +41,17 @@
 
 		public string DebugVal
 		{
-			get { return Encoding.UTF8.GetString(Array, Offset, Count); }
+			get
+			{
+				var end = Offset;
+				for (; end < Count; end++)
+				{
+					if (Array[end] < 0x20 || Array[end] > 127)
+						break;
+				}
+				var s = Encoding.UTF8.GetString(Array, Offset, end);
+				return s;
+			}
 		}
 
 		public static implicit operator Slice(string val)

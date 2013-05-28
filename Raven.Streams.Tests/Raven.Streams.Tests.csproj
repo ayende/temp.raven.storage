@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}</ProjectGuid>
+    <ProjectGuid>{E5A16BD2-F695-4859-A95C-E78AD2B1340E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Raven.Storage.Tests</RootNamespace>
-    <AssemblyName>Raven.Storage.Tests</AssemblyName>
+    <RootNamespace>Raven.Streams.Tests</RootNamespace>
+    <AssemblyName>Raven.Streams.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
@@ -44,23 +44,28 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Compaction\StatusTests.cs" />
-    <Compile Include="Filtering\BloomFilterTest.cs" />
-    <Compile Include="Hashing\CaseInsensitiveHashing.cs" />
-    <Compile Include="Hashing\Hashing.cs" />
-    <Compile Include="Memtable\CanStoreAndGetValues.cs" />
-    <Compile Include="Memtable\SkipListTests.cs" />
+    <Compile Include="CanFlushToDisk.cs" />
+    <Compile Include="CanReadFromStream.cs" />
+    <Compile Include="CanWriteData.cs" />
+    <Compile Include="CanWriteToActualDisk.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SST\ReadWrite.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">
-      <Project>{21eb6b89-0cdf-4290-8d3f-7b831425606b}</Project>
-      <Name>Raven.Storage</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ravendb-2.5\Raven.Abstractions\Raven.Abstractions.csproj">
+      <Project>{41AC479E-1EB2-4D23-AAF2-E4C8DF1BC2BA}</Project>
+      <Name>Raven.Abstractions</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">
+      <Project>{21EB6B89-0CDF-4290-8D3F-7B831425606B}</Project>
+      <Name>Raven.Storage</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Raven.Streams\Raven.Streams.csproj">
+      <Project>{F08307DC-66B9-48D8-B382-D683E632F398}</Project>
+      <Name>Raven.Streams</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

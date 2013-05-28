@@ -5,24 +5,20 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
-using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Impl
 {
 	using System.Threading;
 
-	using Raven.Storage.Comparing;
-	using Raven.Storage.Data;
 
 	public class StorageWriter
 	{
 		private readonly StorageState _state;
 		private readonly ConcurrentQueue<OutstandingWrite> _pendingWrites = new ConcurrentQueue<OutstandingWrite>();
+		private readonly AsyncMonitor _writeCompletedEvent = new AsyncMonitor();
 
 		private readonly IList<ulong> pendingOutputs = new List<ulong>();
-
-		private readonly AsyncManualResetEvent _writeCompletedEvent = new AsyncManualResetEvent();
 
 		private class OutstandingWrite
 		{
@@ -74,8 +70,6 @@ namespace Raven.Storage.Impl
 
 			using (var locker = await _state.Lock.LockAsync())
 			{
-				_writeCompletedEvent.Reset();
-
 				try
 				{
 					if (mine.Done())
@@ -121,7 +115,7 @@ namespace Raven.Storage.Impl
 				}
 				finally
 				{
-					_writeCompletedEvent.Set();
+					_writeCompletedEvent.Pulse();	
 				}
 			}
 		}
@@ -234,8 +228,7 @@ namespace Raven.Storage.Impl
 				return CompactMemTable();
 			}
 
-			Compaction compaction;
-
+			return Status.OK();
 		}
 
 		/// <summary>

@@ -69,7 +69,7 @@
 
 		public int GetNumberOfFilesAtLevel(int level)
 		{
-			throw new NotImplementedException();
+			return _current.Files[level].Count;
 		}
 
 		public ulong NewFileNumber()

@@ -55,9 +55,11 @@
     <Compile Include="Data\ItemType.cs" />
     <Compile Include="Data\ReadOptions.cs" />
     <Compile Include="Data\Slice.cs" />
+    <Compile Include="Data\SliceJsonConverter.cs" />
     <Compile Include="Data\Snapshot.cs" />
     <Compile Include="Impl\AsyncLock.cs" />
     <Compile Include="Impl\AsyncManualResetEvent.cs" />
+    <Compile Include="Impl\Compaction.cs" />
     <Compile Include="Impl\CompactionStats.cs" />
     <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
     <Compile Include="Impl\Config.cs" />
@@ -76,6 +78,8 @@
     <Compile Include="Impl\Version.cs" />
     <Compile Include="Impl\VersionEdit.cs" />
     <Compile Include="Impl\VersionSet.cs" />
+    <Compile Include="Memory\MemoryAccessor.cs" />
+    <Compile Include="Memtable\MemoryIterator.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />
     <Compile Include="Filtering\Bloom.cs" />

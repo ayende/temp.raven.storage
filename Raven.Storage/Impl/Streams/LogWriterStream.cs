@@ -101,6 +101,12 @@ namespace Raven.Storage.Impl.Streams
 			} while (count > 0);
 		}
 
+		protected override void Dispose(bool disposing)
+		{
+			stream.Dispose();
+			base.Dispose(disposing);
+		}
+
 		public override bool CanRead
 		{
 			get { return false; }

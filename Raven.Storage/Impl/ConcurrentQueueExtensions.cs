@@ -2,7 +2,7 @@
 
 namespace Raven.Storage.Impl
 {
-	internal static class ConcurrentQueueExtensions
+	public static class ConcurrentQueueExtensions
 	{
 			public static T Peek<T>(this ConcurrentQueue<T> self)
 				where T : class

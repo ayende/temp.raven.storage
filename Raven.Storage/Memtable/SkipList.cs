@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading;
+using Raven.Storage.Reading;
 
 namespace Raven.Storage.Memtable
 {
@@ -30,6 +31,8 @@ namespace Raven.Storage.Memtable
 		{
 			get { return Volatile.Read(ref _maxHeight); }
 		}
+
+		public int Count { get; private set; }
 
 		public SkipList(Comparison<TKey> comparer)
 		{
@@ -78,6 +81,8 @@ namespace Raven.Storage.Memtable
 				x.SetNextWithNoBarrier(i, prev[i].GetNextWithNoBarrier(i));
 				prev[i].SetNext(i, x);
 			}
+
+			Count ++;
 		}
 
 		public Node FindGreaterOrEqual(TKey key, Node[] prev)
