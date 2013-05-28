@@ -60,6 +60,7 @@
     <Compile Include="Impl\AsyncLock.cs" />
     <Compile Include="Impl\AsyncManualResetEvent.cs" />
     <Compile Include="Impl\Compaction.cs" />
+    <Compile Include="Impl\CompactionState.cs" />
     <Compile Include="Impl\CompactionStats.cs" />
     <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
     <Compile Include="Impl\Config.cs" />

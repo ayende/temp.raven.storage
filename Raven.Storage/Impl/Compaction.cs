@@ -30,13 +30,13 @@
 		/// <summary>
 		/// Each compaction reads inputs from "level_" and "level_+1"
 		/// </summary>
-		private readonly List<FileMetadata>[] inputs;
+		public List<FileMetadata>[] Inputs { get; set; }
 
 		/// <summary>
 		/// State used to check for number of of overlapping grandparent files
 		/// (parent == level_ + 1, grandparent == level_ + 2)
 		/// </summary>
-		private readonly List<FileMetadata> grandparents;
+		public List<FileMetadata> Grandparents { get; set; }
 
 		/// <summary>
 		/// Index in grandparent_starts_
@@ -64,15 +64,15 @@
 		/// </summary>
 		private readonly int[] levelPointers;
 
-		public Compaction(StorageOptions options, int level)
+		public Compaction(StorageOptions options, int level, Version inputVersion = null)
 		{
 			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
 			this.Level = level;
 			this.MaxOutputFileSize = Config.TargetFileSize;
-			this.inputVersion = null;
+			this.inputVersion = inputVersion;
 			this.Edit = new VersionEdit();
-			this.inputs = new List<FileMetadata>[2];
-			this.grandparents = new List<FileMetadata>();
+			this.Inputs = new List<FileMetadata>[2];
+			this.Grandparents = new List<FileMetadata>();
 			this.grandparentIndex = 0;
 			this.seenKey = false;
 			this.overlappedBytes = 0;
@@ -92,7 +92,7 @@
 		/// <returns></returns>
 		public int GetNumberOfInputFiles(int which)
 		{
-			return inputs[which].Count;
+			return Inputs[which].Count;
 		}
 
 		/// <summary>
@@ -103,7 +103,7 @@
 		/// <returns></returns>
 		public FileMetadata GetInput(int which, int i)
 		{
-			return inputs[which][i];
+			return Inputs[which][i];
 		}
 
 		/// <summary>
@@ -114,7 +114,7 @@
 		public bool IsTrivialMove()
 		{
 			return (this.GetNumberOfInputFiles(0) == 1 && this.GetNumberOfInputFiles(1) == 0
-			        && grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
+					&& Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
 		}
 
 		/// <summary>
@@ -125,9 +125,9 @@
 		{
 			for (var which = 0; which < 2; which++)
 			{
-				for (var i = 0; i < inputs[which].Count; i++)
+				for (var i = 0; i < Inputs[which].Count; i++)
 				{
-					edit.DeleteFile(Level + which, inputs[which][i].FileNumber);
+					edit.DeleteFile(Level + which, Inputs[which][i].FileNumber);
 				}
 			}
 		}
@@ -175,12 +175,12 @@
 		/// <returns></returns>
 		public bool ShouldStopBefore(Slice internalKey)
 		{
-			while (grandparentIndex < grandparents.Count
-			       && internalKeyComparator.Compare(internalKey, grandparents[grandparentIndex].LargestKey) > 0)
+			while (grandparentIndex < Grandparents.Count
+				   && internalKeyComparator.Compare(internalKey, Grandparents[grandparentIndex].LargestKey) > 0)
 			{
 				if (seenKey)
 				{
-					overlappedBytes += grandparents[grandparentIndex].FileSize;
+					overlappedBytes += Grandparents[grandparentIndex].FileSize;
 				}
 
 				grandparentIndex++;

@@ -9,8 +9,6 @@
 
 	public class Version
 	{
-
-
 		private readonly InternalKeyComparator internalKeyComparator;
 
 		public Version(StorageOptions options)
@@ -115,7 +113,7 @@
 			return level;
 		}
 
-		private IEnumerable<FileMetadata> GetOverlappingInputs(int level, Slice begin, Slice end)
+		internal List<FileMetadata> GetOverlappingInputs(int level, Slice begin, Slice end)
 		{
 			var inputs = new List<FileMetadata>();
 			var userComparator = internalKeyComparator.UserComparator;

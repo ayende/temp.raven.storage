@@ -36,8 +36,17 @@
 
 		public const int TargetFileSize = 2 * 1048576;
 
-		// Maximum bytes of overlaps in grandparent (i.e., level+2) before we
-		// stop building a single file in a level->level+1 compaction.
+		/// <summary>
+		/// Maximum bytes of overlaps in grandparent (i.e., level+2) before we
+		/// stop building a single file in a level->level+1 compaction.
+		/// </summary>
 		public const long MaxGrandParentOverlapBytes = 10 * TargetFileSize;
+
+		/// <summary>
+		/// Maximum number of bytes in all compacted files.  We avoid expanding
+		/// the lower level file set of a compaction if it would make the
+		/// total compaction cover more than this many bytes.
+		/// </summary>
+		public const long ExpandedCompactionByteSizeLimit = 25 * TargetFileSize;
 	}
 }

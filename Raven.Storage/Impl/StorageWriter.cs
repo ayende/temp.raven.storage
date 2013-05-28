@@ -11,6 +11,7 @@ namespace Raven.Storage.Impl
 {
 	using System.Threading;
 
+	using Raven.Storage.Data;
 
 	public class StorageWriter
 	{
@@ -115,7 +116,7 @@ namespace Raven.Storage.Impl
 				}
 				finally
 				{
-					_writeCompletedEvent.Pulse();	
+					_writeCompletedEvent.Pulse();
 				}
 			}
 		}
@@ -188,7 +189,7 @@ namespace Raven.Storage.Impl
 				return;    // DB is being disposed; no more background compactions
 			}
 			if (_state.ImmutableMemTable == null &&
-				// _state.manual_compaction_ == null &&
+				_state.ManualCompaction == null &&
 				_state.VersionSet.NeedsCompaction)
 			{
 				// No work to be done
@@ -228,7 +229,100 @@ namespace Raven.Storage.Impl
 				return CompactMemTable();
 			}
 
-			return Status.OK();
+			Compaction compaction;
+			Slice manualEnd = new Slice();
+			var isManual = _state.ManualCompaction != null;
+			if (isManual)
+			{
+				var mCompaction = _state.ManualCompaction;
+				compaction = _state.VersionSet.CompactRange(mCompaction.Level, mCompaction.Begin, mCompaction.End);
+				mCompaction.Done = compaction == null;
+				if (compaction != null)
+				{
+					manualEnd = compaction.GetInput(0, compaction.GetNumberOfInputFiles(0) - 1).LargestKey;
+				}
+			}
+			else
+			{
+				compaction = _state.VersionSet.PickCompaction();
+			}
+
+			Status status = Status.OK();
+			if (compaction == null)
+			{
+				// Nothing to do
+			}
+			else if (!isManual && compaction.IsTrivialMove())
+			{
+				Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
+				var file = compaction.GetInput(0, 0);
+				compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
+				compaction.Edit.AddFile(compaction.Level + 1, file);
+
+				status = _state.LogAndApply(compaction.Edit);
+
+				//	VersionSet::LevelSummaryStorage tmp;
+				//  Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
+				//	static_cast<unsigned long long>(f->number),
+				//	c->level() + 1,
+				//	static_cast<unsigned long long>(f->file_size),
+				//	status.ToString().c_str(),
+				//	versions_->LevelSummary(&tmp));
+			}
+			else
+			{
+				CompactionState compactionState = new CompactionState(compaction);
+				status = DoCompactionWork(compactionState);
+				CleanupCompaction(compactionState);
+				compaction.ReleaseInputs();
+				DeleteObsoleteFiles();
+			}
+
+			compaction = null;
+
+			if (status.IsOK())
+			{
+				// DONE
+			}
+			else
+			{
+				//		Log(options_.info_log,
+				//			"Compaction error: %s", status.ToString().c_str());
+				//		if (options_.paranoid_checks && bg_error_.ok())
+				//		{
+				//			bg_error_ = status;
+				//		}
+			}
+
+			if (isManual)
+			{
+				var mCompaction = _state.ManualCompaction;
+				if (!status.IsOK())
+				{
+					mCompaction.Done = true;
+				}
+
+				if (!mCompaction.Done)
+				{
+					mCompaction.Begin = manualEnd;
+				}
+				else
+				{
+					_state.ManualCompaction = null;
+				}
+			}
+
+			return status;
+		}
+
+		private void CleanupCompaction(CompactionState compactionState)
+		{
+			throw new NotImplementedException();
+		}
+
+		private Status DoCompactionWork(CompactionState compactionState)
+		{
+			throw new NotImplementedException();
 		}
 
 		/// <summary>
@@ -254,7 +348,7 @@ namespace Raven.Storage.Impl
 				edit.SetLogNumber(_state.LogFileNumber);
 				status = this._state.LogAndApply(edit); // maybe add mutex?
 			}
-			
+
 			if (status.IsOK())
 			{
 				this._state.ImmutableMemTable = null;
@@ -350,11 +444,11 @@ namespace Raven.Storage.Impl
 			}
 
 			_state.CompactionStats[level].Add(new CompactionStats
-				                                  {
-					                                  Micros = stopwatch.ElapsedMilliseconds,
+												  {
+													  Micros = stopwatch.ElapsedMilliseconds,
 													  BytesRead = 0,
 													  BytesWritten = fileMetadata.FileSize
-				                                  });
+												  });
 
 			return Status.OK();
 		}

@@ -31,6 +31,8 @@ namespace Raven.Storage.Impl
 
 		public CompactionStats[] CompactionStats = new CompactionStats[Config.NumberOfLevels];
 
+		public ManualCompaction ManualCompaction { get; set; }
+
 		public void CreateNewLog()
 		{
 			var newFileNumber = VersionSet.NewFileNumber();

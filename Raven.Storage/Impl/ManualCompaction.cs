@@ -5,7 +5,7 @@
 	/// <summary>
 	/// Information for a manual compaction
 	/// </summary>
-	public struct ManualCompaction
+	public class ManualCompaction
 	{
 		public int Level { get; set; }
 
@@ -20,10 +20,5 @@
 		/// NULL means end of key range
 		/// </summary>
 		public Slice End { get; set; }
-
-		/// <summary>
-		/// Used to keep track of compaction progress
-		/// </summary>
-		public Slice TmpStorage { get; set; }
 	}
 }
