@@ -5,10 +5,20 @@
 	using System.Text;
 
 	using Raven.Storage.Comparing;
+	using Raven.Storage.Util;
 
 	[DebuggerDisplay("Val: {DebugVal}")]
 	public struct Slice
 	{
+		public static Slice CreateInternalKey(Slice key, ulong seq, ItemType type)
+		{
+			var buffer = new byte[key.Count + 8];
+			Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, key.Count);
+			buffer.WriteLong(key.Count, Format.PackSequenceAndType(seq, type));
+
+			return new Slice(buffer);
+		}
+
 		private readonly byte[] _array;
 		private int _count;
 		private int _offset;

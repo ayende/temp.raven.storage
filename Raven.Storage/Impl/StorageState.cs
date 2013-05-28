@@ -61,7 +61,7 @@ namespace Raven.Storage.Impl
 			edit.SetNextFile(VersionSet.NextFileNumber);
 			edit.SetLastSequence(VersionSet.LastSequence);
 
-			var version = new Version(VersionSet);
+			var version = new Version(Options, VersionSet);
 
 			var builder = new Builder(VersionSet, VersionSet.Current);
 			builder.Apply(edit);
@@ -172,9 +172,9 @@ namespace Raven.Storage.Impl
 		{
 			TableBuilder builder = null;
 			var meta = new FileMetadata
-				           {
-					           FileNumber = fileNumber
-				           };
+						   {
+							   FileNumber = fileNumber
+						   };
 
 			var tableFileName = FileSystem.GetFileName(DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
 			var tempFileName = FileSystem.GetFileName(DatabaseName, fileNumber, Constants.Files.Extensions.TempFile);
@@ -182,7 +182,7 @@ namespace Raven.Storage.Impl
 			try
 			{
 				var iterator = memTable.NewIterator();
-				
+
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);

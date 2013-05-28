@@ -315,6 +315,8 @@ namespace Raven.Storage.Impl
 
 			pendingOutputs.Remove(fileNumber);
 
+			// Note that if file_size is zero, the file has been deleted and
+			// should not be added to the manifest.
 			int level = 0;
 			if (fileMetadata.FileSize > 0)
 			{

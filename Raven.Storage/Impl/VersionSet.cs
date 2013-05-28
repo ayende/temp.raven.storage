@@ -9,17 +9,20 @@
 	public class VersionSet
 	{
 		private ulong _lastSequence;
-		private Version _current = new Version();
+
+		private Version _current;
 
 		public Slice[] CompactionPointers { get; private set; }
 
-		public VersionSet()
+		public VersionSet(StorageOptions options)
 		{
 			NextFileNumber = 2;
 			LogNumber = 0;
 			ManifestFileNumber = 0;
 
 			CompactionPointers = new Slice[Config.NumberOfLevels];
+
+			this.AppendVersion(new Version(options, this));
 		}
 
 		/// <summary>

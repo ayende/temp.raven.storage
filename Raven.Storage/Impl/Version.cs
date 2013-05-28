@@ -9,17 +9,24 @@
 
 	public class Version
 	{
-		private readonly VersionSet versionSet;
+		private const int TargetFileSize = 2 * 1048576;
 
-		public Version()
+		// Maximum bytes of overlaps in grandparent (i.e., level+2) before we
+		// stop building a single file in a level->level+1 compaction.
+		private const long MaxGrandParentOverlapBytes = 10 * TargetFileSize;
+
+		private readonly InternalKeyComparator internalKeyComparator;
+
+		public Version(StorageOptions options)
 		{
+			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
 			this.Files = new List<FileMetadata>[Config.NumberOfLevels];
 		}
 
-		public Version(VersionSet versionSet)
-			: this()
+		public Version(StorageOptions options, VersionSet versionSet)
+			: this(options)
 		{
-			this.versionSet = versionSet;
+			throw new NotImplementedException();
 		}
 
 		public int CompactionLevel { get; set; }
@@ -98,16 +105,93 @@
 						break;
 					}
 
-					
+					var overlaps = GetOverlappingInputs(level + 2, smallestKey, largestKey);
+					var totalFileSize = overlaps.Sum(x => x.FileSize);
+					if (totalFileSize > MaxGrandParentOverlapBytes)
+					{
+						break;
+					}
+
+					level++;
 				}
 			}
 
 			return level;
 		}
 
+		private IEnumerable<FileMetadata> GetOverlappingInputs(int level, Slice begin, Slice end)
+		{
+			var inputs = new List<FileMetadata>();
+			var userComparator = internalKeyComparator.UserComparator;
+
+			for (int i = 0; i < Files[level].Count; )
+			{
+				var f = Files[level][i++];
+				var fileStart = f.SmallestKey;
+				var fileLimit = f.LargestKey;
+
+				if (userComparator.Compare(fileLimit, begin) < 0)
+				{
+					// "f" is completely before specified range; skip it
+				}
+				else if (userComparator.Compare(fileStart, end) > 0)
+				{
+					// "f" is completely after specified range; skip it
+				}
+				else
+				{
+					inputs.Add(f);
+					if (level == 0)
+					{
+						// Level-0 files may overlap each other.  So check if the newly
+						// added file has expanded the range.  If so, restart search.
+						if (userComparator.Compare(fileStart, begin) < 0)
+						{
+							begin = fileStart;
+							inputs.Clear();
+							i = 0;
+						}
+						else if (userComparator.Compare(fileLimit, end) > 0)
+						{
+							end = fileLimit;
+							inputs.Clear();
+							i = 0;
+						}
+					}
+				}
+			}
+
+			return inputs;
+		}
+
 		private bool OverlapInLevel(int level, Slice smallestKey, Slice largestKey)
 		{
-			
+			return SomeFileOverlapsRange(level > 0, Files[level], smallestKey, largestKey);
+		}
+
+		private bool SomeFileOverlapsRange(bool disjointSortedFiles, IEnumerable<FileMetadata> files, Slice smallestKey, Slice largestKey)
+		{
+			if (!disjointSortedFiles)
+			{
+				var userComparator = internalKeyComparator.UserComparator;
+
+				// Need to check against all files
+				return files.Any(file => !this.AfterFile(userComparator, smallestKey, file) && !this.BeforeFile(userComparator, largestKey, file));
+			}
+
+			return false;
+		}
+
+		private bool BeforeFile(IComparator comparator, Slice key, FileMetadata file)
+		{
+			// NULL 'key' occurs after all keys and is therefore never before 'file'
+			return comparator.Compare(key, file.SmallestKey) < 0;
+		}
+
+		private bool AfterFile(IComparator comparator, Slice key, FileMetadata file)
+		{
+			// NULL 'key' occurs before all keys and is therefore never after 'file'
+			return comparator.Compare(key, file.LargestKey) > 0;
 		}
 	}
 }

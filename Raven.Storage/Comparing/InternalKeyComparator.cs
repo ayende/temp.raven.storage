@@ -15,6 +15,14 @@ namespace Raven.Storage.Comparing
 
 		private readonly IComparator _comparator;
 
+		public IComparator UserComparator
+		{
+			get
+			{
+				return _comparator;
+			}
+		}
+
 		public InternalKeyComparator(IComparator comparator)
 		{
 			_comparator = comparator;
