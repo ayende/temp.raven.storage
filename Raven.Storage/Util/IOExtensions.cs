@@ -2,6 +2,7 @@
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Threading.Tasks;
+using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memory;
 
 namespace Raven.Storage.Util
@@ -114,20 +115,37 @@ namespace Raven.Storage.Util
 
 		public static async Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)
 		{
-			var buffer = new byte[5];
-			int size = 0;
-			var num = (uint)value;
-			while (num >= 128U)
-			{
-				buffer[size++] = ((byte)(num | 128U));
-				num >>= 7;
-			}
-			buffer[size++] = (byte) num;
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
 			await stream.WriteAsync(buffer, 0, size);
 			return size;
 		}
 
-        public static int Write7BitEncodedLong(this Stream stream, long value)
+		public static async Task<int> Write7BitEncodedIntAsync(this LogWriter stream, int value)
+		{
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			await stream.WriteAsync(buffer, 0, size);
+			return size;
+		}
+
+
+	    private static void Get7BitsBuffer(int value, out byte[] buffer, out int size)
+	    {
+		    buffer = new byte[5];
+		    size = 0;
+		    var num = (uint) value;
+		    while (num >= 128U)
+		    {
+			    buffer[size++] = ((byte) (num | 128U));
+			    num >>= 7;
+		    }
+		    buffer[size++] = (byte) num;
+	    }
+
+	    public static int Write7BitEncodedLong(this Stream stream, long value)
         {
             int size = 0;
             var num = (ulong)value;

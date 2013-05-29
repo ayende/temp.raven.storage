@@ -72,28 +72,28 @@ namespace Raven.Storage
 
 		internal static async Task WriteToLog(WriteBatch[] writes, ulong seq, StorageState state)
 		{
+			state.LogWriter.RecordStarted();
+
 			var opCount = writes.Sum(x => x._operations.Count);
 
-			// we explicitly do not dispose this.
-			var bufferedStream = new BufferedStream(state.LogWriter, LogWriterStream.BlockSize);
 			var buffer = BitConverter.GetBytes(seq);
-			await bufferedStream.WriteAsync(buffer, 0, buffer.Length);
+			await state.LogWriter.WriteAsync(buffer, 0, buffer.Length);
 			buffer = BitConverter.GetBytes(opCount);
-			await bufferedStream.WriteAsync(buffer, 0, buffer.Length);
+			await state.LogWriter.WriteAsync(buffer, 0, buffer.Length);
 
 			foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
 			{
 				buffer[0] = (byte) operation.Op;
-				await bufferedStream.WriteAsync(buffer, 0, 1);
-				await bufferedStream.Write7BitEncodedIntAsync(operation.Key.Count);
-				await bufferedStream.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
+				await state.LogWriter.WriteAsync(buffer, 0, 1);
+				await state.LogWriter.Write7BitEncodedIntAsync(operation.Key.Count);
+				await state.LogWriter.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
 				if (operation.Op != Operations.Put)
 					continue;
-				using(var stream = state.MemTable.Read(operation.Handle))
-					await stream.CopyToAsync(stream);
+				using (var stream = state.MemTable.Read(operation.Handle))
+					await state.LogWriter.CopyFromAsync(stream);
 			}
 
-			await bufferedStream.FlushAsync();
+			await state.LogWriter.RecordCompletedAsync();
 		}
 	}
 }

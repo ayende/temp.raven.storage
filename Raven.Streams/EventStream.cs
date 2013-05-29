@@ -78,7 +78,7 @@ namespace Raven.Streams
 				{
 					MemTable = new MemTable(_currentBufferSize, options.Comparator, _options.BufferPool),
 					Start = EtagToSlice(Etag.Empty),
-					Log = new LogWriterStream(_options.CreateNewLogFile(out log)),
+					Log = new LogWriter(_options.CreateNewLogFile(out log), _options.BufferPool),
 					LogNumber = log
 				};
 		}
@@ -239,7 +239,7 @@ namespace Raven.Streams
 
 						using (var stream = _memTable.MemTable.Read(memoryHandle))
 						{
-							await stream.CopyToAsync(_memTable.Log);
+							await _memTable.Log.CopyFromAsync(stream);
 						}
 
 						_memTable.MemTable.Add(seq, ItemType.Value, EtagToSlice(write.Etag), memoryHandle);
@@ -339,7 +339,7 @@ namespace Raven.Streams
 					{
 						MemTable = new MemTable(_currentBufferSize, _options.Comparator, _options.BufferPool),
 						Start = EtagToSlice(newEtag),
-						Log = new LogWriterStream(_options.CreateNewLogFile(out log)),
+						Log = new LogWriter(_options.CreateNewLogFile(out log), _options.BufferPool),
 						LogNumber = log
 					};
 			}
@@ -424,7 +424,7 @@ namespace Raven.Streams
 		{
 			public Slice Start { get; set; }
 			public MemTable MemTable { get; set; }
-			public LogWriterStream Log { get; set; }
+			public LogWriter Log { get; set; }
 			public long LogNumber { get; set; }
 
 			public void Dispose()

@@ -89,6 +89,10 @@ namespace Raven.Storage.Util
             writeCrc = Crc.CalculateCrc(writeCrc, buffer, offset, count);
         }
 
+		public void InitReadCrc(byte b)
+		{
+			readCrc = Crc.CalculateCrc(0, b);
+		}
        
         uint readCrc = unchecked(0xFFFFFFFF);
 

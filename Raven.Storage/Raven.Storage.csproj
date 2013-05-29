@@ -61,6 +61,9 @@
     <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
     <Compile Include="Impl\Config.cs" />
     <Compile Include="Impl\FileSystem.cs" />
+    <Compile Include="Impl\Streams\AsyncBinaryWriter.cs" />
+    <Compile Include="Impl\Streams\LogReaderStream.cs" />
+    <Compile Include="Impl\Streams\LogWriter.cs" />
     <Compile Include="Impl\Streams\LogWriterStream.cs" />
     <Compile Include="Impl\StorageState.cs" />
     <Compile Include="Impl\StorageWriter.cs" />

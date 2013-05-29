@@ -13,7 +13,7 @@ namespace Raven.Storage.Impl
 		public volatile Task BackgroundTask = Task.FromResult<object>(null);
 		public volatile bool ShuttingDown;
 
-		public LogWriterStream LogWriter;
+		public LogWriter LogWriter;
 
 		public AsyncLock Lock;
 		public VersionSet VersionSet;
@@ -28,7 +28,7 @@ namespace Raven.Storage.Impl
 			try
 			{
 				var file = FileSystem.NewWritable(DatabaseName, newFileNumber, "log");
-				LogWriter = new LogWriterStream(file);
+				LogWriter = new LogWriter(file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}
 			catch (Exception)
