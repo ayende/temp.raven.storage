@@ -81,6 +81,8 @@
     <Compile Include="Impl\VersionSet.cs" />
     <Compile Include="Memory\MemoryAccessor.cs" />
     <Compile Include="Memtable\MemoryIterator.cs" />
+    <Compile Include="Reading\LevelFileNumIterator.cs" />
+    <Compile Include="Reading\MergingIterator.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />
     <Compile Include="Filtering\Bloom.cs" />
@@ -110,6 +112,7 @@
     <Compile Include="Util\Crc.cs" />
     <Compile Include="Util\CrcStream.cs" />
     <Compile Include="Util\Info.cs" />
+    <Compile Include="Data\ParsedInternalKey.cs" />
     <Compile Include="Util\IOExtensions.cs" />
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>

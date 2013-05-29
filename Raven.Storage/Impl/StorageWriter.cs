@@ -11,7 +11,10 @@ namespace Raven.Storage.Impl
 {
 	using System.Threading;
 
+	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
+	using Raven.Storage.Reading;
+	using Raven.Storage.Util;
 
 	public class StorageWriter
 	{
@@ -46,9 +49,12 @@ namespace Raven.Storage.Impl
 			}
 		}
 
+		private readonly InternalKeyComparator internalKeyComparator;
+
 		public StorageWriter(StorageState state)
 		{
 			_state = state;
+			internalKeyComparator = new InternalKeyComparator(state.Options.Comparator);
 		}
 
 		public void Write(WriteBatch batch)
@@ -317,10 +323,183 @@ namespace Raven.Storage.Impl
 
 		private void CleanupCompaction(CompactionState compactionState)
 		{
-			throw new NotImplementedException();
+			foreach (var output in compactionState.Outputs)
+			{
+				this.pendingOutputs.Remove(output.FileNumber);
+			}
+
+			compactionState.Dispose();
 		}
 
 		private Status DoCompactionWork(CompactionState compactionState)
+		{
+			var watch = Stopwatch.StartNew();
+
+			//Log(options_.info_log, "Compacting %d@%d + %d@%d files",
+			//  compact->compaction->num_input_files(0),
+			//  compact->compaction->level(),
+			//  compact->compaction->num_input_files(1),
+			//  compact->compaction->level() + 1);
+
+			Debug.Assert(_state.VersionSet.GetNumberOfFilesAtLevel(compactionState.Compaction.Level) > 0);
+			Debug.Assert(compactionState.Builder == null);
+			Debug.Assert(compactionState.OutFile == null);
+
+			//if (snapshots_.empty())
+			//{
+			//	compact->smallest_snapshot = versions_->LastSequence();
+			//}
+			//else
+			//{
+			//	compact->smallest_snapshot = snapshots_.oldest()->number_;
+			//}
+
+			// Release mutex while we're actually doing the compaction work
+			// mutex_.Unlock();
+
+			IIterator input = _state.VersionSet.MakeInputIterator(compactionState.Compaction);
+			input.SeekToFirst();
+
+			Status status = Status.OK();
+			ParsedInternalKey internalKey;
+			Slice currentUserKey = null;
+			var lastSequenceForKey = Format.MaxSequenceNumber;
+			for (; input.IsValid; )
+			{
+				if (this._state.ImmutableMemTable != null)
+				{
+					this.CompactMemTable();
+					// bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
+				}
+
+				var key = input.Key;
+				if (compactionState.Compaction.ShouldStopBefore(key) && compactionState.Builder != null)
+				{
+					status = FinishCompactionOutputFile(compactionState, input);
+					if (!status.IsOK())
+					{
+						break;
+					}
+				}
+
+				if (!ParsedInternalKey.TryParseInternalKey(key, out internalKey))
+				{
+					currentUserKey = null;
+					lastSequenceForKey = Format.MaxSequenceNumber;
+				}
+				else
+				{
+					bool drop = false;
+					if (currentUserKey.IsEmpty() || internalKeyComparator.UserComparator.Compare(internalKey.UserKey, currentUserKey) != 0)
+					{
+						// First occurrence of this user key
+						currentUserKey = internalKey.UserKey;
+						lastSequenceForKey = Format.MaxSequenceNumber;
+					}
+
+					if (lastSequenceForKey <= compactionState.SmallestSnapshot)
+					{
+						// Hidden by an newer entry for same user key
+						drop = true;
+					}
+					else if (internalKey.Type == ItemType.Deletion && internalKey.Sequence <= compactionState.SmallestSnapshot
+							 && compactionState.Compaction.IsBaseLevelForKey(internalKey.UserKey))
+					{
+						// For this user key:
+						// (1) there is no data in higher levels
+						// (2) data in lower levels will have larger sequence numbers
+						// (3) data in layers that are being compacted here and have
+						//     smaller sequence numbers will be dropped in the next
+						//     few iterations of this loop (by rule (A) above).
+						// Therefore this deletion marker is obsolete and can be dropped.
+
+						drop = true;
+					}
+
+					lastSequenceForKey = internalKey.Sequence;
+
+					if (!drop)
+					{
+						// Open output file if necessary
+						if (compactionState.Builder == null)
+						{
+							status = OpenCompactionOutputFile(compactionState);
+							if (!status.IsOK())
+							{
+								break;
+							}
+						}
+
+						if (compactionState.Builder.NumEntries == 0)
+						{
+							//compact->current_output()->smallest.DecodeFrom(key);
+						}
+
+						//compact->current_output()->largest.DecodeFrom(key);
+						compactionState.Builder.Add(key, input.CreateValueStream());
+
+						// Close output file if it is big enoug
+						if (compactionState.Builder.FileSize >= compactionState.Compaction.MaxOutputFileSize)
+						{
+							status = FinishCompactionOutputFile(compactionState, input);
+							if (!status.IsOK())
+							{
+								break;
+							}
+						}
+					}
+				}
+
+				input.Next();
+			}
+
+			if (status.IsOK() && compactionState.Builder != null)
+			{
+				status = FinishCompactionOutputFile(compactionState, input);
+			}
+
+			input.Dispose();
+			input = null;
+
+			var stats = new CompactionStats
+				            {
+					            Micros = watch.ElapsedMilliseconds
+				            };
+
+			for (var which = 0; which < 2; which++)
+			{
+				for (var i = 0; i < compactionState.Compaction.GetNumberOfInputFiles(which); i++)
+				{
+					stats.BytesRead += compactionState.Compaction.GetInput(which, i).FileSize;
+				}
+			}
+
+			foreach (var output in compactionState.Outputs)
+			{
+				stats.BytesWritten += output.FileSize;
+			}
+
+			_state.CompactionStats[compactionState.Compaction.Level + 1].Add(stats);
+
+			if (status.IsOK())
+			{
+				status = InstallCompactionResults(compactionState);
+			}
+
+			return status;
+		}
+
+		private Status OpenCompactionOutputFile(CompactionState compactionState)
+		{
+			throw new NotImplementedException();
+		}
+
+		private Status InstallCompactionResults(CompactionState compactionState)
+		{
+			throw new NotImplementedException();
+		}
+
+		private Status FinishCompactionOutputFile(CompactionState compactionState, IIterator input)
 		{
 			throw new NotImplementedException();
 		}

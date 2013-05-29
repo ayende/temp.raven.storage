@@ -7,6 +7,7 @@
 
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
+	using Raven.Storage.Reading;
 
 	public class VersionSet
 	{
@@ -116,13 +117,72 @@
 
 		public Compaction PickCompaction()
 		{
-			throw new NotImplementedException();
+			int level;
+			Compaction compaction;
+
+			bool sizeCompaction = Current.CompactionScore >= 1;
+			bool seekCompaction = Current.FileToCompact != null;
+
+			// We prefer compactions triggered by too much data in a level over
+			// the compactions triggered by seeks.
+			if (sizeCompaction)
+			{
+				level = Current.CompactionLevel;
+				Debug.Assert(level >= 0);
+				Debug.Assert(level + 1 < Config.NumberOfLevels);
+
+				compaction = new Compaction(options, level, Current);
+
+				for (var i = 0; i < Current.Files[level].Count; i++)
+				{
+					var file = Current.Files[level][i];
+					if (CompactionPointers[level].IsEmpty()
+						|| internalKeyComparator.Compare(file.LargestKey, CompactionPointers[level]) > 0)
+					{
+						compaction.Inputs[0].Add(file);
+						break;
+					}
+				}
+
+				if (compaction.Inputs[0].Count == 0)
+				{
+					// Wrap-around to the beginning of the key space
+					compaction.Inputs[0].Add(Current.Files[level][0]);
+				}
+			}
+			else if (seekCompaction)
+			{
+				level = Current.FileToCompactLevel;
+				compaction = new Compaction(options, level, Current);
+				compaction.Inputs[0].Add(Current.FileToCompact);
+			}
+			else
+			{
+				return null;
+			}
+
+			// Files in level 0 may overlap each other, so pick up all overlapping ones
+			if (level == 0)
+			{
+				Slice smallestKey, largestKey;
+				GetRange(compaction.Inputs[0], out smallestKey, out largestKey);
+
+				// Note that the next call will discard the file we placed in
+				// c->inputs_[0] earlier and replace it with an overlapping set
+				// which will include the picked file.
+				compaction.Inputs[0] = Current.GetOverlappingInputs(0, smallestKey, largestKey);
+				Debug.Assert(compaction.Inputs[0].Count > 0);
+			}
+
+			SetupOtherInputs(compaction);
+
+			return compaction;
 		}
 
 		public Compaction CompactRange(int level, Slice begin, Slice end)
 		{
 			var inputs = this.Current.GetOverlappingInputs(level, begin, end);
-			if (inputs.Count == 0) 
+			if (inputs.Count == 0)
 				return null;
 
 			var compaction = new Compaction(options, level, this.Current);
@@ -153,7 +213,7 @@
 				var expanded0Size = expanded0.Sum(x => x.FileSize);
 
 				if (expanded0.Count > compaction.Inputs[0].Count
-				    && inputs1Size + expanded0Size < Config.ExpandedCompactionByteSizeLimit)
+					&& inputs1Size + expanded0Size < Config.ExpandedCompactionByteSizeLimit)
 				{
 					Slice newStart, newLimit;
 					GetRange(expanded0, out newStart, out newLimit);
@@ -248,6 +308,58 @@
 			all.AddRange(inputs2);
 
 			GetRange(all, out smallestKey, out largestKey);
+		}
+
+		public IIterator MakeInputIterator(Compaction compaction)
+		{
+			var readOptions = new ReadOptions
+				                  {
+					                  VerifyChecksums = options.ParanoidChecks, 
+									  FillCache = false
+				                  };
+
+			// Level-0 files have to be merged together.  For other levels,
+			// we will make a concatenating iterator per level.
+			// TODO(opt): use concatenating iterator for level-0 if there is no overlap
+			var space = compaction.Level == 0 ? compaction.Inputs[0].Count + 1 : 2;
+			var list = new IIterator[space];
+			int num = 0;
+			for(int which = 0; which < 2; which++)
+			{
+				if (compaction.Inputs[which].Count != 0)
+				{
+					if (compaction.Level + which == 0)
+					{
+						var files = new List<FileMetadata>(compaction.Inputs[which]);
+						foreach (var file in files)
+						{
+							list[num++] = tableCache.NewIterator(readOptions, file.FileNumber, file.FileSize);
+						}
+					}
+					else
+					{
+						// Create concatenating iterator for the files from this level
+						list[num++] = NewTwoLevelIterator(
+							new LevelFileNumIterator(internalKeyComparator, compaction.Inputs[which]),
+							GetFileIterator,
+							tableCache,
+							readOptions);
+					}
+				}
+			}
+
+			Debug.Assert(num <= space);
+
+			return NewMergingIterator(internalKeyComparator, list, num);
+		}
+
+		private IIterator NewMergingIterator(InternalKeyComparator comparator, IIterator[] list, int n)
+		{
+			Debug.Assert(n >= 0);
+			if (n == 0)
+				return new EmptyIterator();
+
+			return n == 1 ? list.First() : new MergingIterator(comparator, list, n);
 		}
 	}
 }
