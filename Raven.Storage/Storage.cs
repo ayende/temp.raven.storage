@@ -18,7 +18,7 @@ namespace Raven.Storage
 					DatabaseName = name,
 					Lock = new AsyncLock(),
 					FileSystem = new FileSystem(),
-					VersionSet = new VersionSet()
+					VersionSet = new VersionSet(options)
 				};
 			Init();
 		}
@@ -31,6 +31,7 @@ namespace Raven.Storage
 
 		private void Init()
 		{
+			//_storageState.Recover();
 			_storageState.CreateNewLog();
 			_storageWriter = new StorageWriter(_storageState);
 		}

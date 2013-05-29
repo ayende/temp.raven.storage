@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Building\BlockBuilder.cs" />
+    <Compile Include="Building\Builder.cs" />
     <Compile Include="Comparing\CaseInsensitiveComparator.cs" />
     <Compile Include="Comparing\ByteWiseComparator.cs" />
     <Compile Include="Comparing\InternalKeyComparator.cs" />
@@ -58,16 +59,28 @@
     <Compile Include="Data\Snapshot.cs" />
     <Compile Include="Impl\AsyncLock.cs" />
     <Compile Include="Impl\AsyncManualResetEvent.cs" />
+    <Compile Include="Impl\Compaction.cs" />
+    <Compile Include="Impl\CompactionState.cs" />
+    <Compile Include="Impl\CompactionStats.cs" />
     <Compile Include="Impl\ConcurrentQueueExtensions.cs" />
     <Compile Include="Impl\Config.cs" />
+    <Compile Include="Impl\Constants.cs" />
+    <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
     <Compile Include="Impl\Streams\AsyncBinaryWriter.cs" />
     <Compile Include="Impl\Streams\LogReaderStream.cs" />
     <Compile Include="Impl\Streams\LogWriter.cs" />
+    <Compile Include="Impl\FileType.cs" />
+    <Compile Include="Impl\ManualCompaction.cs" />
+    <Compile Include="Impl\Snapshot.cs" />
+    <Compile Include="Impl\Status.cs" />
+    <Compile Include="Impl\StatusCode.cs" />
     <Compile Include="Impl\Streams\LogWriterStream.cs" />
     <Compile Include="Impl\StorageState.cs" />
     <Compile Include="Impl\StorageWriter.cs" />
+    <Compile Include="Impl\Tag.cs" />
     <Compile Include="Impl\Version.cs" />
+    <Compile Include="Impl\VersionEdit.cs" />
     <Compile Include="Impl\VersionSet.cs" />
     <Compile Include="Memory\MemoryAccessor.cs" />
     <Compile Include="Memtable\MemoryIterator.cs" />
@@ -104,8 +117,8 @@
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ravendb-2.5\Raven.Abstractions\Raven.Abstractions.csproj">
-      <Project>{41AC479E-1EB2-4D23-AAF2-E4C8DF1BC2BA}</Project>
+    <ProjectReference Include="..\..\RavenDB\ravendb_ppekrol2\Raven.Abstractions\Raven.Abstractions.csproj">
+      <Project>{41ac479e-1eb2-4d23-aaf2-e4c8df1bc2ba}</Project>
       <Name>Raven.Abstractions</Name>
     </ProjectReference>
   </ItemGroup>

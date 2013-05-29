@@ -40,10 +40,11 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="xunit">
-      <HintPath>..\packages\xunit.2.0.0-alpha-build1611\lib\net45\xunit.dll</HintPath>
+      <HintPath>..\packages\xunit.1.9.1\lib\net20\xunit.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compaction\StatusTests.cs" />
     <Compile Include="Filtering\BloomFilterTest.cs" />
     <Compile Include="Hashing\CaseInsensitiveHashing.cs" />
     <Compile Include="Hashing\Hashing.cs" />
@@ -56,13 +57,13 @@
     <Compile Include="SST\ReadWrite.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">
       <Project>{21eb6b89-0cdf-4290-8d3f-7b831425606b}</Project>
       <Name>Raven.Storage</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

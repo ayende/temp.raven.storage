@@ -7,6 +7,8 @@ using Raven.Storage.Memory;
 
 namespace Raven.Storage.Util
 {
+	using Raven.Storage.Data;
+
     public static class IOExtensions
     {
 		public static int Read7BitEncodedInt(this IArrayAccessor accessor, ref int pos)
@@ -113,6 +115,14 @@ namespace Raven.Storage.Util
             return size + 1;
         }
 
+		public static int WriteLengthPrefixedSlice(this Stream stream, Slice slice)
+		{
+			var size = stream.Write7BitEncodedInt(slice.Count);
+			stream.Write(slice.Array, slice.Offset, slice.Count);
+
+			return size + slice.Count;
+		}
+
 		public static async Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)
 		{
 			byte[] buffer;
@@ -137,15 +147,20 @@ namespace Raven.Storage.Util
 		    buffer = new byte[5];
 		    size = 0;
 		    var num = (uint) value;
-		    while (num >= 128U)
-		    {
+			while (num >= 128U)
+			{
 			    buffer[size++] = ((byte) (num | 128U));
-			    num >>= 7;
-		    }
-		    buffer[size++] = (byte) num;
-	    }
+				num >>= 7;
+			}
+			buffer[size++] = (byte) num;
+		}
 
-	    public static int Write7BitEncodedLong(this Stream stream, long value)
+		public static int Write7BitEncodedLong(this Stream stream, ulong value)
+		{
+			return stream.Write7BitEncodedLong((long)value);
+		}
+
+        public static int Write7BitEncodedLong(this Stream stream, long value)
         {
             int size = 0;
             var num = (ulong)value;

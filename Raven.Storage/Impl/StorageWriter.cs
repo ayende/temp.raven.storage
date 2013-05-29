@@ -5,16 +5,21 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
-using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Impl
 {
+	using System.Threading;
+
+	using Raven.Storage.Data;
+
 	public class StorageWriter
 	{
 		private readonly StorageState _state;
 		private readonly ConcurrentQueue<OutstandingWrite> _pendingWrites = new ConcurrentQueue<OutstandingWrite>();
 		private readonly AsyncMonitor _writeCompletedEvent = new AsyncMonitor();
+
+		private readonly IList<ulong> pendingOutputs = new List<ulong>();
 
 		private class OutstandingWrite
 		{
@@ -111,7 +116,7 @@ namespace Raven.Storage.Impl
 				}
 				finally
 				{
-					_writeCompletedEvent.Pulse();	
+					_writeCompletedEvent.Pulse();
 				}
 			}
 		}
@@ -161,8 +166,9 @@ namespace Raven.Storage.Impl
 					// Attempt to switch to a new memtable and trigger compaction of old
 					Debug.Assert(_state.VersionSet.PrevLogNumber == 0);
 
-					_state.CreateNewLog();
 					_state.LogWriter.Dispose();
+
+					_state.CreateNewLog();
 					_state.ImmutableMemTable = _state.MemTable;
 					_state.MemTable = new MemTable(_state.Options);
 					force = false;
@@ -183,7 +189,7 @@ namespace Raven.Storage.Impl
 				return;    // DB is being disposed; no more background compactions
 			}
 			if (_state.ImmutableMemTable == null &&
-				// _state.manual_compaction_ == null &&
+				_state.ManualCompaction == null &&
 				_state.VersionSet.NeedsCompaction)
 			{
 				// No work to be done
@@ -193,9 +199,258 @@ namespace Raven.Storage.Impl
 			_state.BackgroundTask = Task.Factory.StartNew(RunCompaction);
 		}
 
-		private void RunCompaction()
+		private async void RunCompaction()
+		{
+			var status = this.BackgroundCompaction();
+			if (status.IsOK())
+			{
+				// Success
+			}
+			else
+			{
+				// Wait a little bit before retrying background compaction in
+				// case this is an environmental problem and we do not want to
+				// chew up resources for failed compactions for the duration of
+				// the problem.
+
+				Thread.Sleep(1000000);
+			}
+
+			using (var locker = await _state.Lock.LockAsync())
+			{
+				this.MaybeScheduleCompaction(locker);
+			}
+		}
+
+		private Status BackgroundCompaction()
+		{
+			if (_state.ImmutableMemTable != null)
+			{
+				return CompactMemTable();
+			}
+
+			Compaction compaction;
+			Slice manualEnd = new Slice();
+			var isManual = _state.ManualCompaction != null;
+			if (isManual)
+			{
+				var mCompaction = _state.ManualCompaction;
+				compaction = _state.VersionSet.CompactRange(mCompaction.Level, mCompaction.Begin, mCompaction.End);
+				mCompaction.Done = compaction == null;
+				if (compaction != null)
+				{
+					manualEnd = compaction.GetInput(0, compaction.GetNumberOfInputFiles(0) - 1).LargestKey;
+				}
+			}
+			else
+			{
+				compaction = _state.VersionSet.PickCompaction();
+			}
+
+			Status status = Status.OK();
+			if (compaction == null)
+			{
+				// Nothing to do
+			}
+			else if (!isManual && compaction.IsTrivialMove())
+			{
+				Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
+				var file = compaction.GetInput(0, 0);
+				compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
+				compaction.Edit.AddFile(compaction.Level + 1, file);
+
+				status = _state.LogAndApply(compaction.Edit);
+
+				//	VersionSet::LevelSummaryStorage tmp;
+				//  Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
+				//	static_cast<unsigned long long>(f->number),
+				//	c->level() + 1,
+				//	static_cast<unsigned long long>(f->file_size),
+				//	status.ToString().c_str(),
+				//	versions_->LevelSummary(&tmp));
+			}
+			else
+			{
+				CompactionState compactionState = new CompactionState(compaction);
+				status = DoCompactionWork(compactionState);
+				CleanupCompaction(compactionState);
+				compaction.ReleaseInputs();
+				DeleteObsoleteFiles();
+			}
+
+			compaction = null;
+
+			if (status.IsOK())
+			{
+				// DONE
+			}
+			else
+			{
+				//		Log(options_.info_log,
+				//			"Compaction error: %s", status.ToString().c_str());
+				//		if (options_.paranoid_checks && bg_error_.ok())
+				//		{
+				//			bg_error_ = status;
+				//		}
+			}
+
+			if (isManual)
+			{
+				var mCompaction = _state.ManualCompaction;
+				if (!status.IsOK())
+				{
+					mCompaction.Done = true;
+				}
+
+				if (!mCompaction.Done)
+				{
+					mCompaction.Begin = manualEnd;
+				}
+				else
+				{
+					_state.ManualCompaction = null;
+				}
+			}
+
+			return status;
+		}
+
+		private void CleanupCompaction(CompactionState compactionState)
 		{
 			throw new NotImplementedException();
+		}
+
+		private Status DoCompactionWork(CompactionState compactionState)
+		{
+			throw new NotImplementedException();
+		}
+
+		/// <summary>
+		/// Compact the in-memory write buffer to disk.  Switches to a new
+		/// log-file/memtable and writes a new descriptor if successful.
+		/// </summary>
+		private Status CompactMemTable()
+		{
+			if (_state.ImmutableMemTable == null)
+				throw new InvalidOperationException("ImmutableMemTable cannot be null.");
+
+			var immutableMemTable = _state.ImmutableMemTable;
+
+			VersionEdit edit = new VersionEdit();
+			Version currentVersion = this._state.VersionSet.Current;
+
+			Status status = WriteLevel0Table(immutableMemTable, edit, currentVersion);
+
+			// Replace immutable memtable with the generated Table
+			if (status.IsOK())
+			{
+				edit.SetPrevLogNumber(0);
+				edit.SetLogNumber(_state.LogFileNumber);
+				status = this._state.LogAndApply(edit); // maybe add mutex?
+			}
+
+			if (status.IsOK())
+			{
+				this._state.ImmutableMemTable = null;
+				DeleteObsoleteFiles();
+			}
+
+			return status;
+		}
+
+		private void DeleteObsoleteFiles()
+		{
+			var live = pendingOutputs;
+			_state.VersionSet.AddLiveFiles(live);
+
+			var databaseName = _state.DatabaseName;
+			var databaseFiles = new DirectoryInfo(databaseName).GetFiles();
+
+			foreach (var file in databaseFiles)
+			{
+				ulong number;
+				FileType fileType;
+				if (_state.FileSystem.TryParseDatabaseFile(file, out number, out fileType))
+				{
+					var keep = true;
+					switch (fileType)
+					{
+						case FileType.LogFile:
+							keep = ((number >= _state.VersionSet.LogNumber) || (number == _state.VersionSet.PrevLogNumber));
+							break;
+						case FileType.DescriptorFile:
+							// Keep my manifest file, and any newer incarnations'
+							// (in case there is a race that allows other incarnations)
+							keep = (number >= _state.VersionSet.ManifestFileNumber);
+							break;
+						case FileType.TableFile:
+							keep = (live.IndexOf(number) != live.Count() - 1);
+							break;
+						case FileType.TempFile:
+							// Any temp files that are currently being written to must
+							// be recorded in pending_outputs_, which is inserted into "live"
+							keep = (live.IndexOf(number) != live.Count() - 1);
+							break;
+						case FileType.CurrentFile:
+						case FileType.DBLockFile:
+						case FileType.InfoLogFile:
+							break;
+						default:
+							throw new NotSupportedException(fileType.ToString());
+					}
+
+					if (!keep)
+					{
+						if (fileType == FileType.TableFile)
+						{
+							//table_cache_->Evict(number);
+						}
+
+						//Log(options_.info_log, "Delete type=%d #%lld\n",
+						//int(type),
+						//static_cast<unsigned long long>(number));
+
+						File.Delete(string.Format("{0}/{1}", databaseName, file));
+					}
+				}
+			}
+		}
+
+		private Status WriteLevel0Table(MemTable memTable, VersionEdit edit, Version currentVersion)
+		{
+			var stopwatch = Stopwatch.StartNew();
+			var fileNumber = this._state.VersionSet.NewFileNumber();
+
+			pendingOutputs.Add(fileNumber);
+
+			var fileMetadata = _state.BuildTable(memTable, fileNumber);
+
+			pendingOutputs.Remove(fileNumber);
+
+			// Note that if file_size is zero, the file has been deleted and
+			// should not be added to the manifest.
+			int level = 0;
+			if (fileMetadata.FileSize > 0)
+			{
+				var smallestKey = fileMetadata.SmallestKey;
+				var largestKey = fileMetadata.LargestKey;
+
+				if (currentVersion != null)
+				{
+					level = currentVersion.PickLevelForMemTableOutput(smallestKey, largestKey);
+				}
+
+				edit.AddFile(level, fileMetadata);
+			}
+
+			_state.CompactionStats[level].Add(new CompactionStats
+												  {
+													  Micros = stopwatch.ElapsedMilliseconds,
+													  BytesRead = 0,
+													  BytesWritten = fileMetadata.FileSize
+												  });
+
+			return Status.OK();
 		}
 
 		private List<OutstandingWrite> BuildBatchGroup(OutstandingWrite mine)
