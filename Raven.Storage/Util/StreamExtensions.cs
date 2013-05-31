@@ -7,6 +7,9 @@
 	{
 		public static bool AreEqual(this Stream stream, Stream other)
 		{
+			if (other == null)
+				return false;
+
 			var position = stream.Position;
 			var otherPosition = other.Position;
 
