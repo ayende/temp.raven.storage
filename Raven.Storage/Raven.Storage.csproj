@@ -67,6 +67,9 @@
     <Compile Include="Impl\Constants.cs" />
     <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
+    <Compile Include="Impl\Streams\AsyncBinaryWriter.cs" />
+    <Compile Include="Impl\Streams\LogReaderStream.cs" />
+    <Compile Include="Impl\Streams\LogWriter.cs" />
     <Compile Include="Impl\FileType.cs" />
     <Compile Include="Impl\ManualCompaction.cs" />
     <Compile Include="Impl\Snapshot.cs" />
