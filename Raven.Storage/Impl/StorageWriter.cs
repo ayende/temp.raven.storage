@@ -11,6 +11,7 @@ namespace Raven.Storage.Impl
 {
 	using System.Threading;
 
+	using Raven.Storage.Building;
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 	using Raven.Storage.Reading;
@@ -347,7 +348,7 @@ namespace Raven.Storage.Impl
 
 			//if (snapshots_.empty())
 			//{
-			//	compact->smallest_snapshot = versions_->LastSequence();
+			compactionState.SmallestSnapshot = this._state.VersionSet.LastSequence;
 			//}
 			//else
 			//{
@@ -462,9 +463,9 @@ namespace Raven.Storage.Impl
 			input = null;
 
 			var stats = new CompactionStats
-				            {
-					            Micros = watch.ElapsedMilliseconds
-				            };
+							{
+								Micros = watch.ElapsedMilliseconds
+							};
 
 			for (var which = 0; which < 2; which++)
 			{
@@ -491,17 +492,95 @@ namespace Raven.Storage.Impl
 
 		private Status OpenCompactionOutputFile(CompactionState compactionState)
 		{
-			throw new NotImplementedException();
+			Debug.Assert(compactionState != null);
+			Debug.Assert(compactionState.Builder != null);
+
+			ulong fileNumber;
+			// lock mutex
+
+			fileNumber = this._state.VersionSet.NewFileNumber();
+			pendingOutputs.Add(fileNumber);
+			compactionState.AddOutput(fileNumber);
+
+			//unlock mutex
+
+			// make the output file
+			var fileName = this._state.FileSystem.GetFileName(this._state.DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
+			var tempFileName = this._state.FileSystem.GetFileName(this._state.DatabaseName, fileNumber, Constants.Files.Extensions.TempFile);
+
+			var file = this._state.FileSystem.NewWritable(fileName);
+			var tempFile = this._state.FileSystem.NewWritable(tempFileName);
+
+			compactionState.OutFile = file;
+			compactionState.Builder = new TableBuilder(this._state.Options, file, () => tempFile);
+
+			return Status.OK();
 		}
 
 		private Status InstallCompactionResults(CompactionState compactionState)
 		{
-			throw new NotImplementedException();
+			// mutex.AssertHeld();
+
+			//Log(options_.info_log,  "Compacted %d@%d + %d@%d files => %lld bytes",
+			//  compact->compaction->num_input_files(0),
+			//  compact->compaction->level(),
+			//  compact->compaction->num_input_files(1),
+			//  compact->compaction->level() + 1,
+			//  static_cast<long long>(compact->total_bytes));
+
+			compactionState.Compaction.AddInputDeletions(compactionState.Compaction.Edit);
+			var level = compactionState.Compaction.Level;
+			foreach (var output in compactionState.Outputs)
+			{
+				compactionState.Compaction.Edit.AddFile(level + 1, output);
+			}
+
+			this._state.LogAndApply(compactionState.Compaction.Edit);
+
+			return Status.OK();
 		}
 
 		private Status FinishCompactionOutputFile(CompactionState compactionState, IIterator input)
 		{
-			throw new NotImplementedException();
+			Debug.Assert(compactionState != null);
+			Debug.Assert(compactionState.OutFile != null);
+			Debug.Assert(compactionState.Builder != null);
+
+			var outputNumber = compactionState.CurrentOutput.FileNumber;
+			Debug.Assert(outputNumber != 0);
+
+			var currentEntries = compactionState.Builder.NumEntries;
+			//if (s.ok())
+			//{
+			//	s = compact->builder->Finish();
+			//}
+			//else
+			//{
+			//	compact->builder->Abandon();
+			//}
+
+			var currentBytes = compactionState.Builder.FileSize;
+			compactionState.CurrentOutput.FileSize = currentBytes;
+			compactionState.TotalBytes += currentBytes;
+
+			compactionState.Builder.Dispose();
+			compactionState.Builder = null;
+
+			compactionState.OutFile.Flush();
+			compactionState.OutFile.Close();
+
+			compactionState.OutFile.Dispose();
+			compactionState.OutFile = null;
+
+			if (currentEntries > 0)
+			{
+				// Verify that the table is usable
+				using (var iterator = _state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
+				{
+				}
+			}
+
+			return Status.OK();
 		}
 
 		/// <summary>
@@ -582,7 +661,7 @@ namespace Raven.Storage.Impl
 					{
 						if (fileType == FileType.TableFile)
 						{
-							//table_cache_->Evict(number);
+							_state.TableCache.Evict(number);
 						}
 
 						//Log(options_.info_log, "Delete type=%d #%lld\n",

@@ -4,7 +4,7 @@
 
 	public static class Snapshot
 	{
-		public static Status Write(LogWriterStream logWriter, StorageOptions options, VersionSet versionSet)
+		public static Status Write(LogWriter logWriter, StorageOptions options, VersionSet versionSet)
 		{
 			// Save metadata 
 			var edit = new VersionEdit();

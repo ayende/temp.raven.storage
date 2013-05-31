@@ -3,11 +3,14 @@
 	using System;
 	using System.Collections.Generic;
 	using System.Diagnostics;
+	using System.IO;
 	using System.Linq;
 
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
+	using Raven.Storage.Impl.Caching;
 	using Raven.Storage.Reading;
+	using Raven.Storage.Util;
 
 	public class VersionSet
 	{
@@ -21,9 +24,12 @@
 
 		private readonly InternalKeyComparator internalKeyComparator;
 
-		public VersionSet(StorageOptions options)
+		private readonly TableCache tableCache;
+
+		public VersionSet(StorageOptions options, TableCache tableCache)
 		{
 			this.options = options;
+			this.tableCache = tableCache;
 			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
 
 			NextFileNumber = 2;
@@ -339,11 +345,7 @@
 					else
 					{
 						// Create concatenating iterator for the files from this level
-						list[num++] = NewTwoLevelIterator(
-							new LevelFileNumIterator(internalKeyComparator, compaction.Inputs[which]),
-							GetFileIterator,
-							tableCache,
-							readOptions);
+						list[num++] = new TwoLevelIterator(new LevelFileNumIterator(internalKeyComparator, compaction.Inputs[which]), GetFileIterator , readOptions);
 					}
 				}
 			}
@@ -351,6 +353,19 @@
 			Debug.Assert(num <= space);
 
 			return NewMergingIterator(internalKeyComparator, list, num);
+		}
+
+		private IIterator GetFileIterator(ReadOptions readOptions, Stream stream)
+		{
+			if (stream.Length != 16)
+			{
+				throw new InvalidOperationException("Invalid value stream size.");
+			}
+
+			var fileNumber = (ulong)stream.Read7BitEncodedLong();
+			var fileSize = stream.Read7BitEncodedLong();
+
+			return tableCache.NewIterator(readOptions, fileNumber, fileSize);
 		}
 
 		private IIterator NewMergingIterator(InternalKeyComparator comparator, IIterator[] list, int n)

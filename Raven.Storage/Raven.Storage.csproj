@@ -59,6 +59,7 @@
     <Compile Include="Data\Snapshot.cs" />
     <Compile Include="Impl\AsyncLock.cs" />
     <Compile Include="Impl\AsyncManualResetEvent.cs" />
+    <Compile Include="Impl\Caching\TableCache.cs" />
     <Compile Include="Impl\Compaction.cs" />
     <Compile Include="Impl\CompactionState.cs" />
     <Compile Include="Impl\CompactionStats.cs" />
@@ -117,6 +118,7 @@
     <Compile Include="Util\Info.cs" />
     <Compile Include="Data\ParsedInternalKey.cs" />
     <Compile Include="Util\IOExtensions.cs" />
+    <Compile Include="Util\StreamExtensions.cs" />
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
   <ItemGroup>

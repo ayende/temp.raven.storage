@@ -9,6 +9,7 @@ namespace Raven.Storage.Impl
 	using System.Text;
 
 	using Raven.Storage.Building;
+	using Raven.Storage.Impl.Caching;
 	using Raven.Storage.Memtable;
 
 	public class StorageState : IDisposable
@@ -21,8 +22,10 @@ namespace Raven.Storage.Impl
 
 		public LogWriter LogWriter;
 
+		public LogWriter DescriptorLogWriter;
+
 		public AsyncLock Lock;
-		public VersionSet VersionSet;
+		public VersionSet VersionSet { get; private set; }
 		public StorageOptions Options;
 		public FileSystem FileSystem;
 		public string DatabaseName;
@@ -31,6 +34,14 @@ namespace Raven.Storage.Impl
 		public CompactionStats[] CompactionStats = new CompactionStats[Config.NumberOfLevels];
 
 		public ManualCompaction ManualCompaction { get; set; }
+
+		public TableCache TableCache { get; private set; }
+
+		public StorageState()
+		{
+			this.TableCache = new TableCache(this);
+			this.VersionSet = new VersionSet(this.Options, this.TableCache);
+		}
 
 		public void CreateNewLog()
 		{
@@ -84,7 +95,7 @@ namespace Raven.Storage.Impl
 				edit.SetNextFile(VersionSet.NextFileNumber);
 				var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
-				DescriptorLogWriter = new LogWriterStream(descriptorFile);
+				DescriptorLogWriter = new LogWriter(descriptorFile, this.Options.BufferPool);
 				status = Snapshot.Write(DescriptorLogWriter, Options, VersionSet);
 			}
 

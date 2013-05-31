@@ -5,6 +5,7 @@
 	using System.IO;
 
 	using Raven.Storage.Data;
+	using Raven.Storage.Impl.Streams;
 	using Raven.Storage.Util;
 
 	public class VersionEdit
@@ -117,16 +118,18 @@
 
 		public void SetCompactionPointer(int level, Slice key)
 		{
-			throw new NotImplementedException();
+			CompactionPointers[level].Add(key);
 		}
 
 		public void AddFile(int level, FileMetadata file)
 		{
-			throw new NotImplementedException();
+			NewFiles[level].Add(file);
 		}
 
-		public void EncodeTo(Stream stream)
+		public void EncodeTo(LogWriter writer)
 		{
+			var stream = new MemoryStream();
+
 			if (HasComparator)
 			{
 				stream.Write7BitEncodedInt((int)Tag.Comparator);
@@ -183,6 +186,9 @@
 					stream.WriteLengthPrefixedSlice(fileMetadata.LargestKey);
 				}
 			}
+
+			var data = stream.ToArray();
+			writer.WriteAsync(data, 0, data.Length).Wait();
 		}
 
 		public void DeleteFile(int level, ulong fileNumber)

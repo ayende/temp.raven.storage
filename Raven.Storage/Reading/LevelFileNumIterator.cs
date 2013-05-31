@@ -7,6 +7,7 @@
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 	using Raven.Storage.Impl;
+	using Raven.Storage.Util;
 
 	public class LevelFileNumIterator : IIterator
 	{
@@ -81,7 +82,12 @@
 
 		public Stream CreateValueStream()
 		{
-			throw new System.NotImplementedException();
+			var stream = new MemoryStream();
+			stream.Write7BitEncodedLong(files[index].FileNumber);
+			stream.Write7BitEncodedLong(files[index].FileSize);
+			stream.Position = 0;
+
+			return stream;
 		}
 
 		private void MarkAsInvalid()

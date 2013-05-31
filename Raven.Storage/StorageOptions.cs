@@ -12,6 +12,9 @@ namespace Raven.Storage
 		private ObjectCache _blockCache;
 		private bool _blockCacheSet;
 
+		private ObjectCache tableCache;
+		private bool tableCacheSet;
+
 		/// <summary>
 		/// The maximum size of key size (in bytes) that we expect
 		/// Using keys bigger than this value is going to consume a lot more memory
@@ -85,6 +88,33 @@ namespace Raven.Storage
 		/// Default: false
 		/// </summary>
 		public bool ParanoidChecks { get; set; }
+
+		public ObjectCache TableCache
+		{
+			get
+			{
+				if (tableCache == null && tableCacheSet == false)
+				{
+					tableCache = new MemoryCache("Raven.Storage.Default", new NameValueCollection
+						{
+							{"physicalMemoryLimitPercentage", "10"},
+							{"pollingInterval", "00:05:00"},
+							{"cacheMemoryLimitMegabytes", "256"}
+						});
+					tableCacheSet = true;
+				}
+				return tableCache;
+			}
+			set
+			{
+				var disposable = tableCache as IDisposable;
+				if (disposable != null)
+				{
+					disposable.Dispose();
+				}
+				tableCache = value;
+			}
+		}
 
 		/// <summary>
 		/// Control over blocks (user data is stored in a set of blocks, and

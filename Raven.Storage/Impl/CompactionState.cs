@@ -2,20 +2,20 @@
 {
 	using System;
 	using System.Collections.Generic;
-	using System.Diagnostics;
+	using System.IO;
+	using System.Linq;
 
 	using Raven.Storage.Building;
-	using Raven.Storage.Data;
 
 	public class CompactionState : IDisposable
 	{
-		private readonly List<Output> outputs;
+		private readonly List<FileMetadata> outputs;
 
 		public TableBuilder Builder { get; set; }
 
 		public Compaction Compaction { get; private set; }
 
-		public IReadOnlyList<Output> Outputs
+		public IReadOnlyList<FileMetadata> Outputs
 		{
 			get
 			{
@@ -23,25 +23,37 @@
 			}
 		}
 
-		public decimal SmallestSnapshot { get; private set; }
+		public FileMetadata CurrentOutput
+		{
+			get
+			{
+				return this.outputs.Last();
+			}
+		}
+
+		public decimal SmallestSnapshot { get; set; }
+
+		public Stream OutFile { get; set; }
+
+		public long TotalBytes { get; set; }
 
 		public CompactionState(Compaction compaction)
 		{
 			this.Compaction = compaction;
 			this.SmallestSnapshot = -1;
 
-			this.outputs = new List<Output>();
+			this.outputs = new List<FileMetadata>();
 		}
 
-		public struct Output
+		public void AddOutput(ulong fileNumber)
 		{
-			public ulong FileNumber { get; set; }
-
-			public long FileSize { get; set; }
-
-			public Slice SmallestKey { get; set; }
-
-			public Slice LargestKey { get; set; }
+			this.outputs.Add(new FileMetadata
+			{
+				FileNumber = fileNumber,
+				SmallestKey = null,
+				LargestKey = null,
+				FileSize = 0
+			});
 		}
 
 		public void Dispose()

@@ -17,8 +17,7 @@ namespace Raven.Storage
 					MemTable = new MemTable(options),
 					DatabaseName = name,
 					Lock = new AsyncLock(),
-					FileSystem = new FileSystem(),
-					VersionSet = new VersionSet(options)
+					FileSystem = new FileSystem()
 				};
 			Init();
 		}

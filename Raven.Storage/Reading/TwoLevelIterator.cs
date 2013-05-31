@@ -5,23 +5,27 @@ using Raven.Storage.Data;
 
 namespace Raven.Storage.Reading
 {
+	using Raven.Storage.Util;
+
 	public class TwoLevelIterator : IIterator
 	{
 		private readonly IIterator _indexIterator;
 		private IIterator _dataIterator;
 		private readonly Table _table;
 		private readonly ReadOptions _readOptions;
-		private BlockHandle _currentDataHandle;
+		private Stream _currentDataHandle;
+
+		private readonly Func<ReadOptions, Stream, IIterator> getIterator;
 
 		public TwoLevelIterator(
 			IIterator indexIterator,
-			Table table,
+			Func<ReadOptions, Stream, IIterator> getIterator,
 			ReadOptions readOptions
 		)
 		{
 			_indexIterator = indexIterator;
-			_table = table;
 			_readOptions = readOptions;
+			this.getIterator = getIterator;
 		}
 
 		public void Dispose()
@@ -130,18 +134,17 @@ namespace Raven.Storage.Reading
 				SetDataIterator(null);
 				return;
 			}
-			var handle = new BlockHandle();
-			using (var stream = _indexIterator.CreateValueStream())
-			{
-				handle.DecodeFrom(stream);
-			}
 
-			if (handle.Equals(_currentDataHandle)) // nothing to change
+			var handle = _indexIterator.CreateValueStream();
+
+			if (handle.AreEqual(_currentDataHandle)) // nothing to change
 				return;
+
 			IIterator blockIterator = null;
 			try
 			{
-				blockIterator = _table.CreateBlockIterator(handle, _readOptions);
+				//blockIterator = _table.CreateBlockIterator(handle, _readOptions);
+				blockIterator = getIterator(_readOptions, handle);
 				SetDataIterator(blockIterator);
 			}
 			catch (Exception)

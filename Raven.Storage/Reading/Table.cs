@@ -83,7 +83,15 @@ namespace Raven.Storage.Reading
 		/// </summary>
 		public IIterator CreateIterator(ReadOptions readOptions)
 		{
-			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageOptions.Comparator), this, readOptions);
+			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageOptions.Comparator), GetIterator, readOptions);
+		}
+
+		private IIterator GetIterator(ReadOptions readOptions, Stream stream)
+		{
+			var handle = new BlockHandle();
+			handle.DecodeFrom(stream);
+
+			return CreateBlockIterator(handle, readOptions);
 		}
 
 		private Tuple<Slice, Stream> InternalGet(ReadOptions readOptions, Slice key)
