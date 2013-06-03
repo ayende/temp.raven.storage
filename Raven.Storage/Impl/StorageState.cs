@@ -75,7 +75,7 @@ namespace Raven.Storage.Impl
 
 			var version = new Version(Options, VersionSet);
 
-			var builder = new Builder(VersionSet, VersionSet.Current);
+			var builder = new Builder(Options, VersionSet, VersionSet.Current);
 			builder.Apply(edit);
 			builder.SaveTo(version);
 

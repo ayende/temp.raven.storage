@@ -4,6 +4,23 @@
 
 	public class FileMetadata
 	{
+		public FileMetadata()
+		{
+		}
+
+		public FileMetadata(FileMetadata file)
+		{
+			this.FileSize = file.FileSize;
+			this.FileNumber = file.FileNumber;
+			this.LargestKey = file.LargestKey;
+			this.SmallestKey = file.SmallestKey;
+		}
+
+		/// <summary>
+		/// Seeks allowed until compaction
+		/// </summary>
+		public long AllowedSeeks { get; set; }
+
 		public long FileSize { get; set; }
 
 		public ulong FileNumber { get; set; }
