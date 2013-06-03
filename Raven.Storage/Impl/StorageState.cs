@@ -1,21 +1,19 @@
-﻿using System;
-using System.Threading.Tasks;
-using Raven.Storage.Impl.Streams;
-
-namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl
 {
-	using System.Collections.Generic;
+	using System;
 	using System.Diagnostics;
 	using System.Text;
+	using System.Threading.Tasks;
 
 	using Raven.Storage.Building;
 	using Raven.Storage.Impl.Caching;
+	using Raven.Storage.Impl.Streams;
 	using Raven.Storage.Memtable;
 
 	public class StorageState : IDisposable
 	{
-		public Memtable.MemTable MemTable;
-		public volatile Memtable.MemTable ImmutableMemTable;
+		public MemTable MemTable;
+		public volatile MemTable ImmutableMemTable;
 		public volatile bool BackgroundCompactionScheduled;
 		public volatile Task BackgroundTask = Task.FromResult<object>(null);
 		public volatile bool ShuttingDown;
@@ -60,51 +58,52 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		public Status LogAndApply(VersionEdit edit)
+		public void LogAndApply(VersionEdit edit)
 		{
-			if (!edit.HasLogNumber)
-				edit.SetLogNumber(VersionSet.LogNumber);
-			else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
-				throw new InvalidOperationException("LogNumber");
-
-			if (!edit.HasPrevLogNumber)
-				edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
-
-			edit.SetNextFile(VersionSet.NextFileNumber);
-			edit.SetLastSequence(VersionSet.LastSequence);
-
-			var version = new Version(Options, VersionSet);
-
-			var builder = new Builder(Options, VersionSet, VersionSet.Current);
-			builder.Apply(edit);
-			builder.SaveTo(version);
-
-			Version.Finalize(version);
-
-			// Initialize new descriptor log file if necessary by creating
-			// a temporary file that contains a snapshot of the current version.
 			string newManifestFile = null;
-			var status = Status.OK();
 
-			if (DescriptorLogWriter == null)
+			try
 			{
-				// No reason to unlock *mu here since we only hit this path in the
-				// first call to LogAndApply (when opening the database).
+				if (!edit.HasLogNumber)
+					edit.SetLogNumber(VersionSet.LogNumber);
+				else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
+					throw new InvalidOperationException("LogNumber");
 
-				newManifestFile = FileSystem.DescriptorFileName(this.DatabaseName, VersionSet.ManifestFileNumber);
+				if (!edit.HasPrevLogNumber)
+					edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
+
 				edit.SetNextFile(VersionSet.NextFileNumber);
-				var descriptorFile = FileSystem.NewWritable(newManifestFile);
+				edit.SetLastSequence(VersionSet.LastSequence);
 
-				DescriptorLogWriter = new LogWriter(descriptorFile, this.Options.BufferPool);
-				status = Snapshot.Write(DescriptorLogWriter, Options, VersionSet);
-			}
+				var version = new Version(Options, VersionSet);
 
-			// Unlock during expensive MANIFEST log write
-			//mu->Unlock();
+				var builder = new Builder(Options, VersionSet, VersionSet.Current);
+				builder.Apply(edit);
+				builder.SaveTo(version);
 
-			// Write new record to MANIFEST log
-			if (status.IsOK())
-			{
+				Version.Finalize(version);
+
+				// Initialize new descriptor log file if necessary by creating
+				// a temporary file that contains a snapshot of the current version.
+
+				if (DescriptorLogWriter == null)
+				{
+					// No reason to unlock *mu here since we only hit this path in the
+					// first call to LogAndApply (when opening the database).
+
+					newManifestFile = FileSystem.DescriptorFileName(this.DatabaseName, VersionSet.ManifestFileNumber);
+					edit.SetNextFile(VersionSet.NextFileNumber);
+					var descriptorFile = FileSystem.NewWritable(newManifestFile);
+
+					DescriptorLogWriter = new LogWriter(descriptorFile, this.Options.BufferPool);
+					Snapshot.Write(DescriptorLogWriter, Options, VersionSet);
+				}
+
+				// Unlock during expensive MANIFEST log write
+				//mu->Unlock();
+
+				// Write new record to MANIFEST log
+
 				edit.EncodeTo(DescriptorLogWriter);
 				DescriptorLogWriter.Flush();
 
@@ -117,40 +116,39 @@ namespace Raven.Storage.Impl
 				//	  s = Status::OK();
 				//	}
 				//}
-			}
 
-			// If we just created a new descriptor file, install it by writing a
-			// new CURRENT file that points to it.
-			if (status.IsOK() && !string.IsNullOrEmpty(newManifestFile))
-			{
-				status = this.SetCurrentFile(this.DatabaseName, VersionSet.ManifestFileNumber);
-				// No need to double-check MANIFEST in case of error since it
-				// will be discarded below.
-			}
+				// If we just created a new descriptor file, install it by writing a
+				// new CURRENT file that points to it.
+				if (!string.IsNullOrEmpty(newManifestFile))
+				{
+					this.SetCurrentFile(this.DatabaseName, VersionSet.ManifestFileNumber);
+					// No need to double-check MANIFEST in case of error since it
+					// will be discarded below.
+				}
 
-			//mu->Lock();
+				//mu->Lock();
 
-			// Install the new version
-			if (status.IsOK())
-			{
+				// Install the new version
 				VersionSet.AppendVersion(version);
 				VersionSet.SetLogNumber(edit.LogNumber);
 				VersionSet.SetPrevLogNumber(edit.PrevLogNumber);
 			}
-			else
+			catch (Exception)
 			{
 				if (!string.IsNullOrEmpty(newManifestFile))
 				{
-					DescriptorLogWriter.Dispose();
-					DescriptorLogWriter = null;
+					if (DescriptorLogWriter != null)
+					{
+						DescriptorLogWriter.Dispose();
+						DescriptorLogWriter = null;
+					}
+
 					FileSystem.DeleteFile(newManifestFile);
 				}
 			}
-
-			return status;
 		}
 
-		private Status SetCurrentFile(string databaseName, ulong descriptorNumber)
+		private void SetCurrentFile(string databaseName, ulong descriptorNumber)
 		{
 			var manifest = FileSystem.DescriptorFileName(databaseName, descriptorNumber);
 			var contents = manifest.Substring(databaseName.Length + 1, manifest.Length) + "\n";
@@ -164,8 +162,6 @@ namespace Raven.Storage.Impl
 			}
 
 			FileSystem.RenameFile(temporaryFileName, FileSystem.GetCurrentFileName(databaseName));
-
-			return Status.OK();
 		}
 
 		public void Dispose()

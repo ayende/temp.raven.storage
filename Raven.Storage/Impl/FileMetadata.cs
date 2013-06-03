@@ -6,6 +6,7 @@
 	{
 		public FileMetadata()
 		{
+			this.AllowedSeeks = 1 << 30; // 1073741824
 		}
 
 		public FileMetadata(FileMetadata file)

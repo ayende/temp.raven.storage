@@ -74,7 +74,6 @@
     <Compile Include="Impl\FileType.cs" />
     <Compile Include="Impl\ManualCompaction.cs" />
     <Compile Include="Impl\Snapshot.cs" />
-    <Compile Include="Impl\Status.cs" />
     <Compile Include="Impl\StatusCode.cs" />
     <Compile Include="Impl\Streams\LogWriterStream.cs" />
     <Compile Include="Impl\StorageState.cs" />
