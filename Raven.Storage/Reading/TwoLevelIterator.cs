@@ -1,17 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using Raven.Storage.Data;
-
-namespace Raven.Storage.Reading
+﻿namespace Raven.Storage.Reading
 {
+	using System;
+	using System.IO;
+
+	using Raven.Storage.Data;
 	using Raven.Storage.Util;
 
 	public class TwoLevelIterator : IIterator
 	{
 		private readonly IIterator _indexIterator;
 		private IIterator _dataIterator;
-		private readonly Table _table;
 		private readonly ReadOptions _readOptions;
 		private Stream _currentDataHandle;
 
@@ -143,7 +141,6 @@ namespace Raven.Storage.Reading
 			IIterator blockIterator = null;
 			try
 			{
-				//blockIterator = _table.CreateBlockIterator(handle, _readOptions);
 				blockIterator = getIterator(_readOptions, handle);
 				SetDataIterator(blockIterator);
 			}
