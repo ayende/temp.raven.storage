@@ -51,8 +51,13 @@
 		{
 			for (var level = 0; level < Config.NumberOfLevels; level++)
 			{
+				if (edit.CompactionPointers[level].Count <= 0)
+				{
+					continue;
+				}
+
 				var last = edit.CompactionPointers[level].Last();
-				versionSet.CompactionPointers[level] = last;
+				this.versionSet.CompactionPointers[level] = last;
 			}
 
 			var deletedFiles = new Dictionary<int, IList<ulong>>(edit.DeletedFiles);
