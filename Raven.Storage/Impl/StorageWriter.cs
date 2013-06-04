@@ -707,13 +707,18 @@
 				maxSize = mine.Size + (128 * 1024);
 
 			var list = new List<OutstandingWrite> { mine };
-			foreach (var item in _pendingWrites.Skip(1)) //skip the first since we already added it
+
+			OutstandingWrite item;
+			while (maxSize >= 0 && _pendingWrites.TryDequeue(out item))
 			{
-				maxSize -= item.Size;
-				if (maxSize < 0)
-					break;
+				if(item == mine)
+					continue;
+
 				list.Add(item);
+
+				maxSize -= item.Size;
 			}
+
 			return list;
 		}
 	}
