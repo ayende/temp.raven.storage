@@ -195,6 +195,7 @@
 			try
 			{
 				var iterator = memTable.NewIterator();
+				iterator.SeekToFirst();
 
 				if (iterator.IsValid)
 				{
