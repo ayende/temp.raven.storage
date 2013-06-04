@@ -11,14 +11,7 @@ namespace Raven.Storage
 
 		public Storage(string name, StorageOptions options)
 		{
-			_storageState = new StorageState
-				{
-					Options = options,
-					MemTable = new MemTable(options),
-					DatabaseName = name,
-					Lock = new AsyncLock(),
-					FileSystem = new FileSystem()
-				};
+			_storageState = new StorageState(name, options);
 			Init();
 		}
 
