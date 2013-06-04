@@ -505,7 +505,7 @@
 			var tempFileName = this._state.FileSystem.GetFileName(this._state.DatabaseName, fileNumber, Constants.Files.Extensions.TempFile);
 
 			var file = this._state.FileSystem.NewWritable(fileName);
-			var tempFile = this._state.FileSystem.NewWritable(tempFileName);
+			var tempFile = this._state.FileSystem.NewReadableWritable(tempFileName);
 
 			compactionState.OutFile = file;
 			compactionState.Builder = new TableBuilder(this._state.Options, file, () => tempFile);

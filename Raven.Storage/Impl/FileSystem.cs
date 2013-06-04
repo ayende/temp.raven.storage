@@ -15,6 +15,11 @@ namespace Raven.Storage.Impl
 			return File.OpenWrite(name);
 		}
 
+		public virtual Stream NewReadableWritable(string name)
+		{
+			return File.Open(name, FileMode.CreateNew, FileAccess.ReadWrite);
+		}
+
 		public Stream NewWritable(string name, ulong num, string ext)
 		{
 			return NewWritable(GetFileName(name, num, ext));

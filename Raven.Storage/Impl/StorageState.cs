@@ -51,7 +51,7 @@
 			var newFileNumber = VersionSet.NewFileNumber();
 			try
 			{
-				var file = FileSystem.NewWritable(DatabaseName, newFileNumber, "log");
+				var file = FileSystem.NewWritable(DatabaseName, newFileNumber, Constants.Files.Extensions.LogFile);
 				LogWriter = new LogWriter(file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}
@@ -200,7 +200,7 @@
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
-					var tempFile = FileSystem.NewWritable(tempFileName);
+					var tempFile = FileSystem.NewReadableWritable(tempFileName);
 					builder = new TableBuilder(Options, tableFile, () => tempFile);
 
 					meta.SmallestKey = iterator.Key;
