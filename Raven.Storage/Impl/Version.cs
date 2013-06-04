@@ -2,17 +2,23 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.IO;
 	using System.Linq;
 
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
+	using Raven.Storage.Impl.Caching;
+	using Raven.Storage.Util;
 
 	public class Version
 	{
 		private readonly InternalKeyComparator internalKeyComparator;
 
-		public Version(StorageOptions options)
+		private readonly TableCache tableCache;
+
+		public Version(StorageOptions options, TableCache tableCache)
 		{
+			this.tableCache = tableCache;
 			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
 			this.Files = new List<FileMetadata>[Config.NumberOfLevels];
 
@@ -23,8 +29,8 @@
 			this.CompactionLevel = -1;
 		}
 
-		public Version(StorageOptions options, VersionSet versionSet)
-			: this(options)
+		public Version(StorageOptions options, TableCache tableCache, VersionSet versionSet)
+			: this(options, tableCache)
 		{
 			throw new NotImplementedException();
 		}
@@ -194,6 +200,113 @@
 		{
 			// NULL 'key' occurs before all keys and is therefore never after 'file'
 			return comparator.Compare(key, file.LargestKey) > 0;
+		}
+
+		public bool UpdateStats(GetStats stats)
+		{
+			var file = stats.SeekFile;
+			if (file != null)
+			{
+				file.AllowedSeeks--;
+				if (file.AllowedSeeks <= 0 && FileToCompact == null)
+				{
+					FileToCompact = file;
+					FileToCompactLevel = stats.SeekFileLevel;
+				}
+			}
+
+			return false;
+		}
+
+		public bool TryGet(Slice key, ReadOptions readOptions, out Stream stream, out GetStats stats)
+		{
+			stats = new GetStats
+						{
+							SeekFile = null,
+							SeekFileLevel = -1
+						};
+
+			FileMetadata lastFileRead = null;
+			int lastFileReadLevel = -1;
+
+			// We can search level-by-level since entries never hop across
+			// levels.  Therefore we are guaranteed that if we find data
+			// in an smaller level, later levels are irrelevant.
+
+			for (var level = 0; level < Config.NumberOfLevels; level++)
+			{
+				if (Files[level].Count == 0)
+				{
+					continue;
+				}
+
+				// Get the list of files to search in this level
+				IList<FileMetadata> files = Files[level];
+				if (level == 0)
+				{
+					// Level-0 files may overlap each other.  Find all files that
+					// overlap user_key and process them in order from newest to oldest.
+					var tempFiles =
+						files.Where(
+							f =>
+							this.internalKeyComparator.UserComparator.Compare(key, f.SmallestKey) >= 0
+							&& this.internalKeyComparator.UserComparator.Compare(key, f.LargestKey) <= 0)
+							 .OrderByDescending(x => x.FileNumber);
+
+					if (!tempFiles.Any())
+					{
+						continue;
+					}
+
+					files = tempFiles.ToList();
+				}
+				else
+				{
+					// Binary search to find earliest index whose largest key >= ikey.
+					int index;
+					if (Files[level].TryFindFile(key, internalKeyComparator, out index))
+					{
+						files = new List<FileMetadata>();
+					}
+					else
+					{
+						files = this.internalKeyComparator.UserComparator.Compare(key, files[index].SmallestKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+					}
+				}
+
+				foreach (var f in files)
+				{
+					if (lastFileRead != null && stats.SeekFile == null)
+					{
+						// We have had more than one seek for this read.  Charge the 1st file.
+						stats.SeekFile = lastFileRead;
+						stats.SeekFileLevel = lastFileReadLevel;
+					}
+
+					lastFileRead = f;
+					lastFileReadLevel = level;
+
+					var state = tableCache.Get(
+						key, f.FileNumber, f.FileSize, readOptions, internalKeyComparator.UserComparator, out stream);
+
+					switch (state)
+					{
+						case ItemState.Found:
+							return true;
+						case ItemState.NotFound:
+							break;
+						case ItemState.Deleted:
+							return false;
+						case ItemState.Corrupt:
+							return false;
+						default:
+							throw new NotSupportedException(state.ToString());
+					}
+				}
+			}
+
+			stream = null;
+			return false;
 		}
 	}
 }

@@ -52,6 +52,7 @@
     <Compile Include="Data\Footer.cs" />
     <Compile Include="Comparing\IComparator.cs" />
     <Compile Include="Data\Format.cs" />
+    <Compile Include="Data\GetStats.cs" />
     <Compile Include="Data\ItemType.cs" />
     <Compile Include="Data\ReadOptions.cs" />
     <Compile Include="Data\Slice.cs" />
@@ -68,6 +69,7 @@
     <Compile Include="Impl\Constants.cs" />
     <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
+    <Compile Include="Impl\StorageReader.cs" />
     <Compile Include="Impl\Streams\AsyncBinaryWriter.cs" />
     <Compile Include="Impl\Streams\LogReaderStream.cs" />
     <Compile Include="Impl\Streams\LogWriter.cs" />
@@ -114,6 +116,7 @@
     <Compile Include="Building\TableBuilder.cs" />
     <Compile Include="Util\Crc.cs" />
     <Compile Include="Util\CrcStream.cs" />
+    <Compile Include="Util\FileExtensions.cs" />
     <Compile Include="Util\Info.cs" />
     <Compile Include="Data\ParsedInternalKey.cs" />
     <Compile Include="Util\IOExtensions.cs" />

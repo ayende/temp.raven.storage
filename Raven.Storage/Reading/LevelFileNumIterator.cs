@@ -49,7 +49,7 @@
 
 		public void Seek(Slice target)
 		{
-			index = FindFile(target);
+			this.files.TryFindFile(target, internalKeyComparator, out index);
 		}
 
 		public void Next()
@@ -93,33 +93,6 @@
 		private void MarkAsInvalid()
 		{
 			index = files.Count;
-		}
-
-		private int FindFile(Slice key)
-		{
-			var left = 0;
-			var right = files.Count;
-
-			while (left < right)
-			{
-				var mid = (left + right) / 2;
-				var file = files[mid];
-
-				if (internalKeyComparator.Compare(file.LargestKey, key) < 0)
-				{
-					// Key at "mid.largest" is < "target".  Therefore all
-					// files at or before "mid" are uninteresting.
-					left = mid + 1;
-				}
-				else
-				{
-					// Key at "mid.largest" is >= "target".  Therefore all files
-					// after "mid" are uninteresting.
-					right = mid;
-				}
-			}
-
-			return right;
 		}
 	}
 }

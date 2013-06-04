@@ -75,7 +75,7 @@
 				edit.SetNextFile(VersionSet.NextFileNumber);
 				edit.SetLastSequence(VersionSet.LastSequence);
 
-				var version = new Version(Options, VersionSet);
+				var version = new Version(Options, TableCache, VersionSet);
 
 				var builder = new Builder(Options, VersionSet, VersionSet.Current);
 				builder.Apply(edit);

@@ -6,6 +6,7 @@
 	using System.IO.MemoryMappedFiles;
 	using System.Runtime.Caching;
 
+	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 	using Raven.Storage.Memory;
 	using Raven.Storage.Reading;
@@ -83,6 +84,48 @@
 				state.Options.TableCache.Remove(key);
 			}
 		}
+
+		public ItemState Get(Slice key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator, out Stream stream)
+		{
+			var tableAndFile = FindTable(fileNumber, fileSize);
+
+			var result = tableAndFile.Table.InternalGet(readOptions, key);
+
+			stream = null;
+
+			if (result == null)
+			{
+				return ItemState.NotFound;
+			}
+
+			ParsedInternalKey internalKey;
+			if (!ParsedInternalKey.TryParseInternalKey(result.Item1, out internalKey))
+			{
+				return ItemState.Corrupt;
+			}
+
+			if (comparator.Compare(internalKey.UserKey, key) == 0)
+			{
+				var isFound = internalKey.Type == ItemType.Value;
+				if (!isFound)
+				{
+					return ItemState.Deleted;
+				}
+
+				stream = result.Item2;
+				return ItemState.Found;
+			}
+
+			return ItemState.NotFound;
+		}
+	}
+
+	public enum ItemState
+	{
+		NotFound = 1,
+		Found = 2,
+		Deleted = 3,
+		Corrupt = 4
 	}
 
 	internal class TableAndFile : IDisposable

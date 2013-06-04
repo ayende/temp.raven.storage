@@ -38,7 +38,7 @@
 
 			CompactionPointers = new Slice[Config.NumberOfLevels];
 
-			this.AppendVersion(new Version(options, this));
+			this.AppendVersion(new Version(options, tableCache, this));
 		}
 
 		/// <summary>
@@ -319,10 +319,10 @@
 		public IIterator MakeInputIterator(Compaction compaction)
 		{
 			var readOptions = new ReadOptions
-				                  {
-					                  VerifyChecksums = options.ParanoidChecks, 
+								  {
+									  VerifyChecksums = options.ParanoidChecks,
 									  FillCache = false
-				                  };
+								  };
 
 			// Level-0 files have to be merged together.  For other levels,
 			// we will make a concatenating iterator per level.
@@ -330,7 +330,7 @@
 			var space = compaction.Level == 0 ? compaction.Inputs[0].Count + 1 : 2;
 			var list = new IIterator[space];
 			int num = 0;
-			for(int which = 0; which < 2; which++)
+			for (int which = 0; which < 2; which++)
 			{
 				if (compaction.Inputs[which].Count != 0)
 				{
@@ -345,7 +345,7 @@
 					else
 					{
 						// Create concatenating iterator for the files from this level
-						list[num++] = new TwoLevelIterator(new LevelFileNumIterator(internalKeyComparator, compaction.Inputs[which]), GetFileIterator , readOptions);
+						list[num++] = new TwoLevelIterator(new LevelFileNumIterator(internalKeyComparator, compaction.Inputs[which]), GetFileIterator, readOptions);
 					}
 				}
 			}
