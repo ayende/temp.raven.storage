@@ -121,7 +121,7 @@
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\RavenDB\ravendb_ppekrol2\Raven.Abstractions\Raven.Abstractions.csproj">
+    <ProjectReference Include="..\..\ravendb-2.5\Raven.Abstractions\Raven.Abstractions.csproj">
       <Project>{41ac479e-1eb2-4d23-aaf2-e4c8df1bc2ba}</Project>
       <Name>Raven.Abstractions</Name>
     </ProjectReference>
