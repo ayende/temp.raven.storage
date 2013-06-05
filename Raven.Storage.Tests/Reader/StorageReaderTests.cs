@@ -5,12 +5,12 @@
 
 	using Xunit;
 
-	public class StorageReaderTests
+	public class StorageReaderTests : StorageTestBase
 	{
 		[Fact]
 		public void ReadFromMemTable()
 		{
-			using (var storage = new Storage("test", new StorageOptions()))
+			using (var storage = NewStorage())
 			{
 				var batch = new WriteBatch();
 				batch.Put("test1", new MemoryStream(Encoding.UTF8.GetBytes("test")));
@@ -23,10 +23,10 @@
 		[Fact]
 		public void ReadFromImmutableMemTable()
 		{
-			using (var storage = new Storage("test", new StorageOptions
-														 {
-															 WriteBatchSize = 1
-														 }))
+			using (var storage = this.NewStorage(new StorageOptions
+				                                     {
+					                                     WriteBatchSize = 1
+				                                     }))
 			{
 				var batch1 = new WriteBatch();
 				batch1.Put("test1", new MemoryStream(Encoding.UTF8.GetBytes("test")));

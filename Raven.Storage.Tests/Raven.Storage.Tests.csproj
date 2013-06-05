@@ -57,6 +57,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Reader\StorageReaderTests.cs" />
     <Compile Include="SST\ReadWrite.cs" />
+    <Compile Include="StorageTestBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">

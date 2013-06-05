@@ -8,6 +8,14 @@
 	{
 		private readonly StorageState storageState;
 
+		public string Name
+		{
+			get
+			{
+				return storageState.DatabaseName;
+			}
+		}
+
 		public Storage(string name, StorageOptions options)
 		{
 			storageState = new StorageState(name, options);
