@@ -97,7 +97,15 @@
 
 		public void AddLiveFiles(IList<ulong> live)
 		{
-			throw new NotImplementedException();
+			Debug.Assert(current != null);
+
+			for (int level = 0; level < Config.NumberOfLevels; level++)
+			{
+				foreach (var file in current.Files[level])
+				{
+					live.Add(file.FileNumber);
+				}
+			}
 		}
 
 		public void SetLogNumber(ulong number)

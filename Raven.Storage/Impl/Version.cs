@@ -14,7 +14,7 @@
 	{
 		private readonly IStorageContext storageContext;
 
-		public Version(IStorageContext storageContext)
+		private Version(IStorageContext storageContext)
 		{
 			this.storageContext = storageContext;
 			this.Files = new List<FileMetadata>[Config.NumberOfLevels];
