@@ -188,7 +188,9 @@
 			}
 
 			var data = stream.ToArray();
+			writer.RecordStarted();
 			writer.WriteAsync(data, 0, data.Length).Wait();
+			writer.RecordCompletedAsync().Wait();
 		}
 
 		public void DeleteFile(int level, ulong fileNumber)

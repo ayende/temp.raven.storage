@@ -3,7 +3,6 @@
 	using System;
 	using System.Collections.Generic;
 	using System.Diagnostics;
-	using System.IO;
 	using System.Threading;
 	using System.Threading.Tasks;
 
@@ -20,9 +19,40 @@
 
 		private readonly IList<ulong> pendingOutputs = new List<ulong>();
 
+		private ManualCompaction manualCompaction;
+
 		public Compactor(StorageState state)
 		{
 			this.state = state;
+		}
+
+		internal Task CompactAsync(int level, Slice begin, Slice end)
+		{
+			if (manualCompaction != null)
+				throw new InvalidOperationException("Manual compaction is already in progess.");
+
+			manualCompaction = new ManualCompaction(level, begin, end);
+
+			return Task.Factory.StartNew(async () =>
+					{
+						while (true)
+						{
+							if (state.ShuttingDown)
+								throw new InvalidOperationException("Database is shutting down.");
+
+							if (this.state.BackgroundCompactionScheduled)
+							{
+								Thread.Sleep(100);
+								continue;
+							}
+
+							using (var locker = await this.state.Lock.LockAsync())
+							{
+								this.MaybeScheduleCompaction(locker);
+								break;
+							}
+						}
+					});
 		}
 
 		internal void MaybeScheduleCompaction(AsyncLock.LockScope lockScope)
@@ -37,7 +67,7 @@
 				return;    // DB is being disposed; no more background compactions
 			}
 			if (state.ImmutableMemTable == null &&
-				state.ManualCompaction == null &&
+				manualCompaction == null &&
 				state.VersionSet.NeedsCompaction)
 			{
 				// No work to be done
@@ -62,6 +92,10 @@
 
 				Thread.Sleep(1000000);
 			}
+			finally
+			{
+				state.BackgroundCompactionScheduled = false;
+			}
 
 			using (var locker = await state.Lock.LockAsync())
 			{
@@ -83,10 +117,10 @@
 			{
 				Compaction compaction;
 				var manualEnd = new Slice();
-				isManual = state.ManualCompaction != null;
+				isManual = this.manualCompaction != null;
 				if (isManual)
 				{
-					var mCompaction = state.ManualCompaction;
+					var mCompaction = this.manualCompaction;
 					compaction = state.VersionSet.CompactRange(mCompaction.Level, mCompaction.Begin, mCompaction.End);
 					mCompaction.Done = compaction == null;
 					if (compaction != null)
@@ -131,14 +165,14 @@
 
 				if (isManual)
 				{
-					var mCompaction = state.ManualCompaction;
+					var mCompaction = this.manualCompaction;
 					if (!mCompaction.Done)
 					{
 						mCompaction.Begin = manualEnd;
 					}
 					else
 					{
-						state.ManualCompaction = null;
+						this.manualCompaction = null;
 					}
 				}
 			}
@@ -153,7 +187,7 @@
 
 				if (isManual)
 				{
-					var mCompaction = state.ManualCompaction;
+					var mCompaction = this.manualCompaction;
 					mCompaction.Done = true;
 				}
 			}

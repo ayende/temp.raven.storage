@@ -70,7 +70,9 @@
     <Compile Include="Impl\Constants.cs" />
     <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
+    <Compile Include="Impl\IStorageCommands.cs" />
     <Compile Include="Impl\IStorageContext.cs" />
+    <Compile Include="Impl\StorageCommands.cs" />
     <Compile Include="Impl\StorageReader.cs" />
     <Compile Include="Impl\Streams\AsyncBinaryWriter.cs" />
     <Compile Include="Impl\Streams\LogReaderStream.cs" />

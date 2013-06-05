@@ -126,7 +126,7 @@ namespace Raven.Storage.Impl
 
 		public string GetCurrentFileName()
 		{
-			return Path.Combine(databaseName, Constants.Files.CurrentFile);
+			return Constants.Files.CurrentFile;
 		}
 
 		public void EnsureDatabaseDirectoryExists()

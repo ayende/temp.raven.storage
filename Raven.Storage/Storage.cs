@@ -26,7 +26,10 @@
 			storageState.CreateNewLog();
 			Writer = new StorageWriter(storageState);
 			Reader = new StorageReader(storageState);
+			Commands = new StorageCommands(storageState);
 		}
+
+		public IStorageCommands Commands { get; private set; }
 
 		public StorageWriter Writer { get; private set; }
 

@@ -33,8 +33,6 @@
 
 		public CompactionStats[] CompactionStats = new CompactionStats[Config.NumberOfLevels];
 
-		public ManualCompaction ManualCompaction { get; set; }
-
 		public TableCache TableCache { get; private set; }
 
 		public Compactor Compactor { get; private set; }
@@ -172,6 +170,7 @@
 			{
 				var encodedContents = Encoding.UTF8.GetBytes(contents);
 				stream.Write(encodedContents, 0, encodedContents.Length);
+				stream.Flush();
 			}
 
 			FileSystem.RenameFile(temporaryFileName, FileSystem.GetCurrentFileName());

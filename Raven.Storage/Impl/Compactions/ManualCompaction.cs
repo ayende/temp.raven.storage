@@ -5,20 +5,27 @@
 	/// <summary>
 	/// Information for a manual compaction
 	/// </summary>
-	public class ManualCompaction
+	internal class ManualCompaction
 	{
-		public int Level { get; set; }
+		public ManualCompaction(int level, Slice begin, Slice end)
+		{
+			this.Level = level;
+			this.Begin = begin;
+			this.End = end;
+		}
+
+		public int Level { get; private set; }
 
 		public bool Done { get; set; }
 
 		/// <summary>
 		/// NULL means beginning of key range
 		/// </summary>
-		public Slice Begin { get; set; }
+		public Slice Begin { get; internal set; }
 
 		/// <summary>
 		/// NULL means end of key range
 		/// </summary>
-		public Slice End { get; set; }
+		public Slice End { get; private set; }
 	}
 }
