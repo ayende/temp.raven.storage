@@ -126,6 +126,7 @@ namespace Raven.Storage.Impl.Streams
 			await _binaryWriter.WriteAsync((ushort)count);
 			await _binaryWriter.WriteAsync((byte)type);
 			await _binaryWriter.WriteAsync(buffer, offset, count);
+			await _binaryWriter.FlushAsync();
 			_bufferPos += HeaderSize;
 		}
 

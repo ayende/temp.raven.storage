@@ -18,15 +18,15 @@
 		public volatile Task BackgroundTask = Task.FromResult<object>(null);
 		public volatile bool ShuttingDown;
 
-		public LogWriter LogWriter;
+		public LogWriter LogWriter { get; private set; }
 
-		public LogWriter DescriptorLogWriter;
+		public LogWriter DescriptorLogWriter { get; private set; }
 
-		public AsyncLock Lock;
+		public AsyncLock Lock { get; private set; }
 		public VersionSet VersionSet { get; private set; }
-		public StorageOptions Options;
-		public FileSystem FileSystem;
-		public string DatabaseName;
+		public StorageOptions Options { get; private set; }
+		public FileSystem FileSystem { get; private set; }
+		public string DatabaseName { get; private set; }
 		public ulong LogFileNumber { get; private set; }
 
 		public CompactionStats[] CompactionStats = new CompactionStats[Config.NumberOfLevels];
@@ -35,10 +35,15 @@
 
 		public TableCache TableCache { get; private set; }
 
-		public StorageState()
+		public StorageState(string name, StorageOptions options)
 		{
-			this.TableCache = new TableCache(this);
-			this.VersionSet = new VersionSet(this.Options, this.TableCache);
+			Options = options;
+			MemTable = new MemTable(options);
+			DatabaseName = name;
+			Lock = new AsyncLock();
+			FileSystem = new FileSystem();
+			TableCache = new TableCache(this);
+			VersionSet = new VersionSet(Options, TableCache);
 		}
 
 		public void CreateNewLog()
@@ -46,7 +51,7 @@
 			var newFileNumber = VersionSet.NewFileNumber();
 			try
 			{
-				var file = FileSystem.NewWritable(DatabaseName, newFileNumber, "log");
+				var file = FileSystem.NewWritable(DatabaseName, newFileNumber, Constants.Files.Extensions.LogFile);
 				LogWriter = new LogWriter(file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}
@@ -190,11 +195,12 @@
 			try
 			{
 				var iterator = memTable.NewIterator();
+				iterator.SeekToFirst();
 
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
-					var tempFile = FileSystem.NewWritable(tempFileName);
+					var tempFile = FileSystem.NewReadableWritable(tempFileName);
 					builder = new TableBuilder(Options, tableFile, () => tempFile);
 
 					meta.SmallestKey = iterator.Key;

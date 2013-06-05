@@ -14,11 +14,11 @@
 
 			public class Extensions
 			{
-				public const string LogFile = ".log";
+				public const string LogFile = "log";
 
-				public const string TableFile = ".sst";
+				public const string TableFile = "sst";
 
-				public const string TempFile = ".dbtmp";
+				public const string TempFile = "dbtmp";
 			}
 		}
 	}

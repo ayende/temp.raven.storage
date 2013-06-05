@@ -22,6 +22,11 @@
 			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
 			this.Files = new List<FileMetadata>[Config.NumberOfLevels];
 
+			for (var level = 0; level < Config.NumberOfLevels; level++)
+			{
+				Files[level] = new List<FileMetadata>();
+			}
+
 			this.FileToCompact = null;
 			this.FileToCompactLevel = -1;
 
@@ -32,7 +37,7 @@
 		public Version(StorageOptions options, TableCache tableCache, VersionSet versionSet)
 			: this(options, tableCache)
 		{
-			throw new NotImplementedException();
+			VersionSet = versionSet;
 		}
 
 		public int CompactionLevel { get; private set; }
@@ -44,6 +49,8 @@
 		public FileMetadata FileToCompact { get; private set; }
 
 		public List<FileMetadata>[] Files { get; private set; }
+
+		public VersionSet VersionSet { get; private set; }
 
 		public static void Finalize(Version version)
 		{
