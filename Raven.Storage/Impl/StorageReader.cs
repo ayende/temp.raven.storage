@@ -1,7 +1,6 @@
 ﻿namespace Raven.Storage.Impl
 {
 	using System.IO;
-	using System.Threading;
 
 	using Raven.Abstractions.Extensions;
 	using Raven.Storage.Data;
@@ -15,8 +14,13 @@
 			this.state = state;
 		}
 
-		public Stream Read(Slice key, ReadOptions options)
+		public Stream Read(Slice key, ReadOptions options = null)
 		{
+			if (options == null)
+			{
+				options = new ReadOptions();
+			}
+
 			var mem = state.MemTable;
 			var imm = state.ImmutableMemTable;
 			var currentVersion = state.VersionSet.Current;

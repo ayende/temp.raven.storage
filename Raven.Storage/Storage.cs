@@ -1,38 +1,40 @@
-﻿using System;
-using Raven.Storage.Impl;
-using Raven.Storage.Memtable;
-
-namespace Raven.Storage
+﻿namespace Raven.Storage
 {
+	using System;
+
+	using Raven.Storage.Impl;
+
 	public class Storage : IDisposable
 	{
-		private StorageWriter _storageWriter;
-		private readonly StorageState _storageState;
+		private readonly StorageState storageState;
 
 		public Storage(string name, StorageOptions options)
 		{
-			_storageState = new StorageState(name, options);
+			this.storageState = new StorageState(name, options);
 			Init();
 		}
 
 		public Storage(StorageState storageState)
 		{
-			_storageState = storageState;
+			this.storageState = storageState;
 			Init();
 		}
 
 		private void Init()
 		{
 			//_storageState.Recover();
-			_storageState.CreateNewLog();
-			_storageWriter = new StorageWriter(_storageState);
+			this.storageState.CreateNewLog();
+			this.Writer = new StorageWriter(this.storageState);
+			this.Reader = new StorageReader(this.storageState);
 		}
 
-		public StorageWriter Writer {get { return _storageWriter; }}
-	
+		public StorageWriter Writer { get; private set; }
+
+		public StorageReader Reader { get; private set; }
+
 		public void Dispose()
 		{
-			_storageState.Dispose();
+			this.storageState.Dispose();
 		}
 	}
 }
