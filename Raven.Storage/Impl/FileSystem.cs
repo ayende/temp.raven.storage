@@ -150,7 +150,9 @@ namespace Raven.Storage.Impl
 
 		public void Lock()
 		{
-			lockFile = File.Open(Path.Combine(databaseName, Constants.Files.DBLockFile), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+			lockFile =
+				new FileStream(Path.Combine(databaseName, Constants.Files.DBLockFile), FileMode.Create, FileAccess.ReadWrite,
+							   FileShare.None, 4096, FileOptions.DeleteOnClose);
 		}
 
 		public bool Exists(string name)
