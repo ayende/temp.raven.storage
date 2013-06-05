@@ -378,8 +378,8 @@
 			//unlock mutex
 
 			// make the output file
-			var fileName = this.state.FileSystem.GetFileName(this.state.DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
-			var tempFileName = this.state.FileSystem.GetFileName(this.state.DatabaseName, fileNumber, Constants.Files.Extensions.TempFile);
+			var fileName = this.state.FileSystem.GetTableFileName(fileNumber);
+			var tempFileName = this.state.FileSystem.GetTempFileName(fileNumber);
 
 			var file = this.state.FileSystem.NewWritable(fileName);
 			var tempFile = this.state.FileSystem.NewReadableWritable(tempFileName);

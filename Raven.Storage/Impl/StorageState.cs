@@ -134,7 +134,7 @@ namespace Raven.Storage.Impl
 				// new CURRENT file that points to it.
 				if (!string.IsNullOrEmpty(newManifestFile))
 				{
-					this.SetCurrentFile(this.DatabaseName, VersionSet.ManifestFileNumber);
+					this.SetCurrentFile(VersionSet.ManifestFileNumber);
 					// No need to double-check MANIFEST in case of error since it
 					// will be discarded below.
 				}
@@ -161,12 +161,12 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		private void SetCurrentFile(string databaseName, ulong descriptorNumber)
+		private void SetCurrentFile(ulong descriptorNumber)
 		{
 			var manifest = FileSystem.DescriptorFileName(descriptorNumber);
 			var contents = manifest + "\n";
 
-			var temporaryFileName = FileSystem.GetFileName(databaseName, descriptorNumber, Constants.Files.Extensions.TempFile);
+			var temporaryFileName = FileSystem.GetTempFileName(descriptorNumber);
 
 			using (var stream = FileSystem.NewWritable(temporaryFileName))
 			{
@@ -213,8 +213,8 @@ namespace Raven.Storage.Impl
 							   FileNumber = fileNumber
 						   };
 
-			var tableFileName = FileSystem.GetFileName(DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
-			var tempFileName = FileSystem.GetFileName(DatabaseName, fileNumber, Constants.Files.Extensions.TempFile);
+			var tableFileName = FileSystem.GetTableFileName(fileNumber);
+			var tempFileName = FileSystem.GetTempFileName(fileNumber);
 
 			try
 			{
@@ -281,7 +281,7 @@ namespace Raven.Storage.Impl
 					}
 				}
 
-				SetCurrentFile(DatabaseName, 1);
+				SetCurrentFile(1);
 			}
 			catch(Exception ex)
 			{

@@ -162,5 +162,15 @@ namespace Raven.Storage.Impl
 		{
 			lockFile.Dispose();
 		}
+
+		public string GetTempFileName(ulong fileNumber)
+		{
+			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.TempFile);
+		}
+
+		public string GetTableFileName(ulong fileNumber)
+		{
+			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.TableFile);
+		}
 	}
 }
