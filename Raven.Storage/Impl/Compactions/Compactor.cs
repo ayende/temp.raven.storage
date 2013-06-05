@@ -453,7 +453,7 @@
 			state.VersionSet.AddLiveFiles(live);
 
 			var databaseName = state.DatabaseName;
-			var databaseFiles = new DirectoryInfo(databaseName).GetFiles();
+			var databaseFiles = state.FileSystem.GetFiles();
 
 			foreach (var file in databaseFiles)
 			{
@@ -499,7 +499,7 @@
 						//int(type),
 						//static_cast<unsigned long long>(number));
 
-						File.Delete(string.Format("{0}/{1}", databaseName, file));
+						state.FileSystem.DeleteFile(file.Name);
 					}
 				}
 			}

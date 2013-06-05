@@ -47,9 +47,8 @@
 			InternalKeyComparator = new InternalKeyComparator(options.Comparator);
 			DatabaseName = name;
 			Lock = new AsyncLock();
-			FileSystem = new FileSystem();
-
-			MemTable = new MemTable(this);	
+			FileSystem = new FileSystem(DatabaseName);
+			MemTable = new MemTable(this);
 			TableCache = new TableCache(this);
 			VersionSet = new VersionSet(this);
 			Compactor = new Compactor(this);	
@@ -105,7 +104,7 @@
 					// No reason to unlock *mu here since we only hit this path in the
 					// first call to LogAndApply (when opening the database).
 
-					newManifestFile = FileSystem.DescriptorFileName(this.DatabaseName, VersionSet.ManifestFileNumber);
+					newManifestFile = FileSystem.DescriptorFileName(VersionSet.ManifestFileNumber);
 					edit.SetNextFile(VersionSet.NextFileNumber);
 					var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
@@ -164,8 +163,8 @@
 
 		private void SetCurrentFile(string databaseName, ulong descriptorNumber)
 		{
-			var manifest = FileSystem.DescriptorFileName(databaseName, descriptorNumber);
-			var contents = manifest.Substring(databaseName.Length + 1, manifest.Length) + "\n";
+			var manifest = FileSystem.DescriptorFileName(descriptorNumber);
+			var contents = manifest + "\n";
 
 			var temporaryFileName = FileSystem.GetFileName(databaseName, descriptorNumber, Constants.Files.Extensions.TempFile);
 
@@ -175,7 +174,12 @@
 				stream.Write(encodedContents, 0, encodedContents.Length);
 			}
 
-			FileSystem.RenameFile(temporaryFileName, FileSystem.GetCurrentFileName(databaseName));
+			FileSystem.RenameFile(temporaryFileName, FileSystem.GetCurrentFileName());
+		}
+
+		public void Recover()
+		{
+			FileSystem.EnsureDatabaseDirectoryExists();
 		}
 
 		public void Dispose()

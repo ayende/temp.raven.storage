@@ -43,10 +43,10 @@
 				return (TableAndFile)this.state.Options.TableCache.Get(key);
 			}
 
-			var fileName = this.state.FileSystem.GetFileName(
+			var filePath = this.state.FileSystem.GetFullFileName(
 				this.state.DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
 
-			var file = MemoryMappedFile.CreateFromFile(fileName, FileMode.Open);
+			var file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
 			var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
 			var table = new Table(this.state.Options, fileData);
 
