@@ -5,13 +5,15 @@ using Xunit;
 
 namespace Raven.Storage.Tests.Memtable
 {
+	using Raven.Storage.Impl;
+
 	public class MemtableTests
 	{
 		[Fact]
 		public void Empty()
 		{
-			StorageOptions storageOptions = new StorageOptions();
-			using (var memtable = new MemTable(storageOptions))
+			var storageState = new StorageState("test", new StorageOptions());
+			using (var memtable = new MemTable(storageState))
 			{
 				Stream stream;
 				Assert.False(memtable.TryGet("test", 1, out stream));
@@ -22,8 +24,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		 public void CanAddAndGet()
 		{
-			StorageOptions storageOptions = new StorageOptions();
-			using (var memtable = new MemTable(storageOptions))
+			var storageState = new StorageState("test", new StorageOptions());
+			using (var memtable = new MemTable(storageState))
 			{
 				memtable.Add(1, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
@@ -41,8 +43,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void CanAddAndGetUsingLaterSnapshot()
 		{
-			StorageOptions storageOptions = new StorageOptions();
-			using (var memtable = new MemTable(storageOptions))
+			var storageState = new StorageState("test", new StorageOptions());
+			using (var memtable = new MemTable(storageState))
 			{
 				memtable.Add(1, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
@@ -60,8 +62,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void WillNotShowValueFromLaterSnapshot()
 		{
-			StorageOptions storageOptions = new StorageOptions();
-			using (var memtable = new MemTable(storageOptions))
+			var storageState = new StorageState("test", new StorageOptions());
+			using (var memtable = new MemTable(storageState))
 			{
 				memtable.Add(2, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				Stream stream;
@@ -73,8 +75,8 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void DeletesWillHideValues()
 		{
-			StorageOptions storageOptions = new StorageOptions();
-			using (var memtable = new MemTable(storageOptions))
+			var storageState = new StorageState("test", new StorageOptions());
+			using (var memtable = new MemTable(storageState))
 			{
 				memtable.Add(2, ItemType.Value, "test", memtable.Write(new MemoryStream(new byte[] { 1, 2, 3 })));
 				memtable.Add(3, ItemType.Deletion, "test", null);

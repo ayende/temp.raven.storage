@@ -20,21 +20,21 @@
 
 		private readonly LevelState[] levels;
 
-		private readonly InternalKeyComparator internalKeyComparator;
-
 		private readonly BySmallestKey comparator;
 
 		private readonly Version @base;
 
+		private readonly IStorageContext storageContext;
+
 		/// <summary>
 		/// Initialize a builder with the files from *base and other info from *vset
 		/// </summary>
-		public Builder(StorageOptions options, VersionSet versionSet, Version @base)
+		public Builder(IStorageContext storageContext, VersionSet versionSet, Version @base)
 		{
+			this.storageContext = storageContext;
 			this.versionSet = versionSet;
 			this.@base = @base;
-			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
-			this.comparator = new BySmallestKey(this.internalKeyComparator);
+			this.comparator = new BySmallestKey(this.storageContext.InternalKeyComparator);
 
 			this.levels = new LevelState[Config.NumberOfLevels];
 			for (var level = 0; level < Config.NumberOfLevels; level++)
@@ -131,7 +131,7 @@
 			if (level > 0 && version.Files[level].Count > 0)
 			{
 				// Must not overlap
-				if (internalKeyComparator.Compare(version.Files[level].Last().LargestKey, file.SmallestKey) < 0)
+				if (storageContext.InternalKeyComparator.Compare(version.Files[level].Last().LargestKey, file.SmallestKey) < 0)
 				{
 					throw new InvalidOperationException("Files overlap.");
 				}

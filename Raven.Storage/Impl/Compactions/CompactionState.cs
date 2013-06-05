@@ -1,4 +1,4 @@
-﻿namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl.Compactions
 {
 	using System;
 	using System.Collections.Generic;
@@ -58,9 +58,9 @@
 
 		public void Dispose()
 		{
-			if (Builder != null)
+			if (this.Builder != null)
 			{
-				Builder.Dispose();
+				this.Builder.Dispose();
 			}
 			//else
 			//{

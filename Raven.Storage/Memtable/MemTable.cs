@@ -9,6 +9,8 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage.Memtable
 {
+	using Raven.Storage.Impl;
+
 	public class MemTable : IDisposable
 	{
 		private readonly BufferPool _bufferPool;
@@ -18,19 +20,19 @@ namespace Raven.Storage.Memtable
 
 		public DateTime CreatedAt { get; private set; }
 
-		public MemTable(StorageOptions options)
-			: this(options.WriteBatchSize, options.Comparator, options.BufferPool)
+		public MemTable(IStorageContext storageContext)
+			: this(storageContext.Options.WriteBatchSize, storageContext.InternalKeyComparator, storageContext.Options.BufferPool)
 		{
 
 		}
 
-		public MemTable(int writeBatchSize, IComparator comparator, BufferPool bufferPool)
+		public MemTable(int writeBatchSize, InternalKeyComparator internalKeyComparator, BufferPool bufferPool)
 		{
 			CreatedAt = DateTime.UtcNow;
 			_bufferPool = bufferPool;
 			_memoryAccessor = new UnamangedMemoryAccessor(writeBatchSize);
 
-			_internalKeyComparator = new InternalKeyComparator(comparator);
+			_internalKeyComparator = internalKeyComparator;
 			_table = new SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>(_internalKeyComparator.Compare);
 		}
 

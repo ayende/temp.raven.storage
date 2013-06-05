@@ -1,4 +1,4 @@
-﻿namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl.Compactions
 {
 	using Raven.Storage.Data;
 

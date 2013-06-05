@@ -8,29 +8,23 @@
 
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
-	using Raven.Storage.Impl.Caching;
+	using Raven.Storage.Impl.Compactions;
 	using Raven.Storage.Reading;
 	using Raven.Storage.Util;
 
 	public class VersionSet
 	{
-		private readonly StorageOptions options;
+		private ulong lastSequence;
 
-		private ulong _lastSequence;
-
-		private Version _current;
+		private Version current;
 
 		public Slice[] CompactionPointers { get; private set; }
 
-		private readonly InternalKeyComparator internalKeyComparator;
+		private readonly IStorageContext storageContext;
 
-		private readonly TableCache tableCache;
-
-		public VersionSet(StorageOptions options, TableCache tableCache)
+		public VersionSet(IStorageContext storageContext)
 		{
-			this.options = options;
-			this.tableCache = tableCache;
-			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
+			this.storageContext = storageContext;
 
 			NextFileNumber = 2;
 			LogNumber = 0;
@@ -38,7 +32,7 @@
 
 			CompactionPointers = new Slice[Config.NumberOfLevels];
 
-			this.AppendVersion(new Version(options, tableCache, this));
+			AppendVersion(new Version(storageContext, this));
 		}
 
 		/// <summary>
@@ -46,11 +40,11 @@
 		/// </summary>
 		public ulong LastSequence
 		{
-			get { return _lastSequence; }
+			get { return this.lastSequence; }
 			set
 			{
-				Debug.Assert(value >= _lastSequence);
-				_lastSequence = value;
+				Debug.Assert(value >= this.lastSequence);
+				this.lastSequence = value;
 			}
 		}
 
@@ -58,7 +52,7 @@
 		{
 			get
 			{
-				return _current;
+				return this.current;
 			}
 		}
 
@@ -74,7 +68,7 @@
 		{
 			get
 			{
-				var v = _current;
+				var v = this.current;
 				return v.CompactionScore >= 1 || v.FileToCompact != null;
 			}
 		}
@@ -85,7 +79,7 @@
 
 		public int GetNumberOfFilesAtLevel(int level)
 		{
-			return _current.Files[level].Count;
+			return this.current.Files[level].Count;
 		}
 
 		public ulong NewFileNumber()
@@ -118,7 +112,7 @@
 
 		public void AppendVersion(Version version)
 		{
-			_current = version;
+			this.current = version;
 		}
 
 		public Compaction PickCompaction()
@@ -137,13 +131,13 @@
 				Debug.Assert(level >= 0);
 				Debug.Assert(level + 1 < Config.NumberOfLevels);
 
-				compaction = new Compaction(options, level, Current);
+				compaction = new Compaction(storageContext, level, Current);
 
 				for (var i = 0; i < Current.Files[level].Count; i++)
 				{
 					var file = Current.Files[level][i];
 					if (CompactionPointers[level].IsEmpty()
-						|| internalKeyComparator.Compare(file.LargestKey, CompactionPointers[level]) > 0)
+						|| storageContext.InternalKeyComparator.Compare(file.LargestKey, CompactionPointers[level]) > 0)
 					{
 						compaction.Inputs[0].Add(file);
 						break;
@@ -159,7 +153,7 @@
 			else if (seekCompaction)
 			{
 				level = Current.FileToCompactLevel;
-				compaction = new Compaction(options, level, Current);
+				compaction = new Compaction(storageContext, level, Current);
 				compaction.Inputs[0].Add(Current.FileToCompact);
 			}
 			else
@@ -191,7 +185,7 @@
 			if (inputs.Count == 0)
 				return null;
 
-			var compaction = new Compaction(options, level, this.Current);
+			var compaction = new Compaction(storageContext, level, this.Current);
 			compaction.Inputs[0] = inputs;
 
 			SetupOtherInputs(compaction);
@@ -286,12 +280,12 @@
 				}
 				else
 				{
-					if (internalKeyComparator.Compare(file.SmallestKey, smallestKey) < 0)
+					if (storageContext.InternalKeyComparator.Compare(file.SmallestKey, smallestKey) < 0)
 					{
 						smallestKey = file.SmallestKey;
 					}
 
-					if (internalKeyComparator.Compare(file.LargestKey, largestKey) < 0)
+					if (storageContext.InternalKeyComparator.Compare(file.LargestKey, largestKey) < 0)
 					{
 						largestKey = file.LargestKey;
 					}
@@ -320,7 +314,7 @@
 		{
 			var readOptions = new ReadOptions
 								  {
-									  VerifyChecksums = options.ParanoidChecks,
+									  VerifyChecksums = storageContext.Options.ParanoidChecks,
 									  FillCache = false
 								  };
 
@@ -339,20 +333,20 @@
 						var files = new List<FileMetadata>(compaction.Inputs[which]);
 						foreach (var file in files)
 						{
-							list[num++] = tableCache.NewIterator(readOptions, file.FileNumber, file.FileSize);
+							list[num++] = storageContext.TableCache.NewIterator(readOptions, file.FileNumber, file.FileSize);
 						}
 					}
 					else
 					{
 						// Create concatenating iterator for the files from this level
-						list[num++] = new TwoLevelIterator(new LevelFileNumIterator(internalKeyComparator, compaction.Inputs[which]), GetFileIterator, readOptions);
+						list[num++] = new TwoLevelIterator(new LevelFileNumIterator(storageContext.InternalKeyComparator, compaction.Inputs[which]), GetFileIterator, readOptions);
 					}
 				}
 			}
 
 			Debug.Assert(num <= space);
 
-			return NewMergingIterator(internalKeyComparator, list, num);
+			return NewMergingIterator(storageContext.InternalKeyComparator, list, num);
 		}
 
 		private IIterator GetFileIterator(ReadOptions readOptions, Stream stream)
@@ -365,7 +359,7 @@
 			var fileNumber = (ulong)stream.Read7BitEncodedLong();
 			var fileSize = stream.Read7BitEncodedLong();
 
-			return tableCache.NewIterator(readOptions, fileNumber, fileSize);
+			return storageContext.TableCache.NewIterator(readOptions, fileNumber, fileSize);
 		}
 
 		private IIterator NewMergingIterator(InternalKeyComparator comparator, IIterator[] list, int n)

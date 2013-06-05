@@ -6,11 +6,13 @@
 	using System.Threading.Tasks;
 
 	using Raven.Storage.Building;
+	using Raven.Storage.Comparing;
 	using Raven.Storage.Impl.Caching;
+	using Raven.Storage.Impl.Compactions;
 	using Raven.Storage.Impl.Streams;
 	using Raven.Storage.Memtable;
 
-	public class StorageState : IDisposable
+	public class StorageState : IDisposable, IStorageContext
 	{
 		public MemTable MemTable;
 		public volatile MemTable ImmutableMemTable;
@@ -35,15 +37,22 @@
 
 		public TableCache TableCache { get; private set; }
 
+		public Compactor Compactor { get; private set; }
+
+		public InternalKeyComparator InternalKeyComparator { get; private set; }
+
 		public StorageState(string name, StorageOptions options)
 		{
 			Options = options;
-			MemTable = new MemTable(options);
+			InternalKeyComparator = new InternalKeyComparator(options.Comparator);
 			DatabaseName = name;
 			Lock = new AsyncLock();
 			FileSystem = new FileSystem();
+
+			MemTable = new MemTable(this);	
 			TableCache = new TableCache(this);
-			VersionSet = new VersionSet(Options, TableCache);
+			VersionSet = new VersionSet(this);
+			Compactor = new Compactor(this);	
 		}
 
 		public void CreateNewLog()
@@ -80,9 +89,9 @@
 				edit.SetNextFile(VersionSet.NextFileNumber);
 				edit.SetLastSequence(VersionSet.LastSequence);
 
-				var version = new Version(Options, TableCache, VersionSet);
+				var version = new Version(this, VersionSet);
 
-				var builder = new Builder(Options, VersionSet, VersionSet.Current);
+				var builder = new Builder(this, VersionSet, VersionSet.Current);
 				builder.Apply(edit);
 				builder.SaveTo(version);
 

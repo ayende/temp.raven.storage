@@ -5,6 +5,7 @@ namespace Raven.Storage.Comparing
     public interface IComparator
     {
 		string Name { get; }
+
 		/// <summary>
 		/// Compare the two values
 		/// </summary>

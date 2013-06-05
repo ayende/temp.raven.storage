@@ -1,9 +1,8 @@
-﻿namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl.Compactions
 {
 	using System.Collections.Generic;
 	using System.Linq;
 
-	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 
 	public class Compaction
@@ -42,19 +41,17 @@
 		/// Index in grandparent_starts_
 		/// </summary>
 		private int grandparentIndex;
-		
+
 		/// <summary>
 		/// Some output key has been seen
 		/// </summary>
-		private bool seenKey; 
+		private bool seenKey;
 
 		/// <summary>
 		/// Bytes of overlap between current output
 		/// and grandparent files
 		/// </summary>
-		private long overlappedBytes; 
-
-		private readonly InternalKeyComparator internalKeyComparator;
+		private long overlappedBytes;
 
 		/// <summary>
 		/// level_ptrs_ holds indices into input_version_->levels_: our state
@@ -64,9 +61,11 @@
 		/// </summary>
 		private readonly int[] levelPointers;
 
-		public Compaction(StorageOptions options, int level, Version inputVersion = null)
+		private readonly IStorageContext storageContext;
+
+		public Compaction(IStorageContext storageContext, int level, Version inputVersion = null)
 		{
-			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
+			this.storageContext = storageContext;
 			this.Level = level;
 			this.MaxOutputFileSize = Config.TargetFileSize;
 			this.inputVersion = inputVersion;
@@ -92,7 +91,7 @@
 		/// <returns></returns>
 		public int GetNumberOfInputFiles(int which)
 		{
-			return Inputs[which].Count;
+			return this.Inputs[which].Count;
 		}
 
 		/// <summary>
@@ -103,7 +102,7 @@
 		/// <returns></returns>
 		public FileMetadata GetInput(int which, int i)
 		{
-			return Inputs[which][i];
+			return this.Inputs[which][i];
 		}
 
 		/// <summary>
@@ -114,7 +113,7 @@
 		public bool IsTrivialMove()
 		{
 			return (this.GetNumberOfInputFiles(0) == 1 && this.GetNumberOfInputFiles(1) == 0
-					&& Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
+					&& this.Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
 		}
 
 		/// <summary>
@@ -125,9 +124,9 @@
 		{
 			for (var which = 0; which < 2; which++)
 			{
-				for (var i = 0; i < Inputs[which].Count; i++)
+				for (var i = 0; i < this.Inputs[which].Count; i++)
 				{
-					edit.DeleteFile(Level + which, Inputs[which][i].FileNumber);
+					edit.DeleteFile(this.Level + which, this.Inputs[which][i].FileNumber);
 				}
 			}
 		}
@@ -142,13 +141,13 @@
 		public bool IsBaseLevelForKey(Slice userKey)
 		{
 			// Maybe use binary search to find right entry instead of linear search?
-			var userComparator = internalKeyComparator.UserComparator;
-			for (int lvl = Level + 2; lvl < Config.NumberOfLevels; lvl++)
+			var userComparator = storageContext.InternalKeyComparator.UserComparator;
+			for (int lvl = this.Level + 2; lvl < Config.NumberOfLevels; lvl++)
 			{
-				var files = inputVersion.Files[lvl];
-				for (; levelPointers[lvl] < files.Count; )
+				var files = this.inputVersion.Files[lvl];
+				for (; this.levelPointers[lvl] < files.Count; )
 				{
-					var file = files[levelPointers[lvl]];
+					var file = files[this.levelPointers[lvl]];
 					if (userComparator.Compare(userKey, file.LargestKey) <= 0)
 					{
 						// We've advanced far enough
@@ -160,7 +159,7 @@
 						break;
 					}
 
-					levelPointers[lvl]++;
+					this.levelPointers[lvl]++;
 				}
 			}
 
@@ -175,23 +174,23 @@
 		/// <returns></returns>
 		public bool ShouldStopBefore(Slice internalKey)
 		{
-			while (grandparentIndex < Grandparents.Count
-				   && internalKeyComparator.Compare(internalKey, Grandparents[grandparentIndex].LargestKey) > 0)
+			while (this.grandparentIndex < this.Grandparents.Count
+				   && storageContext.InternalKeyComparator.Compare(internalKey, this.Grandparents[this.grandparentIndex].LargestKey) > 0)
 			{
-				if (seenKey)
+				if (this.seenKey)
 				{
-					overlappedBytes += Grandparents[grandparentIndex].FileSize;
+					this.overlappedBytes += this.Grandparents[this.grandparentIndex].FileSize;
 				}
 
-				grandparentIndex++;
+				this.grandparentIndex++;
 			}
 
-			seenKey = true;
+			this.seenKey = true;
 
-			if (overlappedBytes > Config.MaxGrandParentOverlapBytes)
+			if (this.overlappedBytes > Config.MaxGrandParentOverlapBytes)
 			{
 				// Too much overlap for current output; start new output
-				overlappedBytes = 0;
+				this.overlappedBytes = 0;
 				return true;
 			}
 

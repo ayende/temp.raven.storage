@@ -19,6 +19,8 @@ using Raven.Storage.Util;
 
 namespace Raven.Streams
 {
+	using Raven.Storage.Comparing;
+
 	public class EventStream : IDisposable
 	{
 		private volatile bool disposed;
@@ -76,7 +78,7 @@ namespace Raven.Streams
 			long log;
 			_memTable = new MemRange
 				{
-					MemTable = new MemTable(_currentBufferSize, options.Comparator, _options.BufferPool),
+					MemTable = new MemTable(_currentBufferSize, new InternalKeyComparator(options.Comparator), _options.BufferPool),
 					Start = EtagToSlice(Etag.Empty),
 					Log = new LogWriter(_options.CreateNewLogFile(out log), _options.BufferPool),
 					LogNumber = log
@@ -337,7 +339,7 @@ namespace Raven.Streams
 				long log;
 				_memTable = new MemRange
 					{
-						MemTable = new MemTable(_currentBufferSize, _options.Comparator, _options.BufferPool),
+						MemTable = new MemTable(_currentBufferSize, new InternalKeyComparator(_options.Comparator), _options.BufferPool),
 						Start = EtagToSlice(newEtag),
 						Log = new LogWriter(_options.CreateNewLogFile(out log), _options.BufferPool),
 						LogNumber = log

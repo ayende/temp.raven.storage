@@ -12,30 +12,27 @@
 
 	public class Version
 	{
-		private readonly InternalKeyComparator internalKeyComparator;
+		private readonly IStorageContext storageContext;
 
-		private readonly TableCache tableCache;
-
-		public Version(StorageOptions options, TableCache tableCache)
+		public Version(IStorageContext storageContext)
 		{
-			this.tableCache = tableCache;
-			this.internalKeyComparator = new InternalKeyComparator(options.Comparator);
+			this.storageContext = storageContext;
 			this.Files = new List<FileMetadata>[Config.NumberOfLevels];
-
-			for (var level = 0; level < Config.NumberOfLevels; level++)
-			{
-				Files[level] = new List<FileMetadata>();
-			}
 
 			this.FileToCompact = null;
 			this.FileToCompactLevel = -1;
 
 			this.CompactionScore = -1;
 			this.CompactionLevel = -1;
+
+			for (var level = 0; level < Config.NumberOfLevels; level++)
+			{
+				Files[level] = new List<FileMetadata>();
+			}
 		}
 
-		public Version(StorageOptions options, TableCache tableCache, VersionSet versionSet)
-			: this(options, tableCache)
+		public Version(IStorageContext storageContext, VersionSet versionSet)
+			: this(storageContext)
 		{
 			VersionSet = versionSet;
 		}
@@ -137,7 +134,7 @@
 		internal List<FileMetadata> GetOverlappingInputs(int level, Slice begin, Slice end)
 		{
 			var inputs = new List<FileMetadata>();
-			var userComparator = internalKeyComparator.UserComparator;
+			var userComparator = this.storageContext.InternalKeyComparator.UserComparator;
 
 			for (int i = 0; i < Files[level].Count; )
 			{
@@ -188,7 +185,7 @@
 		{
 			if (!disjointSortedFiles)
 			{
-				var userComparator = internalKeyComparator.UserComparator;
+				var userComparator = this.storageContext.InternalKeyComparator.UserComparator;
 
 				// Need to check against all files
 				return files.Any(file => !this.AfterFile(userComparator, smallestKey, file) && !this.BeforeFile(userComparator, largestKey, file));
@@ -256,8 +253,8 @@
 					var tempFiles =
 						files.Where(
 							f =>
-							this.internalKeyComparator.UserComparator.Compare(key, f.SmallestKey) >= 0
-							&& this.internalKeyComparator.UserComparator.Compare(key, f.LargestKey) <= 0)
+							this.storageContext.InternalKeyComparator.UserComparator.Compare(key, f.SmallestKey) >= 0
+							&& this.storageContext.InternalKeyComparator.UserComparator.Compare(key, f.LargestKey) <= 0)
 							 .OrderByDescending(x => x.FileNumber);
 
 					if (!tempFiles.Any())
@@ -271,13 +268,13 @@
 				{
 					// Binary search to find earliest index whose largest key >= ikey.
 					int index;
-					if (Files[level].TryFindFile(key, internalKeyComparator, out index) == false)
+					if (Files[level].TryFindFile(key, this.storageContext.InternalKeyComparator, out index) == false)
 					{
 						files = new List<FileMetadata>();
 					}
 					else
 					{
-						files = this.internalKeyComparator.UserComparator.Compare(key, files[index].SmallestKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(key, files[index].SmallestKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
 					}
 				}
 
@@ -293,8 +290,8 @@
 					lastFileRead = f;
 					lastFileReadLevel = level;
 
-					var state = tableCache.Get(
-						key, f.FileNumber, f.FileSize, readOptions, internalKeyComparator.UserComparator, out stream);
+					var state = this.storageContext.TableCache.Get(
+						key, f.FileNumber, f.FileSize, readOptions, this.storageContext.InternalKeyComparator.UserComparator, out stream);
 
 					switch (state)
 					{
