@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Impl
+﻿using System.IO;
+
+namespace Raven.Storage.Impl
 {
 	using System;
 	using System.Diagnostics;
@@ -176,21 +178,31 @@
 			FileSystem.RenameFile(temporaryFileName, FileSystem.GetCurrentFileName());
 		}
 
-		public void Recover()
+		public VersionEdit Recover()
 		{
 			FileSystem.EnsureDatabaseDirectoryExists();
-		}
+			FileSystem.Lock();
 
-		public void Dispose()
-		{
-			if (LogWriter != null)
-				LogWriter.Dispose();
-			if (FileSystem != null)
-				FileSystem.Dispose();
-			if (MemTable != null)
-				MemTable.Dispose();
-			if (ImmutableMemTable != null)
-				ImmutableMemTable.Dispose();
+			if (FileSystem.Exists(FileSystem.GetCurrentFileName()) == false)
+			{
+				if (Options.CreateIfMissing)
+				{
+					CreateNewDatabase();
+				}
+				else
+				{
+					throw new InvalidDataException(DatabaseName + " does not exist. Storage option CreateIfMissing is set to false.");
+				}
+			}
+			else
+			{
+				if (Options.ErrorIfExists)
+				{
+					throw new InvalidDataException(DatabaseName + " exists, while the ErrorIfExists option is set to true.");
+				}
+			}
+
+			return null;
 		}
 
 		public FileMetadata BuildTable(MemTable memTable, ulong fileNumber)
@@ -246,6 +258,49 @@
 			}
 
 			return meta;
+		}
+
+		public void CreateNewDatabase()
+		{
+			var newDb = new VersionEdit();
+		
+			newDb.SetComparatorName(Options.Comparator.Name);
+			newDb.SetLogNumber(0);
+			newDb.SetNextFile(2);
+			newDb.SetLastSequence(0);
+
+			var manifest = FileSystem.DescriptorFileName(1);
+
+			try
+			{
+				using (var file = FileSystem.NewWritable(manifest))
+				{
+					using (var logWriter = new LogWriter(file, Options.BufferPool))
+					{
+						newDb.EncodeTo(logWriter);
+					}
+				}
+
+				SetCurrentFile(DatabaseName, 1);
+			}
+			catch(Exception ex)
+			{
+				FileSystem.DeleteFile(manifest);
+
+				throw;
+			}
+		}
+
+		public void Dispose()
+		{
+			if (LogWriter != null)
+				LogWriter.Dispose();
+			if (FileSystem != null)
+				FileSystem.Dispose();
+			if (MemTable != null)
+				MemTable.Dispose();
+			if (ImmutableMemTable != null)
+				ImmutableMemTable.Dispose();
 		}
 	}
 }

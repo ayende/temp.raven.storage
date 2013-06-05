@@ -8,6 +8,7 @@ namespace Raven.Storage.Impl
 	public class FileSystem : IDisposable
 	{
 		private readonly string databaseName;
+		private FileStream lockFile;
 
 		public FileSystem(string databaseName)
 		{
@@ -147,8 +148,19 @@ namespace Raven.Storage.Impl
 			return new DirectoryInfo(databaseName).GetFiles();
 		}
 
+		public void Lock()
+		{
+			lockFile = File.Open(Path.Combine(databaseName, Constants.Files.DBLockFile), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+		}
+
+		public bool Exists(string name)
+		{
+			return File.Exists(Path.Combine(databaseName, name));
+		}
+
 		public void Dispose()
 		{
+			lockFile.Dispose();
 		}
 	}
 }

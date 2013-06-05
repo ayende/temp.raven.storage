@@ -22,7 +22,8 @@
 
 		private void Init()
 		{
-			storageState.Recover();
+			//TODO arek - add locking here
+			var versionEdit = storageState.Recover();
 			storageState.CreateNewLog();
 			Writer = new StorageWriter(storageState);
 			Reader = new StorageReader(storageState);
