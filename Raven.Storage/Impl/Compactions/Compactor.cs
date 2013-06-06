@@ -40,7 +40,7 @@
 							if (state.ShuttingDown)
 								throw new InvalidOperationException("Database is shutting down.");
 
-							if (this.state.BackgroundCompactionScheduled)
+							if (state.BackgroundCompactionScheduled)
 							{
 								Thread.Sleep(100);
 								continue;
@@ -48,16 +48,20 @@
 
 							using (var locker = await this.state.Lock.LockAsync())
 							{
-								this.MaybeScheduleCompaction(locker);
-								break;
+								await MaybeScheduleCompaction(locker);
+								state.BackgroundTask.Wait();
+
+								return;
 							}
 						}
 					});
 		}
 
-		internal void MaybeScheduleCompaction(AsyncLock.LockScope lockScope)
+		internal async Task MaybeScheduleCompaction(AsyncLock.LockScope locker)
 		{
-			Debug.Assert(lockScope != null);
+			Debug.Assert(locker != null);
+			await locker.LockAsync();
+
 			if (state.BackgroundCompactionScheduled)
 			{
 				return; // alread scheduled, nothing to do
@@ -68,46 +72,50 @@
 			}
 			if (state.ImmutableMemTable == null &&
 				manualCompaction == null &&
-				state.VersionSet.NeedsCompaction)
+				state.VersionSet.NeedsCompaction == false)
 			{
 				// No work to be done
 				return;
 			}
+
 			state.BackgroundCompactionScheduled = true;
-			state.BackgroundTask = Task.Factory.StartNew(RunCompaction);
+			state.BackgroundTask = Task.Factory.StartNew(() => RunCompaction());
 		}
 
-		private async void RunCompaction()
+		private async Task RunCompaction()
 		{
-			try
-			{
-				this.BackgroundCompaction();
-			}
-			catch (Exception)
-			{
-				// Wait a little bit before retrying background compaction in
-				// case this is an environmental problem and we do not want to
-				// chew up resources for failed compactions for the duration of
-				// the problem.
-
-				Thread.Sleep(1000000);
-			}
-			finally
-			{
-				state.BackgroundCompactionScheduled = false;
-			}
-
 			using (var locker = await state.Lock.LockAsync())
 			{
-				this.MaybeScheduleCompaction(locker);
+				try
+				{
+					await BackgroundCompaction(locker);
+				}
+				catch (Exception)
+				{
+					state.BackgroundCompactionScheduled = false;
+					locker.Exit();
+
+					// Wait a little bit before retrying background compaction in
+					// case this is an environmental problem and we do not want to
+					// chew up resources for failed compactions for the duration of
+					// the problem.
+
+					Thread.Sleep(1000000);
+				}
+				finally
+				{
+					state.BackgroundCompactionScheduled = false;
+				}
+
+				await MaybeScheduleCompaction(locker);
 			}
 		}
 
-		private void BackgroundCompaction()
+		private async Task BackgroundCompaction(AsyncLock.LockScope locker)
 		{
 			if (state.ImmutableMemTable != null)
 			{
-				CompactMemTable();
+				await CompactMemTable(locker);
 				return;
 			}
 
@@ -144,7 +152,7 @@
 					compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
 					compaction.Edit.AddFile(compaction.Level + 1, file);
 
-					state.LogAndApply(compaction.Edit);
+					await state.LogAndApply(compaction.Edit, locker);
 
 					//	VersionSet::LevelSummaryStorage tmp;
 					//  Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
@@ -157,7 +165,7 @@
 				else
 				{
 					var compactionState = new CompactionState(compaction);
-					DoCompactionWork(compactionState);
+					await DoCompactionWork(compactionState, locker);
 					CleanupCompaction(compactionState);
 					compaction.ReleaseInputs();
 					DeleteObsoleteFiles();
@@ -203,7 +211,7 @@
 			compactionState.Dispose();
 		}
 
-		private void DoCompactionWork(CompactionState compactionState)
+		private async Task DoCompactionWork(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			var watch = Stopwatch.StartNew();
 
@@ -227,7 +235,7 @@
 			//}
 
 			// Release mutex while we're actually doing the compaction work
-			// mutex_.Unlock();
+			locker.Exit();
 
 			IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction);
 			input.SeekToFirst();
@@ -239,7 +247,7 @@
 			{
 				if (this.state.ImmutableMemTable != null)
 				{
-					this.CompactMemTable();
+					await this.CompactMemTable(locker);
 					// bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
 				}
 
@@ -299,7 +307,7 @@
 						{
 							try
 							{
-								OpenCompactionOutputFile(compactionState);
+								await OpenCompactionOutputFile(compactionState, locker);
 							}
 							catch (Exception)
 							{
@@ -360,22 +368,22 @@
 
 			state.CompactionStats[compactionState.Compaction.Level + 1].Add(stats);
 
-			InstallCompactionResults(compactionState);
+			await InstallCompactionResults(compactionState, locker);
 		}
 
-		private void OpenCompactionOutputFile(CompactionState compactionState)
+		private async Task OpenCompactionOutputFile(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			Debug.Assert(compactionState != null);
 			Debug.Assert(compactionState.Builder != null);
 
 			ulong fileNumber;
-			// lock mutex
+			await locker.LockAsync();
 
 			fileNumber = this.state.VersionSet.NewFileNumber();
 			pendingOutputs.Add(fileNumber);
 			compactionState.AddOutput(fileNumber);
 
-			//unlock mutex
+			locker.Exit();
 
 			// make the output file
 			var fileName = this.state.FileSystem.GetTableFileName(fileNumber);
@@ -388,9 +396,9 @@
 			compactionState.Builder = new TableBuilder(this.state.Options, file, () => tempFile);
 		}
 
-		private void InstallCompactionResults(CompactionState compactionState)
+		private async Task InstallCompactionResults(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
-			// mutex.AssertHeld();
+			await locker.LockAsync();
 
 			//Log(options_.info_log,  "Compacted %d@%d + %d@%d files => %lld bytes",
 			//  compact->compaction->num_input_files(0),
@@ -406,7 +414,7 @@
 				compactionState.Compaction.Edit.AddFile(level + 1, output);
 			}
 
-			this.state.LogAndApply(compactionState.Compaction.Edit);
+			await this.state.LogAndApply(compactionState.Compaction.Edit, locker);
 		}
 
 		private void FinishCompactionOutputFile(CompactionState compactionState, IIterator input)
@@ -459,7 +467,8 @@
 		/// Compact the in-memory write buffer to disk.  Switches to a new
 		/// log-file/memtable and writes a new descriptor if successful.
 		/// </summary>
-		private void CompactMemTable()
+		/// <param name="locker"></param>
+		private async Task CompactMemTable(AsyncLock.LockScope locker)
 		{
 			if (state.ImmutableMemTable == null)
 				throw new InvalidOperationException("ImmutableMemTable cannot be null.");
@@ -475,7 +484,7 @@
 
 			edit.SetPrevLogNumber(0);
 			edit.SetLogNumber(state.LogFileNumber);
-			this.state.LogAndApply(edit); // maybe add mutex?
+			await this.state.LogAndApply(edit, locker);
 
 			this.state.ImmutableMemTable = null;
 			DeleteObsoleteFiles();
@@ -486,7 +495,6 @@
 			var live = pendingOutputs;
 			state.VersionSet.AddLiveFiles(live);
 
-			var databaseName = state.DatabaseName;
 			var databaseFiles = state.FileSystem.GetFiles();
 
 			foreach (var file in databaseFiles)
@@ -507,12 +515,12 @@
 							keep = (number >= state.VersionSet.ManifestFileNumber);
 							break;
 						case FileType.TableFile:
-							keep = (live.IndexOf(number) != live.Count - 1);
+							keep = live.Contains(number);
 							break;
 						case FileType.TempFile:
 							// Any temp files that are currently being written to must
 							// be recorded in pending_outputs_, which is inserted into "live"
-							keep = (live.IndexOf(number) != live.Count - 1);
+							keep = live.Contains(number);
 							break;
 						case FileType.CurrentFile:
 						case FileType.DBLockFile:

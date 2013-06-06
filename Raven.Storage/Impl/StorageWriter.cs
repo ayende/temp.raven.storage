@@ -166,7 +166,7 @@
 					this.state.ImmutableMemTable = this.state.MemTable;
 					this.state.MemTable = new MemTable(this.state);
 					force = false;
-					this.state.Compactor.MaybeScheduleCompaction(lockScope);
+					await this.state.Compactor.MaybeScheduleCompaction(lockScope);
 				}
 			}
 		}

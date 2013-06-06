@@ -51,7 +51,7 @@ namespace Raven.Storage.Impl
 			MemTable = new MemTable(this);
 			TableCache = new TableCache(this);
 			VersionSet = new VersionSet(this);
-			Compactor = new Compactor(this);	
+			Compactor = new Compactor(this);
 		}
 
 		public void CreateNewLog()
@@ -71,8 +71,10 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		public void LogAndApply(VersionEdit edit)
+		public async Task LogAndApply(VersionEdit edit, AsyncLock.LockScope locker)
 		{
+			await locker.LockAsync();
+
 			string newManifestFile = null;
 
 			try
@@ -113,7 +115,7 @@ namespace Raven.Storage.Impl
 				}
 
 				// Unlock during expensive MANIFEST log write
-				//mu->Unlock();
+				locker.Exit();
 
 				// Write new record to MANIFEST log
 
@@ -139,7 +141,7 @@ namespace Raven.Storage.Impl
 					// will be discarded below.
 				}
 
-				//mu->Lock();
+				await locker.LockAsync();
 
 				// Install the new version
 				VersionSet.AppendVersion(version);
@@ -158,6 +160,8 @@ namespace Raven.Storage.Impl
 
 					FileSystem.DeleteFile(newManifestFile);
 				}
+
+				throw;
 			}
 		}
 
@@ -263,7 +267,7 @@ namespace Raven.Storage.Impl
 		public void CreateNewDatabase()
 		{
 			var newDb = new VersionEdit();
-		
+
 			newDb.SetComparatorName(Options.Comparator.Name);
 			newDb.SetLogNumber(0);
 			newDb.SetNextFile(2);
@@ -283,7 +287,7 @@ namespace Raven.Storage.Impl
 
 				SetCurrentFile(1);
 			}
-			catch(Exception ex)
+			catch (Exception)
 			{
 				FileSystem.DeleteFile(manifest);
 

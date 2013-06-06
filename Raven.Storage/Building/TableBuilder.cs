@@ -218,6 +218,8 @@ namespace Raven.Storage.Building
 				_indexStream.Dispose();
 			if (_filterBlockStream != null)
 				_filterBlockStream.Dispose();
+			if (_dataStream != null)
+				_dataStream.Dispose();
 		}
 	}
 }

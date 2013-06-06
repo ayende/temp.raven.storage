@@ -11,9 +11,9 @@
 		public void T1()
 		{
 			using (var storage = NewStorage(new StorageOptions
-												{
-													WriteBatchSize = 1
-												}))
+				                                {
+					                                WriteBatchSize = 1
+				                                }))
 			{
 				for (int i = 0; i < 3; i++)
 				{

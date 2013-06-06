@@ -51,22 +51,24 @@ namespace Raven.Storage.Impl
 			number = 0;
 			fileType = FileType.Unknown;
 
-			if (file.Name.Equals(Constants.Files.CurrentFile, StringComparison.InvariantCultureIgnoreCase))
+			var fileName = ExtractFileName(file);
+
+			if (fileName.Equals(Constants.Files.CurrentFile, StringComparison.InvariantCultureIgnoreCase))
 			{
 				number = 0;
 				fileType = FileType.CurrentFile;
 			}
-			else if (file.Name.Equals(Constants.Files.DBLockFile, StringComparison.InvariantCultureIgnoreCase))
+			else if (fileName.Equals(Constants.Files.DBLockFile, StringComparison.InvariantCultureIgnoreCase))
 			{
 				number = 0;
 				fileType = FileType.DBLockFile;
 			}
-			else if (file.Name.Equals(Constants.Files.LogFile) || file.FullName.Equals(Constants.Files.CurrentFile + ".old"))
+			else if (fileName.Equals(Constants.Files.LogFile) || file.FullName.Equals(Constants.Files.CurrentFile + ".old"))
 			{
 				number = 0;
 				fileType = FileType.InfoLogFile;
 			}
-			else if (file.Name.StartsWith(Constants.Files.ManifestPrefix, StringComparison.InvariantCultureIgnoreCase))
+			else if (fileName.StartsWith(Constants.Files.ManifestPrefix, StringComparison.InvariantCultureIgnoreCase))
 			{
 				if (!string.IsNullOrEmpty(file.Extension))
 				{
@@ -74,7 +76,7 @@ namespace Raven.Storage.Impl
 				}
 
 				var prefixLength = Constants.Files.ManifestPrefix.Length;
-				if (!ulong.TryParse(file.Name.Substring(prefixLength, file.Name.Length - prefixLength), out number))
+				if (!ulong.TryParse(fileName.Substring(prefixLength, file.Name.Length - prefixLength), out number))
 				{
 					return false;
 				}
@@ -84,7 +86,7 @@ namespace Raven.Storage.Impl
 			else
 			{
 				ulong extractedNumber;
-				var toParse = Regex.Replace(file.Name, @"[^\d]", string.Empty);
+				var toParse = Regex.Replace(fileName, @"[^\d]", string.Empty);
 
 				if (!ulong.TryParse(toParse, out extractedNumber))
 				{
@@ -112,6 +114,15 @@ namespace Raven.Storage.Impl
 			return true;
 		}
 
+		private string ExtractFileName(FileSystemInfo file)
+		{
+			var index = file.Name.IndexOf(databaseName.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase);
+			if (index == -1)
+				return file.Name;
+
+			return file.Name.Substring(index + databaseName.Length);
+		}
+
 		public string DescriptorFileName(ulong manifestFileNumber)
 		{
 			if (manifestFileNumber <= 0)
@@ -122,7 +133,20 @@ namespace Raven.Storage.Impl
 
 		public void RenameFile(string source, string destination)
 		{
-			File.Move(Path.Combine(databaseName, source), Path.Combine(databaseName, destination));
+			var src = Path.Combine(databaseName, source);
+			var dst = Path.Combine(databaseName, destination);
+
+			if (!File.Exists(src))
+			{
+				throw new InvalidOperationException("Source file does not exist.");
+			}
+
+			if (File.Exists(dst))
+			{
+				File.Delete(dst);
+			}
+
+			File.Move(src, dst);
 		}
 
 		public string GetCurrentFileName()
@@ -132,7 +156,7 @@ namespace Raven.Storage.Impl
 
 		public void EnsureDatabaseDirectoryExists()
 		{
-			if(Directory.Exists(databaseName))
+			if (Directory.Exists(databaseName))
 				return;
 
 			CreateDirectory(databaseName);
