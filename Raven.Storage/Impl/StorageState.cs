@@ -77,12 +77,12 @@ namespace Raven.Storage.Impl
 
 			try
 			{
-				if (!edit.HasLogNumber)
+				if (!edit.LogNumber.HasValue)
 					edit.SetLogNumber(VersionSet.LogNumber);
 				else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
 					throw new InvalidOperationException("LogNumber");
 
-				if (!edit.HasPrevLogNumber)
+				if (!edit.PrevLogNumber.HasValue)
 					edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
 
 				edit.SetNextFile(VersionSet.NextFileNumber);
@@ -143,8 +143,8 @@ namespace Raven.Storage.Impl
 
 				// Install the new version
 				VersionSet.AppendVersion(version);
-				VersionSet.SetLogNumber(edit.LogNumber);
-				VersionSet.SetPrevLogNumber(edit.PrevLogNumber);
+				VersionSet.SetLogNumber(edit.LogNumber.Value);
+				VersionSet.SetPrevLogNumber(edit.PrevLogNumber.Value);
 			}
 			catch (Exception)
 			{
@@ -164,7 +164,7 @@ namespace Raven.Storage.Impl
 		private void SetCurrentFile(ulong descriptorNumber)
 		{
 			var manifest = FileSystem.DescriptorFileName(descriptorNumber);
-			var contents = manifest + "\n";
+			var contents = manifest;
 
 			var temporaryFileName = FileSystem.GetTempFileName(descriptorNumber);
 
@@ -201,6 +201,8 @@ namespace Raven.Storage.Impl
 					throw new InvalidDataException(DatabaseName + " exists, while the ErrorIfExists option is set to true.");
 				}
 			}
+
+			VersionSet.Recover();
 
 			return null;
 		}

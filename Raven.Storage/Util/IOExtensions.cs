@@ -123,6 +123,16 @@ namespace Raven.Storage.Util
 			return size + slice.Count;
 		}
 
+		public static Slice ReadSlice(this Stream stream)
+		{
+			var size = stream.Read7BitEncodedInt();
+
+			var buffer = new byte[size];
+			stream.Read(buffer, 0, size);
+
+			return new Slice(buffer);
+		}
+
 		public static async Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)
 		{
 			byte[] buffer;

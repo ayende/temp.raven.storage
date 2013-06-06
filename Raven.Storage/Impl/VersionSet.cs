@@ -1,4 +1,8 @@
-﻿namespace Raven.Storage.Impl
+﻿using Raven.Storage.Building;
+using Raven.Storage.Exceptions;
+using Raven.Storage.Impl.Streams;
+
+namespace Raven.Storage.Impl
 {
 	using System;
 	using System.Collections.Generic;
@@ -377,6 +381,88 @@
 				return new EmptyIterator();
 
 			return n == 1 ? list.First() : new MergingIterator(comparator, list, n);
+		}
+
+		public void Recover()
+		{
+			using (var currentFile = storageContext.FileSystem.OpenForReading(storageContext.FileSystem.GetCurrentFileName()))
+			{
+				string currentManifest;
+
+				using (var reader = new StreamReader(currentFile))
+				{
+					currentManifest = reader.ReadToEnd();
+				}
+
+				if (string.IsNullOrEmpty(currentManifest))
+				{
+					throw new FormatException("CURRENT file should not be empty.");
+				}
+
+				using (var manifestFile = storageContext.FileSystem.OpenForReading(currentManifest))
+				{
+					var logReader = new LogReader(manifestFile, true, 0, storageContext.Options.BufferPool);
+
+					VersionEdit edit;
+
+					Stream recordStream;
+					if (logReader.TryReadRecord(out recordStream))
+					{
+						edit = VersionEdit.DecodeFrom(recordStream);
+						recordStream.Dispose();
+					}
+					else
+					{
+						throw new ManifestFileException("File is empty");
+					}
+
+					if (edit.Comparator != storageContext.Options.Comparator.Name)
+					{
+						throw new InvalidOperationException(
+							string.Format("Decoded version edit comparator '{0}' does not match '{1}' that is currently in use.",
+							              edit.Comparator, storageContext.Options.Comparator.Name));
+					}
+
+					if (edit.NextFileNumber == null)
+					{
+						throw new ManifestFileException("No NextFileNumber entry");
+					}
+					if(edit.LogNumber == null)
+					{
+						throw new ManifestFileException("No LogNumber entry");
+					}
+					if (edit.LastSequence == null)
+					{
+						throw new ManifestFileException("No LastSequenceNumber entry");
+					}
+
+					var builder = new Builder(storageContext, this, current);
+					builder.Apply(edit);
+
+					var prevLogNumber = edit.PrevLogNumber.HasValue ? edit.PrevLogNumber.Value : 0;
+					MarkFileNumberUsed(prevLogNumber);
+					MarkFileNumberUsed(edit.LogNumber.Value);
+
+					var version = new Version(storageContext, this);
+					builder.SaveTo(version);
+					Version.Finalize(version);
+					AppendVersion(version);
+
+					ManifestFileNumber = edit.NextFileNumber.Value;
+					NextFileNumber = edit.NextFileNumber.Value + 1;
+					LastSequence = edit.LastSequence.Value;
+					LogNumber = edit.LogNumber.Value;
+					PrevLogNumber = prevLogNumber;
+				}
+			}
+		}
+
+		private void MarkFileNumberUsed(ulong number)
+		{
+			if (NextFileNumber <= number)
+			{
+				NextFileNumber = number + 1;
+			}
 		}
 	}
 }

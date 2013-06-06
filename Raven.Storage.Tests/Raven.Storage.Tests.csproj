@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compactions\CompactionTests.cs" />
+    <Compile Include="Compactions\VersionEditTests.cs" />
     <Compile Include="FileSystemTests.cs" />
     <Compile Include="Filtering\BloomFilterTest.cs" />
     <Compile Include="Hashing\CaseInsensitiveHashing.cs" />

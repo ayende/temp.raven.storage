@@ -34,9 +34,9 @@
 			this.storageContext = storageContext;
 			this.versionSet = versionSet;
 			this.@base = @base;
-			this.comparator = new BySmallestKey(this.storageContext.InternalKeyComparator);
+			comparator = new BySmallestKey(this.storageContext.InternalKeyComparator);
 
-			this.levels = new LevelState[Config.NumberOfLevels];
+			levels = new LevelState[Config.NumberOfLevels];
 			for (var level = 0; level < Config.NumberOfLevels; level++)
 			{
 				levels[level] = new LevelState();
