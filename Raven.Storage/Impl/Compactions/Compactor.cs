@@ -49,6 +49,10 @@
 							using (var locker = await this.state.Lock.LockAsync())
 							{
 								await MaybeScheduleCompaction(locker);
+								var task = state.BackgroundTask;
+								locker.Exit();
+								task.Wait();
+
 								return;
 							}
 						}
