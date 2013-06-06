@@ -162,13 +162,7 @@
 
 					await state.LogAndApply(compaction.Edit, locker);
 
-					//	VersionSet::LevelSummaryStorage tmp;
-					//  Log(options_.info_log, "Moved #%lld to level-%d %lld bytes %s: %s\n",
-					//	static_cast<unsigned long long>(f->number),
-					//	c->level() + 1,
-					//	static_cast<unsigned long long>(f->file_size),
-					//	status.ToString().c_str(),
-					//	versions_->LevelSummary(&tmp));
+					log.Info("Moved {0} to level-{1} {2} bytes", file.FileNumber, compaction.Level + 1, file.FileSize);
 				}
 				else
 				{
@@ -218,11 +212,7 @@
 		{
 			var watch = Stopwatch.StartNew();
 
-			//Log(options_.info_log, "Compacting %d@%d + %d@%d files",
-			//  compact->compaction->num_input_files(0),
-			//  compact->compaction->level(),
-			//  compact->compaction->num_input_files(1),
-			//  compact->compaction->level() + 1);
+			log.Info("Compacting {0}@{1} + {2}@{3} files.", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1);
 
 			Debug.Assert(state.VersionSet.GetNumberOfFilesAtLevel(compactionState.Compaction.Level) > 0);
 			Debug.Assert(compactionState.Builder == null);
@@ -403,12 +393,7 @@
 		{
 			await locker.LockAsync();
 
-			//Log(options_.info_log,  "Compacted %d@%d + %d@%d files => %lld bytes",
-			//  compact->compaction->num_input_files(0),
-			//  compact->compaction->level(),
-			//  compact->compaction->num_input_files(1),
-			//  compact->compaction->level() + 1,
-			//  static_cast<long long>(compact->total_bytes));
+			log.Info("Compacted {0}@{1} + {2}@{3} files => {4} bytes", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1, compactionState.TotalBytes);
 
 			compactionState.Compaction.AddInputDeletions(compactionState.Compaction.Edit);
 			var level = compactionState.Compaction.Level;
@@ -540,9 +525,7 @@
 							state.TableCache.Evict(number);
 						}
 
-						//Log(options_.info_log, "Delete type=%d #%lld\n",
-						//int(type),
-						//static_cast<unsigned long long>(number));
+						log.Info("Delete type={0} {1}", fileType, number);
 
 						state.FileSystem.DeleteFile(file.Name);
 					}

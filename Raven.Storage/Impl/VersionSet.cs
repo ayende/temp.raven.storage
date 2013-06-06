@@ -10,6 +10,7 @@ namespace Raven.Storage.Impl
 	using System.IO;
 	using System.Linq;
 
+	using Raven.Abstractions.Logging;
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 	using Raven.Storage.Impl.Compactions;
@@ -18,6 +19,8 @@ namespace Raven.Storage.Impl
 
 	public class VersionSet
 	{
+		private readonly ILog log = LogManager.GetCurrentClassLogger();
+
 		private ulong lastSequence;
 
 		private Version current;
@@ -233,15 +236,7 @@ namespace Raven.Storage.Impl
 
 					if (expanded1.Count == compaction.Inputs[1].Count)
 					{
-						//Log(options_->info_log,
-						//	"Expanding@%d %d+%d (%ld+%ld bytes) to %d+%d (%ld+%ld bytes)\n",
-						//	level,
-						//	int(c->inputs_[0].size()),
-						//	int(c->inputs_[1].size()),
-						//	long(inputs0_size), long(inputs1_size),
-						//	int(expanded0.size()),
-						//	int(expanded1.size()),
-						//	long(expanded0_size), long(inputs1_size));
+						log.Info("Expanding@{0} {1}+{2} ({3}+{4} bytes) to {5}+{6} ({7}+{8} bytes).", level, compaction.Inputs[0].Count, compaction.Inputs[1].Count, inputs0Size, inputs1Size, expanded0.Count, expanded1.Count, expanded0Size, inputs1Size);
 
 						smallestKey = newStart;
 						largestKey = newLimit;
@@ -420,14 +415,14 @@ namespace Raven.Storage.Impl
 					{
 						throw new InvalidOperationException(
 							string.Format("Decoded version edit comparator '{0}' does not match '{1}' that is currently in use.",
-							              edit.Comparator, storageContext.Options.Comparator.Name));
+										  edit.Comparator, storageContext.Options.Comparator.Name));
 					}
 
 					if (edit.NextFileNumber == null)
 					{
 						throw new ManifestFileException("No NextFileNumber entry");
 					}
-					if(edit.LogNumber == null)
+					if (edit.LogNumber == null)
 					{
 						throw new ManifestFileException("No LogNumber entry");
 					}
