@@ -49,8 +49,6 @@
 							using (var locker = await this.state.Lock.LockAsync())
 							{
 								await MaybeScheduleCompaction(locker);
-								state.BackgroundTask.Wait();
-
 								return;
 							}
 						}
@@ -100,7 +98,7 @@
 					// chew up resources for failed compactions for the duration of
 					// the problem.
 
-					Thread.Sleep(1000000);
+					Thread.Sleep(1000);
 				}
 				finally
 				{
