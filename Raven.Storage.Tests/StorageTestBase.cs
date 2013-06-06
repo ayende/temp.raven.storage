@@ -3,6 +3,9 @@
 	using System;
 	using System.Collections.Generic;
 	using System.IO;
+	using System.Xml;
+
+	using NLog.Config;
 
 	public abstract class StorageTestBase : IDisposable
 	{
@@ -10,6 +13,7 @@
 
 		protected StorageTestBase()
 		{
+			ConfigureLogging();
 			storages = new List<Storage>();
 		}
 
@@ -60,6 +64,15 @@
 					GC.WaitForPendingFinalizers();
 					isRetry = true;
 				}
+			}
+		}
+
+		private void ConfigureLogging()
+		{
+			using (var stream = this.GetType().Assembly.GetManifestResourceStream("Raven.Storage.Tests.NLog.config"))
+			using (var reader = XmlReader.Create(stream))
+			{
+				NLog.LogManager.Configuration = new XmlLoggingConfiguration(reader, "default-config");
 			}
 		}
 	}

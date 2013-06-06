@@ -6,6 +6,7 @@
 	using System.Threading;
 	using System.Threading.Tasks;
 
+	using Raven.Abstractions.Logging;
 	using Raven.Storage.Building;
 	using Raven.Storage.Data;
 	using Raven.Storage.Memtable;
@@ -15,6 +16,8 @@
 
 	public class Compactor
 	{
+		private readonly ILog log = LogManager.GetCurrentClassLogger();
+
 		private readonly StorageState state;
 
 		private readonly IList<ulong> pendingOutputs = new List<ulong>();
@@ -86,14 +89,17 @@
 
 		private async Task RunCompaction()
 		{
+			using(LogManager.OpenMappedContext("storage", state.DatabaseName))
 			using (var locker = await state.Lock.LockAsync())
 			{
 				try
 				{
 					await BackgroundCompaction(locker);
 				}
-				catch (Exception)
+				catch (Exception e)
 				{
+					log.ErrorException(string.Format("Compaction error: {0}", e.Message), e);
+
 					state.BackgroundCompactionScheduled = false;
 					locker.Exit();
 
@@ -188,18 +194,13 @@
 			}
 			catch (Exception)
 			{
-				//		Log(options_.info_log,
-				//			"Compaction error: %s", status.ToString().c_str());
-				//		if (options_.paranoid_checks && bg_error_.ok())
-				//		{
-				//			bg_error_ = status;
-				//		}
-
 				if (isManual)
 				{
 					var mCompaction = this.manualCompaction;
 					mCompaction.Done = true;
 				}
+
+				throw;
 			}
 		}
 
