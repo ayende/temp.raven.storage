@@ -397,57 +397,79 @@ namespace Raven.Storage.Impl
 				using (var manifestFile = storageContext.FileSystem.OpenForReading(currentManifest))
 				{
 					var logReader = new LogReader(manifestFile, true, 0, storageContext.Options.BufferPool);
-
-					VersionEdit edit;
+					var builder = new Builder(storageContext, this, current);
+					
+					ulong? nextFileFromManifest = null;
+					ulong? lastSequenceFromManifest = null;
+					ulong? logNumberFromManifest = null;
+					ulong? prevLogNumberFromManifest = null;
 
 					Stream recordStream;
-					if (logReader.TryReadRecord(out recordStream))
+					while (logReader.TryReadRecord(out recordStream))
 					{
-						edit = VersionEdit.DecodeFrom(recordStream);
-						recordStream.Dispose();
-					}
-					else
-					{
-						throw new ManifestFileException("File is empty");
+						VersionEdit edit;
+						using (recordStream)
+						{
+							edit = VersionEdit.DecodeFrom(recordStream);
+						}
+
+						if (edit.Comparator != storageContext.Options.Comparator.Name)
+						{
+							throw new InvalidOperationException(
+								string.Format("Decoded version edit comparator '{0}' does not match '{1}' that is currently in use.",
+											  edit.Comparator, storageContext.Options.Comparator.Name));
+						}
+
+						builder.Apply(edit);
+
+						if (edit.NextFileNumber.HasValue)
+						{
+							nextFileFromManifest = edit.NextFileNumber;
+						}
+						if (edit.PrevLogNumber.HasValue)
+						{
+							prevLogNumberFromManifest = edit.PrevLogNumber;
+						}
+						if(edit.LogNumber.HasValue)
+						{
+							logNumberFromManifest = edit.LogNumber;
+						}
+						if (edit.LastSequence.HasValue)
+						{
+							lastSequenceFromManifest = edit.LastSequence;
+						}
 					}
 
-					if (edit.Comparator != storageContext.Options.Comparator.Name)
-					{
-						throw new InvalidOperationException(
-							string.Format("Decoded version edit comparator '{0}' does not match '{1}' that is currently in use.",
-										  edit.Comparator, storageContext.Options.Comparator.Name));
-					}
-
-					if (edit.NextFileNumber == null)
+					if (nextFileFromManifest == null)
 					{
 						throw new ManifestFileException("No NextFileNumber entry");
 					}
-					if (edit.LogNumber == null)
+					if (logNumberFromManifest == null)
 					{
 						throw new ManifestFileException("No LogNumber entry");
 					}
-					if (edit.LastSequence == null)
+					if (lastSequenceFromManifest == null)
 					{
 						throw new ManifestFileException("No LastSequenceNumber entry");
 					}
+					if (prevLogNumberFromManifest == null)
+					{
+						prevLogNumberFromManifest = 0;
+					}
 
-					var builder = new Builder(storageContext, this, current);
-					builder.Apply(edit);
-
-					var prevLogNumber = edit.PrevLogNumber.HasValue ? edit.PrevLogNumber.Value : 0;
-					MarkFileNumberUsed(prevLogNumber);
-					MarkFileNumberUsed(edit.LogNumber.Value);
+					MarkFileNumberUsed(prevLogNumberFromManifest.Value);
+					MarkFileNumberUsed(logNumberFromManifest.Value);
 
 					var version = new Version(storageContext, this);
 					builder.SaveTo(version);
 					Version.Finalize(version);
 					AppendVersion(version);
 
-					ManifestFileNumber = edit.NextFileNumber.Value;
-					NextFileNumber = edit.NextFileNumber.Value + 1;
-					LastSequence = edit.LastSequence.Value;
-					LogNumber = edit.LogNumber.Value;
-					PrevLogNumber = prevLogNumber;
+					ManifestFileNumber = nextFileFromManifest.Value;
+					NextFileNumber = nextFileFromManifest.Value + 1;
+					LastSequence = lastSequenceFromManifest.Value;
+					LogNumber = logNumberFromManifest.Value;
+					PrevLogNumber = prevLogNumberFromManifest.Value;
 				}
 			}
 		}
