@@ -14,51 +14,19 @@
 		{
 			get
 			{
-				return !string.IsNullOrEmpty(comparator);
+				return !string.IsNullOrEmpty(Comparator);
 			}
 		}
 
-		public bool HasLogNumber
-		{
-			get
-			{
-				return LogNumber > 0;
-			}
-		}
+		public string Comparator { get; private set; }
 
-		public bool HasPrevLogNumber
-		{
-			get
-			{
-				return PrevLogNumber > 0;
-			}
-		}
+		public ulong? LogNumber { get; private set; }
 
-		private bool HasNextFileNumber
-		{
-			get
-			{
-				return nextFileNumber > 0;
-			}
-		}
+		public ulong? PrevLogNumber { get; private set; }
 
-		private bool HasLastSequence
-		{
-			get
-			{
-				return lastSequence > 0;
-			}
-		}
+		public ulong? NextFileNumber { get; private set; }
 
-		private string comparator;
-
-		public ulong LogNumber { get; private set; }
-
-		public ulong PrevLogNumber { get; private set; }
-
-		private ulong nextFileNumber;
-
-		private ulong lastSequence;
+		public ulong? LastSequence { get; private set; }
 
 		public IDictionary<int, IList<Slice>> CompactionPointers { get; private set; }
 
@@ -73,27 +41,27 @@
 
 		private void Clear()
 		{
-			comparator = null;
-			LogNumber = 0;
-			PrevLogNumber = 0;
-			lastSequence = 0;
-			nextFileNumber = 0;
+			Comparator = null;
+			LogNumber = null;
+			PrevLogNumber = null;
+			LastSequence = null;
+			NextFileNumber = null;
 
-			this.CompactionPointers = new Dictionary<int, IList<Slice>>();
-			this.DeletedFiles = new Dictionary<int, IList<ulong>>();
-			this.NewFiles = new Dictionary<int, IList<FileMetadata>>();
+			CompactionPointers = new Dictionary<int, IList<Slice>>();
+			DeletedFiles = new Dictionary<int, IList<ulong>>();
+			NewFiles = new Dictionary<int, IList<FileMetadata>>();
 
 			for (int level = 0; level < Config.NumberOfLevels; level++)
 			{
-				this.CompactionPointers.Add(level, new List<Slice>());
-				this.DeletedFiles.Add(level, new List<ulong>());
-				this.NewFiles.Add(level, new List<FileMetadata>());
+				CompactionPointers.Add(level, new List<Slice>());
+				DeletedFiles.Add(level, new List<ulong>());
+				NewFiles.Add(level, new List<FileMetadata>());
 			}
 		}
 
 		public void SetComparatorName(Slice name)
 		{
-			comparator = name.ToString();
+			Comparator = name.ToString();
 		}
 
 		public void SetLogNumber(ulong number)
@@ -108,12 +76,12 @@
 
 		public void SetNextFile(ulong number)
 		{
-			nextFileNumber = number;
+			NextFileNumber = number;
 		}
 
 		public void SetLastSequence(ulong sequence)
 		{
-			lastSequence = sequence;
+			LastSequence = sequence;
 		}
 
 		public void SetCompactionPointer(int level, Slice key)
@@ -133,31 +101,31 @@
 			if (HasComparator)
 			{
 				stream.Write7BitEncodedInt((int)Tag.Comparator);
-				stream.WriteLengthPrefixedSlice(comparator);
+				stream.WriteLengthPrefixedSlice(Comparator);
 			}
 
-			if (HasLogNumber)
+			if (LogNumber.HasValue)
 			{
 				stream.Write7BitEncodedInt((int)Tag.LogNumber);
-				stream.Write7BitEncodedLong(LogNumber);
+				stream.Write7BitEncodedLong(LogNumber.Value);
 			}
 
-			if (HasPrevLogNumber)
+			if (PrevLogNumber.HasValue)
 			{
 				stream.Write7BitEncodedInt((int)Tag.PrevLogNumber);
-				stream.Write7BitEncodedLong(PrevLogNumber);
+				stream.Write7BitEncodedLong(PrevLogNumber.Value);
 			}
 
-			if (HasNextFileNumber)
+			if (NextFileNumber.HasValue)
 			{
 				stream.Write7BitEncodedInt((int)Tag.NextFileNumber);
-				stream.Write7BitEncodedLong(nextFileNumber);
+				stream.Write7BitEncodedLong(NextFileNumber.Value);
 			}
 
-			if (HasLastSequence)
+			if (LastSequence.HasValue)
 			{
 				stream.Write7BitEncodedInt((int)Tag.LastSequence);
-				stream.Write7BitEncodedLong(lastSequence);
+				stream.Write7BitEncodedLong(LastSequence.Value);
 			}
 
 			for (int level = 0; level < Config.NumberOfLevels; level++)
@@ -191,6 +159,69 @@
 			writer.RecordStarted();
 			writer.WriteAsync(data, 0, data.Length).Wait();
 			writer.RecordCompletedAsync().Wait();
+		}
+
+		public static VersionEdit DecodeFrom(Stream stream)
+		{
+			var result = new VersionEdit();
+
+			while (true)
+			{
+				Tag tag;
+				try
+				{
+					tag = (Tag)stream.Read7BitEncodedInt();
+				}
+				catch (EndOfStreamException)
+				{
+					break;
+				}
+				
+				int level;
+				switch (tag)
+				{
+					case Tag.Comparator:
+						var slice = stream.ReadSlice();
+						result.SetComparatorName(slice);
+						break;
+					case Tag.LogNumber:
+						result.SetLogNumber((ulong) stream.Read7BitEncodedLong());
+						break;
+					case Tag.PrevLogNumber:
+						result.SetPrevLogNumber((ulong) stream.Read7BitEncodedLong());
+						break;
+					case Tag.NextFileNumber:
+						result.SetNextFile((ulong) stream.Read7BitEncodedLong());
+						break;
+					case Tag.LastSequence:
+						result.SetLastSequence((ulong) stream.Read7BitEncodedLong());
+						break;
+					case Tag.CompactPointer:
+						level = stream.Read7BitEncodedInt();
+						var compactionPointer = stream.ReadSlice();
+
+						result.SetCompactionPointer(level, compactionPointer);
+						break;
+					case Tag.DeletedFile:
+						level = stream.Read7BitEncodedInt();
+						var fileNumber = (ulong) stream.Read7BitEncodedLong();
+
+						result.DeleteFile(level, fileNumber);
+						break;
+					case Tag.NewFile:
+						level = stream.Read7BitEncodedInt();
+						var fileMetadata = new FileMetadata();
+						fileMetadata.FileNumber = (ulong) stream.Read7BitEncodedLong();
+						fileMetadata.FileSize = stream.Read7BitEncodedLong();
+						fileMetadata.SmallestKey = stream.ReadSlice();
+						fileMetadata.LargestKey = stream.ReadSlice();
+
+						result.AddFile(level, fileMetadata);
+						break;
+				}
+			}
+
+			return result;
 		}
 
 		public void DeleteFile(int level, ulong fileNumber)

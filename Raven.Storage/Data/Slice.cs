@@ -90,5 +90,20 @@
 		{
 			return _count <= 0;
 		}
+
+		public override string ToString()
+		{
+			return Encoding.UTF8.GetString(Array, Offset, Count); 
+		}
+
+		public override bool Equals(object obj)
+		{
+			return ToString() == obj.ToString();
+		}
+
+		public override int GetHashCode()
+		{
+			return ToString().GetHashCode();
+		} 
 	}
 }
