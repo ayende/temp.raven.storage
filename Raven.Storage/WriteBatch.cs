@@ -141,7 +141,7 @@ namespace Raven.Storage
 								batch.Delete(key);
 								break;
 							case Operations.Put:
-								logRecordStream.Read(buffer, 0, 8);
+								logRecordStream.Read(buffer, 0, 4);
 								var size = BitConverter.ToInt64(buffer, 0);
 								var value = new MemoryStream();
 								logRecordStream.CopyTo(value, size, LogWriter.BlockSize);
