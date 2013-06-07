@@ -37,6 +37,7 @@ namespace Raven.Storage
 			var edit = storageState.Recover();
 			
 			storageState.CreateNewLog();
+			edit.SetComparatorName(storageState.Options.Comparator.Name);
 			edit.SetLogNumber(storageState.LogFileNumber);
 
 			Writer = new StorageWriter(storageState);
