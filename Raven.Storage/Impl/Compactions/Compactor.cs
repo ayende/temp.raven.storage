@@ -483,7 +483,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		internal void DeleteObsoleteFiles()
 		{
-			var live = pendingOutputs;
+			var live = new List<ulong>(pendingOutputs);
 			var liveFiles = state.VersionSet.GetLiveFiles();
 			live.AddRange(liveFiles);
 
