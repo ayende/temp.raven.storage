@@ -25,22 +25,25 @@
 			var imm = state.ImmutableMemTable;
 			var currentVersion = state.VersionSet.Current;
 
+			// TODO [ppekrol] snapshoting
+			var snapshot = state.VersionSet.LastSequence;
+
 			var reference = new Reference<Slice> { Value = key };
 
 			Stream stream;
 			GetStats stats;
 
-			if (mem.TryGet(reference.Value, Format.MaxSequenceNumber, out stream))
+			if (mem.TryGet(reference.Value, snapshot, out stream))
 			{
 				return stream;
 			}
 
-			if (imm != null && imm.TryGet(reference.Value, Format.MaxSequenceNumber, out stream))
+			if (imm != null && imm.TryGet(reference.Value, snapshot, out stream))
 			{
 				return stream;
 			}
 
-			if (currentVersion.TryGet(reference.Value, options, out stream, out stats))
+			if (currentVersion.TryGet(reference.Value, snapshot, options, out stream, out stats))
 			{
 				if (currentVersion.UpdateStats(stats))
 				{

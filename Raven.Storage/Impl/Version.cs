@@ -222,13 +222,15 @@
 			return false;
 		}
 
-		public bool TryGet(Slice key, ReadOptions readOptions, out Stream stream, out GetStats stats)
+		public bool TryGet(Slice key, ulong seq, ReadOptions readOptions, out Stream stream, out GetStats stats)
 		{
 			stats = new GetStats
 						{
 							SeekFile = null,
 							SeekFileLevel = -1
 						};
+
+			var parsedKey = new ParsedInternalKey(key, seq, ItemType.ValueForSeek);
 
 			FileMetadata lastFileRead = null;
 			int lastFileReadLevel = -1;
@@ -253,8 +255,8 @@
 					var tempFiles =
 						files.Where(
 							f =>
-							this.storageContext.InternalKeyComparator.UserComparator.Compare(key, f.SmallestKey) >= 0
-							&& this.storageContext.InternalKeyComparator.UserComparator.Compare(key, f.LargestKey) <= 0)
+							this.storageContext.InternalKeyComparator.UserComparator.Compare(parsedKey.UserKey, f.SmallestKey) >= 0
+							&& this.storageContext.InternalKeyComparator.UserComparator.Compare(parsedKey.UserKey, f.LargestKey) <= 0)
 							 .OrderByDescending(x => x.FileNumber);
 
 					if (!tempFiles.Any())
@@ -274,7 +276,7 @@
 					}
 					else
 					{
-						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(key, files[index].SmallestKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(parsedKey.UserKey, files[index].SmallestKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
 					}
 				}
 
