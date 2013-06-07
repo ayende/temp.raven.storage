@@ -230,14 +230,19 @@
 							SeekFileLevel = -1
 						};
 
-			var parsedKey = new ParsedInternalKey(key, seq, ItemType.ValueForSeek);
-
 			FileMetadata lastFileRead = null;
 			int lastFileReadLevel = -1;
 
 			// We can search level-by-level since entries never hop across
 			// levels.  Therefore we are guaranteed that if we find data
 			// in an smaller level, later levels are irrelevant.
+
+			Func<Slice, Slice> toUserKey = slice =>
+				{
+					ParsedInternalKey parsedKey;
+					ParsedInternalKey.TryParseInternalKey(slice, out parsedKey);
+					return parsedKey.UserKey;
+				};
 
 			for (var level = 0; level < Config.NumberOfLevels; level++)
 			{
@@ -255,8 +260,8 @@
 					var tempFiles =
 						files.Where(
 							f =>
-							this.storageContext.InternalKeyComparator.UserComparator.Compare(parsedKey.UserKey, f.SmallestKey) >= 0
-							&& this.storageContext.InternalKeyComparator.UserComparator.Compare(parsedKey.UserKey, f.LargestKey) <= 0)
+							storageContext.InternalKeyComparator.UserComparator.Compare(key, toUserKey(f.SmallestKey)) >= 0
+							&& storageContext.InternalKeyComparator.UserComparator.Compare(key, toUserKey(f.LargestKey)) <= 0)
 							 .OrderByDescending(x => x.FileNumber);
 
 					if (!tempFiles.Any())
@@ -276,7 +281,7 @@
 					}
 					else
 					{
-						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(parsedKey.UserKey, files[index].SmallestKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(key, toUserKey(files[index].SmallestKey)) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
 					}
 				}
 
