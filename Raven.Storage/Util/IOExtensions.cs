@@ -123,7 +123,7 @@ namespace Raven.Storage.Util
 			return size + slice.Count;
 		}
 
-		public static Slice ReadSlice(this Stream stream)
+		public static Slice ReadLengthPrefixedSlice(this Stream stream)
 		{
 			var size = stream.Read7BitEncodedInt();
 

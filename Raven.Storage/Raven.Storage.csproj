@@ -94,6 +94,7 @@
     <Compile Include="Memtable\MemoryIterator.cs" />
     <Compile Include="Reading\LevelFileNumIterator.cs" />
     <Compile Include="Reading\MergingIterator.cs" />
+    <Compile Include="Reading\LogReadResult.cs" />
     <Compile Include="Storage.cs" />
     <Compile Include="Exceptions\CorruptedDataException.cs" />
     <Compile Include="Filtering\Bloom.cs" />

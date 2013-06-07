@@ -6,6 +6,7 @@
 
 using System;
 using System.IO;
+using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
 using Raven.Storage.Util;
 

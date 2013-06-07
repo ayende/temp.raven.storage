@@ -55,5 +55,16 @@
 				}
 			}
 		}
+
+		public static void CopyTo(this Stream stream, Stream dest, long bytesToCopy, int bufferSize = 4096)
+		{
+			var buffer = new byte[32768];
+			int read;
+			while (bytesToCopy > 0 && (read = stream.Read(buffer, 0, (int) Math.Min(buffer.Length, bytesToCopy))) > 0)
+			{
+				dest.Write(buffer, 0, read);
+				bytesToCopy -= read;
+			}
+		}
 	}
 }

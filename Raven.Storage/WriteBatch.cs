@@ -8,6 +8,7 @@ using Raven.Storage.Impl;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memory;
 using Raven.Storage.Memtable;
+using Raven.Storage.Reading;
 using Raven.Storage.Util;
 
 namespace Raven.Storage
@@ -32,6 +33,11 @@ namespace Raven.Storage
 		public long Size
 		{
 			get { return _operations.Sum(x => x.Key.Count + x.Op == Operations.Put ? x.Value.Length : 0); }
+		}
+
+		public int OperationCount
+		{
+			get { return _operations.Count; }
 		}
 
 		public void Put(Slice key, Stream value)
@@ -89,11 +95,72 @@ namespace Raven.Storage
 				await state.LogWriter.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
 				if (operation.Op != Operations.Put)
 					continue;
+				buffer = BitConverter.GetBytes(operation.Handle.Size);
+				await state.LogWriter.WriteAsync(buffer, 0, buffer.Length);
 				using (var stream = state.MemTable.Read(operation.Handle))
+				{
 					await state.LogWriter.CopyFromAsync(stream);
+				}
 			}
 
 			await state.LogWriter.RecordCompletedAsync();
+		}
+
+		internal static IList<LogReadResult> ReadFromLog(Stream logFile, BufferPool bufferPool)
+		{
+			var logReader = new LogReader(logFile, true, 0, bufferPool);
+			Stream logRecordStream;
+
+			var readResults = new List<LogReadResult>();
+
+			while (logReader.TryReadRecord(out logRecordStream))
+			{
+				var batch = new WriteBatch();
+				ulong seq;
+				using (logRecordStream)
+				{
+					var buffer = new byte[8];
+					logRecordStream.Read(buffer, 0, 8);
+					seq = BitConverter.ToUInt64(buffer, 0);
+					logRecordStream.Read(buffer, 0, 4);
+					var opCount = BitConverter.ToInt32(buffer, 0);
+
+					for (var i = 0; i < opCount; i++)
+					{
+						logRecordStream.Read(buffer, 0, 1);
+						var op = (Operations) buffer[0];
+						var keyCount = logRecordStream.Read7BitEncodedInt();
+						var array = new byte[keyCount];
+						logRecordStream.Read(array, 0, keyCount);
+
+						var key = new Slice(array);
+
+						switch (op)
+						{
+							case Operations.Delete:
+								batch.Delete(key);
+								break;
+							case Operations.Put:
+								logRecordStream.Read(buffer, 0, 8);
+								var size = BitConverter.ToInt64(buffer, 0);
+								var value = new MemoryStream();
+								logRecordStream.CopyTo(value, size, LogWriter.BlockSize);
+								batch.Put(key, value);
+								break;
+							default:
+								throw new ArgumentException("Invalid operation type: " + op);
+						}
+					}
+				}
+
+				readResults.Add(new LogReadResult
+					{
+						WriteSequence = seq,
+						WriteBatch = batch
+					});
+			}
+
+			return readResults;
 		}
 	}
 }

@@ -1,4 +1,10 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Raven.Storage.Data;
+using Raven.Storage.Exceptions;
+using Raven.Storage.Reading;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Impl
 {
@@ -207,8 +213,92 @@ namespace Raven.Storage.Impl
 			}
 
 			VersionSet.Recover();
+			var minLog = VersionSet.LogNumber;
+			var prevLog = VersionSet.PrevLogNumber;
 
-			return null;
+			var databaseFiles = FileSystem.GetFiles();
+
+			var expected = VersionSet.GetLiveFiles();
+
+			var logNumbers = new List<ulong>();
+
+			foreach (var databaseFile in databaseFiles)
+			{
+				ulong number;
+				FileType fileType;
+				if (FileSystem.TryParseDatabaseFile(databaseFile, out number, out fileType))
+				{
+					expected.Remove(number);
+
+					if (fileType == FileType.LogFile && ((number >= minLog) || (number == prevLog)))
+					{
+						logNumbers.Add(number);
+					}
+				}
+			}
+
+			if (expected.Count > 0)
+			{
+				throw new CorruptedDataException(string.Format("Cannot recover because there are {0} missing files", expected.Count));
+			}
+
+			logNumbers.Sort();
+
+			ulong maxSequence = 0;
+			var edit = new VersionEdit();
+
+			foreach (var logNumber in logNumbers)
+			{
+				RecoverLogFile(logNumber, ref edit, ref maxSequence);
+				VersionSet.MarkFileNumberUsed(logNumber);
+			}
+
+			if (VersionSet.LastSequence < maxSequence)
+			{
+				VersionSet.LastSequence = maxSequence;
+			}
+
+			return edit;
+		}
+
+		private void RecoverLogFile(ulong logNumber, ref VersionEdit edit, ref ulong maxSequence)
+		{
+			var logFileName = FileSystem.GetLogFileName(logNumber);
+
+			IList<LogReadResult> writeBatches;
+			using (var logFile = FileSystem.OpenForReading(logFileName))
+			{
+				writeBatches = WriteBatch.ReadFromLog(logFile, Options.BufferPool);
+			}
+
+			foreach (var item in writeBatches)
+			{
+				var lastSequence = item.WriteSequence + (ulong) item.WriteBatch.OperationCount - 1;
+
+				if (lastSequence > maxSequence)
+				{
+					maxSequence = lastSequence;
+				}
+
+				if (MemTable == null)
+				{
+					MemTable = new MemTable(this);
+				}
+
+				item.WriteBatch.Prepare(MemTable);
+				item.WriteBatch.Apply(MemTable, item.WriteSequence);
+
+				if (MemTable.ApproximateMemoryUsage > Options.WriteBatchSize)
+				{
+					Compactor.WriteLevel0Table(MemTable, null, ref edit);
+					MemTable = null;
+				}
+			}
+
+			if (MemTable != null)
+			{
+				Compactor.WriteLevel0Table(MemTable, null, ref edit);
+			}
 		}
 
 		public FileMetadata BuildTable(MemTable memTable, ulong fileNumber)

@@ -199,6 +199,11 @@ namespace Raven.Storage.Impl
 			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.TableFile);
 		}
 
+		public string GetLogFileName(ulong fileNumber)
+		{
+			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.LogFile);
+		}
+
 		public Stream OpenForReading(string name)
 		{
 			return File.Open(Path.Combine(databaseName, name), FileMode.Open, FileAccess.Read);

@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Impl.Compactions
+﻿using Raven.Abstractions.Extensions;
+
+namespace Raven.Storage.Impl.Compactions
 {
 	using System;
 	using System.Collections.Generic;
@@ -467,7 +469,7 @@
 			var edit = new VersionEdit();
 			var currentVersion = this.state.VersionSet.Current;
 
-			WriteLevel0Table(immutableMemTable, edit, currentVersion);
+			WriteLevel0Table(immutableMemTable, currentVersion, ref edit);
 
 			// Replace immutable memtable with the generated Table
 
@@ -479,10 +481,11 @@
 			DeleteObsoleteFiles();
 		}
 
-		private void DeleteObsoleteFiles()
+		internal void DeleteObsoleteFiles()
 		{
 			var live = pendingOutputs;
-			state.VersionSet.AddLiveFiles(live);
+			var liveFiles = state.VersionSet.GetLiveFiles();
+			live.AddRange(liveFiles);
 
 			var databaseFiles = state.FileSystem.GetFiles();
 
@@ -534,7 +537,7 @@
 			}
 		}
 
-		private void WriteLevel0Table(MemTable memTable, VersionEdit edit, Version currentVersion)
+		internal void WriteLevel0Table(MemTable memTable, Version currentVersion, ref VersionEdit edit)
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var fileNumber = this.state.VersionSet.NewFileNumber();

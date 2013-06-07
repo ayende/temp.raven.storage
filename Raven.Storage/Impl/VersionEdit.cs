@@ -181,7 +181,7 @@
 				switch (tag)
 				{
 					case Tag.Comparator:
-						var slice = stream.ReadSlice();
+						var slice = stream.ReadLengthPrefixedSlice();
 						result.SetComparatorName(slice);
 						break;
 					case Tag.LogNumber:
@@ -198,7 +198,7 @@
 						break;
 					case Tag.CompactPointer:
 						level = stream.Read7BitEncodedInt();
-						var compactionPointer = stream.ReadSlice();
+						var compactionPointer = stream.ReadLengthPrefixedSlice();
 
 						result.SetCompactionPointer(level, compactionPointer);
 						break;
@@ -213,8 +213,8 @@
 						var fileMetadata = new FileMetadata();
 						fileMetadata.FileNumber = (ulong) stream.Read7BitEncodedLong();
 						fileMetadata.FileSize = stream.Read7BitEncodedLong();
-						fileMetadata.SmallestKey = stream.ReadSlice();
-						fileMetadata.LargestKey = stream.ReadSlice();
+						fileMetadata.SmallestKey = stream.ReadLengthPrefixedSlice();
+						fileMetadata.LargestKey = stream.ReadLengthPrefixedSlice();
 
 						result.AddFile(level, fileMetadata);
 						break;

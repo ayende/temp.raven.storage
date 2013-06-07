@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage
+﻿using System.Threading.Tasks;
+
+namespace Raven.Storage
 {
 	using System;
 
@@ -21,23 +23,31 @@
 		public Storage(string name, StorageOptions options)
 		{
 			storageState = new StorageState(name, options);
-			Init();
+			Init().Wait();
 		}
 
 		public Storage(StorageState storageState)
 		{
 			this.storageState = storageState;
-			Init();
+			Init().Wait();
 		}
 
-		private void Init()
+		private async Task Init()
 		{
-			//TODO arek - add locking here
-			var versionEdit = storageState.Recover();
+			var edit = storageState.Recover();
+			
 			storageState.CreateNewLog();
+			edit.SetLogNumber(storageState.LogFileNumber);
+
 			Writer = new StorageWriter(storageState);
 			Reader = new StorageReader(storageState);
 			Commands = new StorageCommands(storageState);
+			using (var locker = await storageState.Lock.LockAsync())
+			{
+				await storageState.LogAndApply(edit, locker);
+				storageState.Compactor.DeleteObsoleteFiles();
+				await storageState.Compactor.MaybeScheduleCompaction(locker);
+			}
 		}
 
 		public IStorageCommands Commands { get; private set; }

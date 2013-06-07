@@ -102,17 +102,21 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		public void AddLiveFiles(IList<ulong> live)
+		public IList<ulong> GetLiveFiles()
 		{
 			Debug.Assert(current != null);
+
+			var result = new List<ulong>();
 
 			for (int level = 0; level < Config.NumberOfLevels; level++)
 			{
 				foreach (var file in current.Files[level])
 				{
-					live.Add(file.FileNumber);
+					result.Add(file.FileNumber);
 				}
 			}
+
+			return result;
 		}
 
 		public void SetLogNumber(ulong number)
@@ -474,7 +478,7 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		private void MarkFileNumberUsed(ulong number)
+		public void MarkFileNumberUsed(ulong number)
 		{
 			if (NextFileNumber <= number)
 			{
