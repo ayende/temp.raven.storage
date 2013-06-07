@@ -65,6 +65,8 @@
 				dest.Write(buffer, 0, read);
 				bytesToCopy -= read;
 			}
+
+			dest.Position = 0;
 		}
 	}
 }
