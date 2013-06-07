@@ -131,7 +131,7 @@
 			if (level > 0 && version.Files[level].Count > 0)
 			{
 				// Must not overlap
-				if (storageContext.InternalKeyComparator.Compare(version.Files[level].Last().LargestKey, file.SmallestKey) < 0)
+				if (storageContext.InternalKeyComparator.Compare(version.Files[level].Last().LargestKey, file.SmallestKey) >= 0)
 				{
 					throw new InvalidOperationException("Files overlap.");
 				}
