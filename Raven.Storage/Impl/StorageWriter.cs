@@ -120,6 +120,7 @@
 			bool allowDelay = force == false;
 			while (true)
 			{
+				await lockScope.LockAsync();
 				if (this.state.BackgroundTask.IsCanceled || this.state.BackgroundTask.IsFaulted)
 				{
 					await this.state.BackgroundTask;// throws
@@ -168,6 +169,8 @@
 					force = false;
 					await this.state.Compactor.MaybeScheduleCompaction(lockScope);
 				}
+
+				lockScope.Exit();
 			}
 		}
 

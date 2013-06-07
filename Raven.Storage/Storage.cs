@@ -8,6 +8,8 @@
 	{
 		private readonly StorageState storageState;
 
+		private bool wasDisposed = false;
+
 		public string Name
 		{
 			get
@@ -46,7 +48,11 @@
 
 		public void Dispose()
 		{
-		this.storageState.Dispose();
+			if (wasDisposed)
+				return;
+
+			this.storageState.Dispose();
+			wasDisposed = true;
 		}
 	}
 }

@@ -10,10 +10,7 @@
 		[Fact]
 		public void T1()
 		{
-			using (var storage = NewStorage(new StorageOptions
-				                                {
-					                                WriteBatchSize = 1
-				                                }))
+			using (var storage = NewStorage())
 			{
 				for (int i = 0; i < 3; i++)
 				{

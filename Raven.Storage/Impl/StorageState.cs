@@ -301,6 +301,8 @@ namespace Raven.Storage.Impl
 		{
 			if (LogWriter != null)
 				LogWriter.Dispose();
+			if (DescriptorLogWriter != null)
+				DescriptorLogWriter.Dispose();
 			if (FileSystem != null)
 				FileSystem.Dispose();
 			if (MemTable != null)

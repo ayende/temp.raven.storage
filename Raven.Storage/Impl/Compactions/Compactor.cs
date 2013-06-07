@@ -210,6 +210,7 @@
 
 		private async Task DoCompactionWork(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
+			await locker.LockAsync();
 			var watch = Stopwatch.StartNew();
 
 			log.Info("Compacting {0}@{1} + {2}@{3} files.", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1);
