@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Raven.Storage.Impl
@@ -37,15 +36,20 @@ namespace Raven.Storage.Impl
 				taskCompletionSource = new TaskCompletionSource<object>();
 				waiters.Enqueue(taskCompletionSource);
 			}
+
 			await taskCompletionSource.Task;
-			return new LockScope(this);
+			lock (locker)
+			{
+				locked = true;
+				return new LockScope(this);
+			}
 		}
-		
+
 		public void Dispose()
 		{
 		}
 
-		public class LockScope: IDisposable
+		public class LockScope : IDisposable
 		{
 			private bool locked;
 			private readonly AsyncLock _asyncLock;
