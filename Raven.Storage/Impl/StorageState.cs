@@ -271,6 +271,8 @@ namespace Raven.Storage.Impl
 				writeBatches = WriteBatch.ReadFromLog(logFile, Options.BufferPool);
 			}
 
+			MemTable mem = null;
+
 			foreach (var item in writeBatches)
 			{
 				var lastSequence = item.WriteSequence + (ulong) item.WriteBatch.OperationCount - 1;
@@ -280,24 +282,24 @@ namespace Raven.Storage.Impl
 					maxSequence = lastSequence;
 				}
 
-				if (MemTable == null)
+				if (mem == null)
 				{
-					MemTable = new MemTable(this);
+					mem = new MemTable(this);
 				}
 
-				item.WriteBatch.Prepare(MemTable);
-				item.WriteBatch.Apply(MemTable, item.WriteSequence);
+				item.WriteBatch.Prepare(mem);
+				item.WriteBatch.Apply(mem, item.WriteSequence);
 
-				if (MemTable.ApproximateMemoryUsage > Options.WriteBatchSize)
+				if (mem.ApproximateMemoryUsage > Options.WriteBatchSize)
 				{
-					Compactor.WriteLevel0Table(MemTable, null, ref edit);
-					MemTable = null;
+					Compactor.WriteLevel0Table(mem, null, ref edit);
+					mem = null;
 				}
 			}
 
-			if (MemTable != null)
+			if (mem != null)
 			{
-				Compactor.WriteLevel0Table(MemTable, null, ref edit);
+				Compactor.WriteLevel0Table(mem, null, ref edit);
 			}
 		}
 
