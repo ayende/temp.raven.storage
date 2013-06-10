@@ -1,9 +1,11 @@
 ﻿namespace Raven.Storage.Data
 {
 	using System;
+	using System.Diagnostics;
 
 	using Raven.Storage.Util;
 
+	[DebuggerDisplay("Val: {DebugVal}")]
 	public struct InternalKey
 	{
 		public Slice UserKey { get; private set; }
@@ -27,6 +29,14 @@
 			buffer.WriteLong(UserKey.Count, Format.PackSequenceAndType(Sequence, Type));
 
 			return new Slice(buffer);
+		}
+
+		public string DebugVal
+		{
+			get
+			{
+				return string.Format("UserKey: {0}, Seq: {1}, Type: {2}", UserKey.DebugVal, Sequence, Type);
+			}
 		}
 
 		public static bool TryParse(Slice input, out InternalKey internalKey)
