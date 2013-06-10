@@ -5,6 +5,7 @@ namespace Raven.Storage.Impl.Compactions
 	using System;
 	using System.Collections.Generic;
 	using System.Diagnostics;
+	using System.Linq;
 	using System.Threading;
 	using System.Threading.Tasks;
 
@@ -221,14 +222,7 @@ namespace Raven.Storage.Impl.Compactions
 			Debug.Assert(compactionState.Builder == null);
 			Debug.Assert(compactionState.OutFile == null);
 
-			//if (snapshots_.empty())
-			//{
-			compactionState.SmallestSnapshot = this.state.VersionSet.LastSequence;
-			//}
-			//else
-			//{
-			//	compact->smallest_snapshot = snapshots_.oldest()->number_;
-			//}
+			compactionState.SmallestSnapshot = state.Snapshooter.Snapshots.Count == 0 ? state.VersionSet.LastSequence : state.Snapshooter.Snapshots.First().Sequence;
 
 			// Release mutex while we're actually doing the compaction work
 			locker.Exit();
@@ -382,13 +376,10 @@ namespace Raven.Storage.Impl.Compactions
 
 			// make the output file
 			var fileName = this.state.FileSystem.GetTableFileName(fileNumber);
-			var tempFileName = this.state.FileSystem.GetTempFileName(fileNumber);
-
 			var file = this.state.FileSystem.NewWritable(fileName);
-			var tempFile = this.state.FileSystem.NewReadableWritable(tempFileName);
 
 			compactionState.OutFile = file;
-			compactionState.Builder = new TableBuilder(this.state.Options, file, () => tempFile);
+			compactionState.Builder = new TableBuilder(this.state.Options, file, () => state.FileSystem.NewReadableWritable(state.FileSystem.GetTempFileName(fileNumber)));
 		}
 
 		private async Task InstallCompactionResults(CompactionState compactionState, AsyncLock.LockScope locker)
@@ -536,7 +527,7 @@ namespace Raven.Storage.Impl.Compactions
 			}
 		}
 
-		internal void WriteLevel0Table(MemTable memTable, Version currentVersion, ref VersionEdit edit)
+		public void WriteLevel0Table(MemTable memTable, Version currentVersion, ref VersionEdit edit)
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var fileNumber = this.state.VersionSet.NewFileNumber();

@@ -9,6 +9,8 @@ using Xunit;
 
 namespace Raven.Storage.Tests.Recovery
 {
+	using System.Text;
+
 	public class RecoveryTests : StorageTestBase
 	{
 		[Fact]
@@ -18,29 +20,35 @@ namespace Raven.Storage.Tests.Recovery
 
 			var name = storage.Name;
 
+			var str1 = "test1";
+			var str2 = "test2";
+
+			var s1 = new MemoryStream(Encoding.UTF8.GetBytes(str1));
+			var s2 = new MemoryStream(Encoding.UTF8.GetBytes(str2));
+
 			var writeBatch = new WriteBatch();
-			var aValue = new byte[] {1, 2, 3};
-			writeBatch.Put("A", new MemoryStream(aValue));
-			var bValue = new byte[] {1, 2};
-			writeBatch.Put("B", new MemoryStream(bValue));
+			writeBatch.Put("A", s1);
+			writeBatch.Put("B", s2);
 			storage.Writer.Write(writeBatch);
 
 			storage.Dispose();
 
 			using (var newStorage = new Storage(name, new StorageOptions()))
 			{
-				var aData = ((MemoryStream)newStorage.Reader.Read("A")).ToArray();
-				var bData = ((MemoryStream)newStorage.Reader.Read("B")).ToArray();
+				AssertEqual(str1, newStorage.Reader.Read("A"));
+				AssertEqual(str2, newStorage.Reader.Read("B"));
+			}
+		}
 
-				for (int i = 0; i < aValue.Length; i++)
-				{
-					Assert.Equal(aValue[i], aData[i]);
-				}
+		public void AssertEqual(string expected, Stream actual)
+		{
+			actual.Position = 0;
 
-				for (int i = 0; i < bValue.Length; i++)
-				{
-					Assert.Equal(bValue[i], bData[i]);
-				}
+			using (var reader = new StreamReader(actual))
+			{
+				var str2 = reader.ReadToEnd();
+
+				Assert.Equal(expected, str2);
 			}
 		}
 	}

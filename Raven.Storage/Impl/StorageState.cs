@@ -45,6 +45,8 @@
 
 		public InternalKeyComparator InternalKeyComparator { get; private set; }
 
+		public Snapshooter Snapshooter { get; private set; }
+
 		public StorageState(string name, StorageOptions options)
 		{
 			Options = options;
@@ -56,6 +58,7 @@
 			TableCache = new TableCache(this);
 			VersionSet = new VersionSet(this);
 			Compactor = new Compactor(this);
+			Snapshooter = new Snapshooter(this);
 		}
 
 		public void CreateNewLog()
@@ -114,8 +117,8 @@
 					edit.SetNextFile(VersionSet.NextFileNumber);
 					var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
-					DescriptorLogWriter = new LogWriter(descriptorFile, this.Options.BufferPool);
-					Snapshot.Write(DescriptorLogWriter, Options, VersionSet);
+					DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
+					await Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet, locker);
 				}
 
 				// Unlock during expensive MANIFEST log write
@@ -174,16 +177,16 @@
 			var manifest = FileSystem.DescriptorFileName(descriptorNumber);
 			var contents = manifest;
 
-			var temporaryFileName = FileSystem.GetTempFileName(descriptorNumber);
+			var tempFileName = FileSystem.GetTempFileName(descriptorNumber);
 
-			using (var stream = FileSystem.NewWritable(temporaryFileName))
+			using (var stream = FileSystem.NewWritable(tempFileName))
 			{
 				var encodedContents = Encoding.UTF8.GetBytes(contents);
 				stream.Write(encodedContents, 0, encodedContents.Length);
 				stream.Flush();
 			}
 
-			FileSystem.RenameFile(temporaryFileName, FileSystem.GetCurrentFileName());
+			FileSystem.RenameFile(tempFileName, FileSystem.GetCurrentFileName());
 		}
 
 		public VersionEdit Recover()
@@ -320,7 +323,6 @@
 						   };
 
 			var tableFileName = FileSystem.GetTableFileName(fileNumber);
-			var tempFileName = FileSystem.GetTempFileName(fileNumber);
 
 			try
 			{
@@ -330,20 +332,15 @@
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
-					var tempFile = FileSystem.NewReadableWritable(tempFileName);
-					builder = new TableBuilder(Options, tableFile, () => tempFile);
+					builder = new TableBuilder(Options, tableFile, () => FileSystem.NewReadableWritable(FileSystem.GetTempFileName(fileNumber)));
 
-					InternalKey internalKey;
-					if(!InternalKey.TryParse(iterator.Key, out internalKey))
-						throw new FormatException("Invalid internal key format.");
-
-					meta.SmallestKey = internalKey;
+					meta.SmallestKey = new InternalKey(iterator.Key);
 					while (iterator.IsValid)
 					{
 						var key = iterator.Key;
 						var stream = iterator.CreateValueStream();
 
-						meta.LargestKey = internalKey;
+						meta.LargestKey = new InternalKey(key);
 						builder.Add(key, stream);
 
 						iterator.Next();
@@ -363,7 +360,6 @@
 				if (meta.FileSize == 0)
 				{
 					FileSystem.DeleteFile(tableFileName);
-					FileSystem.DeleteFile(tempFileName);
 				}
 			}
 

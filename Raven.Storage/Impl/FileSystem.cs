@@ -10,9 +10,12 @@ namespace Raven.Storage.Impl
 		private readonly string databaseName;
 		private FileStream lockFile;
 
+		private readonly Random random;
+
 		public FileSystem(string databaseName)
 		{
 			this.databaseName = databaseName;
+			this.random = new Random();
 		}
 
 		public string GetFileName(string name, ulong num, string ext)
@@ -116,11 +119,18 @@ namespace Raven.Storage.Impl
 
 		private string ExtractFileName(FileSystemInfo file)
 		{
-			var index = file.Name.IndexOf(databaseName.ToLowerInvariant(), StringComparison.InvariantCultureIgnoreCase);
-			if (index == -1)
-				return file.Name;
+			var fileName = file.Name;
 
-			return file.Name.Substring(index + databaseName.Length);
+			var index = fileName.IndexOf(databaseName, StringComparison.InvariantCultureIgnoreCase);
+			if (index == -1)
+				return fileName;
+
+			fileName = fileName.Substring(index + databaseName.Length);
+			index = fileName.LastIndexOf("_", StringComparison.InvariantCultureIgnoreCase);
+			if (index == -1)
+				return fileName;
+
+			return fileName.Substring(index + 1);
 		}
 
 		public string DescriptorFileName(ulong manifestFileNumber)
@@ -191,7 +201,7 @@ namespace Raven.Storage.Impl
 
 		public string GetTempFileName(ulong fileNumber)
 		{
-			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.TempFile);
+			return GetFileName(string.Format("{0}_{1}_", databaseName, random.Next(0, int.MaxValue)), fileNumber, Constants.Files.Extensions.TempFile);
 		}
 
 		public string GetTableFileName(ulong fileNumber)

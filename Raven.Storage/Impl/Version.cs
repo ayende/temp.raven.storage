@@ -238,6 +238,8 @@
 			FileMetadata lastFileRead = null;
 			int lastFileReadLevel = -1;
 
+			var internalKey = new InternalKey(key, seq, ItemType.ValueForSeek);
+
 			// We can search level-by-level since entries never hop across
 			// levels.  Therefore we are guaranteed that if we find data
 			// in an smaller level, later levels are irrelevant.
@@ -257,8 +259,8 @@
 					var tempFiles =
 						files.Where(
 							f =>
-							storageContext.InternalKeyComparator.UserComparator.Compare(key, f.SmallestKey.UserKey) >= 0
-							&& storageContext.InternalKeyComparator.UserComparator.Compare(key, f.LargestKey.UserKey) <= 0)
+							storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, f.SmallestKey.UserKey) >= 0
+							&& storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, f.LargestKey.UserKey) <= 0)
 							 .OrderByDescending(x => x.FileNumber);
 
 					if (!tempFiles.Any())
@@ -272,13 +274,13 @@
 				{
 					// Binary search to find earliest index whose largest key >= ikey.
 					int index;
-					if (Files[level].TryFindFile(key, this.storageContext.InternalKeyComparator, out index) == false)
+					if (Files[level].TryFindFile(internalKey.Encode(), this.storageContext.InternalKeyComparator, out index) == false)
 					{
 						files = new List<FileMetadata>();
 					}
 					else
 					{
-						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(key, files[index].SmallestKey.UserKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, files[index].SmallestKey.UserKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
 					}
 				}
 
@@ -295,7 +297,7 @@
 					lastFileReadLevel = level;
 
 					var state = this.storageContext.TableCache.Get(
-						key, f.FileNumber, f.FileSize, readOptions, this.storageContext.InternalKeyComparator.UserComparator, out stream);
+						internalKey.UserKey, f.FileNumber, f.FileSize, readOptions, this.storageContext.InternalKeyComparator.UserComparator, out stream);
 
 					switch (state)
 					{

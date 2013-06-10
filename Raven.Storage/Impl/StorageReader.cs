@@ -25,8 +25,7 @@
 			var imm = state.ImmutableMemTable;
 			var currentVersion = state.VersionSet.Current;
 
-			// TODO [ppekrol] snapshoting
-			var snapshot = state.VersionSet.LastSequence;
+			var snapshot = options.Snapshot != null ? options.Snapshot.Sequence : this.state.VersionSet.LastSequence;
 
 			var reference = new Reference<Slice> { Value = key };
 

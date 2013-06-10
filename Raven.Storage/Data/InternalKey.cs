@@ -17,9 +17,25 @@
 		public InternalKey(Slice key, ulong seq, ItemType type)
 			: this()
 		{
-			this.UserKey = key;
+			var buffer = new byte[key.Count + 8];
+			Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, key.Count);
+			buffer.WriteLong(key.Count, Format.PackSequenceAndType(seq, type));
+
+			this.UserKey = new Slice(buffer);
 			this.Sequence = seq;
 			this.Type = type;
+		}
+
+		public InternalKey(Slice key)
+			: this()
+		{
+			InternalKey internalKey;
+			if (!TryParse(key, out internalKey))
+				throw new FormatException("Invalid internal key format.");
+
+			this.Sequence = internalKey.Sequence;
+			this.Type = internalKey.Type;
+			this.UserKey = internalKey.UserKey;
 		}
 
 		public Slice Encode()

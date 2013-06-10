@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
+    <Compile Include="Impl\Snapshooter.cs" />
     <Compile Include="Comparing\CaseInsensitiveComparator.cs" />
     <Compile Include="Comparing\ByteWiseComparator.cs" />
     <Compile Include="Comparing\InternalKeyComparator.cs" />
@@ -82,7 +83,6 @@
     <Compile Include="Impl\Streams\LogWriter.cs" />
     <Compile Include="Impl\FileType.cs" />
     <Compile Include="Impl\Compactions\ManualCompaction.cs" />
-    <Compile Include="Impl\Snapshot.cs" />
     <Compile Include="Impl\StatusCode.cs" />
     <Compile Include="Impl\Streams\LogRecordType.cs" />
     <Compile Include="Impl\StorageState.cs" />

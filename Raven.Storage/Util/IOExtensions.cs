@@ -140,12 +140,7 @@ namespace Raven.Storage.Util
 
 		public static InternalKey ReadLengthPrefixedInternalKey(this Stream stream)
 		{
-			var slice = ReadLengthPrefixedSlice(stream);
-			InternalKey internalKey;
-			if (!InternalKey.TryParse(slice, out internalKey))
-				throw new FormatException("Invalid internal key format.");
-
-			return internalKey;
+			return new InternalKey(ReadLengthPrefixedSlice(stream));
 		}
 
 		public static async Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)

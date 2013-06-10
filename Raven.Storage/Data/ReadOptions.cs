@@ -16,9 +16,19 @@
 		/// </summary>
 		public bool FillCache { get; set; }
 
+		/// <summary>
+		/// If "snapshot" is non-NULL, read as of the supplied snapshot
+		/// (which must belong to the DB that is being read and which must
+		/// not have been released).  If "snapshot" is NULL, use an impliicit
+		/// snapshot of the state at the beginning of this read operation.
+		/// Default: NULL
+		/// </summary>
+		public Snapshot Snapshot { get; set; }
+
 		public ReadOptions()
 		{
 			FillCache = true;
+			Snapshot = null;
 		}
 	}
 }
