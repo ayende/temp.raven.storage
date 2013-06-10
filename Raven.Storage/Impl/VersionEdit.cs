@@ -1,6 +1,5 @@
 ﻿namespace Raven.Storage.Impl
 {
-	using System;
 	using System.Collections.Generic;
 	using System.IO;
 
@@ -28,7 +27,7 @@
 
 		public ulong? LastSequence { get; private set; }
 
-		public IDictionary<int, IList<Slice>> CompactionPointers { get; private set; }
+		public IDictionary<int, IList<InternalKey>> CompactionPointers { get; private set; }
 
 		public IDictionary<int, IList<ulong>> DeletedFiles { get; set; }
 
@@ -47,13 +46,13 @@
 			LastSequence = null;
 			NextFileNumber = null;
 
-			CompactionPointers = new Dictionary<int, IList<Slice>>();
+			CompactionPointers = new Dictionary<int, IList<InternalKey>>();
 			DeletedFiles = new Dictionary<int, IList<ulong>>();
 			NewFiles = new Dictionary<int, IList<FileMetadata>>();
 
 			for (int level = 0; level < Config.NumberOfLevels; level++)
 			{
-				CompactionPointers.Add(level, new List<Slice>());
+				CompactionPointers.Add(level, new List<InternalKey>());
 				DeletedFiles.Add(level, new List<ulong>());
 				NewFiles.Add(level, new List<FileMetadata>());
 			}
@@ -84,7 +83,7 @@
 			LastSequence = sequence;
 		}
 
-		public void SetCompactionPointer(int level, Slice key)
+		public void SetCompactionPointer(int level, InternalKey key)
 		{
 			CompactionPointers[level].Add(key);
 		}
@@ -134,7 +133,7 @@
 				{
 					stream.Write7BitEncodedInt((int)Tag.CompactPointer);
 					stream.Write7BitEncodedInt(level);
-					stream.WriteLengthPrefixedSlice(compactionPointer);
+					stream.WriteLengthPrefixedInternalKey(compactionPointer);
 				}
 
 				foreach (var fileNumber in DeletedFiles[level])
@@ -150,8 +149,8 @@
 					stream.Write7BitEncodedInt(level);
 					stream.Write7BitEncodedLong(fileMetadata.FileNumber);
 					stream.Write7BitEncodedLong(fileMetadata.FileSize);
-					stream.WriteLengthPrefixedSlice(fileMetadata.SmallestKey);
-					stream.WriteLengthPrefixedSlice(fileMetadata.LargestKey);
+					stream.WriteLengthPrefixedInternalKey(fileMetadata.SmallestKey);
+					stream.WriteLengthPrefixedInternalKey(fileMetadata.LargestKey);
 				}
 			}
 
@@ -198,7 +197,7 @@
 						break;
 					case Tag.CompactPointer:
 						level = stream.Read7BitEncodedInt();
-						var compactionPointer = stream.ReadLengthPrefixedSlice();
+						var compactionPointer = stream.ReadLengthPrefixedInternalKey();
 
 						result.SetCompactionPointer(level, compactionPointer);
 						break;
@@ -210,11 +209,13 @@
 						break;
 					case Tag.NewFile:
 						level = stream.Read7BitEncodedInt();
-						var fileMetadata = new FileMetadata();
-						fileMetadata.FileNumber = (ulong) stream.Read7BitEncodedLong();
-						fileMetadata.FileSize = stream.Read7BitEncodedLong();
-						fileMetadata.SmallestKey = stream.ReadLengthPrefixedSlice();
-						fileMetadata.LargestKey = stream.ReadLengthPrefixedSlice();
+						var fileMetadata = new FileMetadata
+							                   {
+								                   FileNumber = (ulong)stream.Read7BitEncodedLong(),
+								                   FileSize = stream.Read7BitEncodedLong(),
+								                   SmallestKey = stream.ReadLengthPrefixedInternalKey(),
+								                   LargestKey = stream.ReadLengthPrefixedInternalKey()
+							                   };
 
 						result.AddFile(level, fileMetadata);
 						break;

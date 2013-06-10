@@ -6,6 +6,7 @@
 	using System.Linq;
 
 	using Raven.Storage.Building;
+	using Raven.Storage.Data;
 
 	public class CompactionState : IDisposable
 	{
@@ -50,8 +51,8 @@
 			this.outputs.Add(new FileMetadata
 			{
 				FileNumber = fileNumber,
-				SmallestKey = null,
-				LargestKey = null,
+				SmallestKey = new InternalKey(),
+				LargestKey = new InternalKey(),
 				FileSize = 0
 			});
 		}

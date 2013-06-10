@@ -7,7 +7,7 @@
 	/// </summary>
 	internal class ManualCompaction
 	{
-		public ManualCompaction(int level, Slice begin, Slice end)
+		public ManualCompaction(int level, InternalKey begin, InternalKey end)
 		{
 			this.Level = level;
 			this.Begin = begin;
@@ -21,11 +21,11 @@
 		/// <summary>
 		/// NULL means beginning of key range
 		/// </summary>
-		public Slice Begin { get; internal set; }
+		public InternalKey Begin { get; internal set; }
 
 		/// <summary>
 		/// NULL means end of key range
 		/// </summary>
-		public Slice End { get; private set; }
+		public InternalKey End { get; private set; }
 	}
 }

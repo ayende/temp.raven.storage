@@ -156,7 +156,7 @@ namespace Raven.Storage.Impl
 				{
 					var file = Current.Files[level][i];
 					if (CompactionPointers[level].IsEmpty()
-						|| storageContext.InternalKeyComparator.Compare(file.LargestKey, CompactionPointers[level]) > 0)
+						|| storageContext.InternalKeyComparator.Compare(file.LargestKey.Encode(), CompactionPointers[level]) > 0)
 					{
 						compaction.Inputs[0].Add(file);
 						break;
@@ -183,7 +183,7 @@ namespace Raven.Storage.Impl
 			// Files in level 0 may overlap each other, so pick up all overlapping ones
 			if (level == 0)
 			{
-				Slice smallestKey, largestKey;
+				InternalKey smallestKey, largestKey;
 				GetRange(compaction.Inputs[0], out smallestKey, out largestKey);
 
 				// Note that the next call will discard the file we placed in
@@ -198,7 +198,7 @@ namespace Raven.Storage.Impl
 			return compaction;
 		}
 
-		public Compaction CompactRange(int level, Slice begin, Slice end)
+		public Compaction CompactRange(int level, InternalKey begin, InternalKey end)
 		{
 			var inputs = this.Current.GetOverlappingInputs(level, begin, end);
 			if (inputs.Count == 0)
@@ -215,13 +215,13 @@ namespace Raven.Storage.Impl
 		private void SetupOtherInputs(Compaction compaction)
 		{
 			var level = compaction.Level;
-			Slice smallestKey, largestKey;
+			InternalKey smallestKey, largestKey;
 
 			GetRange(compaction.Inputs[0], out smallestKey, out largestKey);
 
 			compaction.Inputs[1] = Current.GetOverlappingInputs(level + 1, smallestKey, largestKey);
 
-			Slice allStart, allLimit;
+			InternalKey allStart, allLimit;
 			GetRange2(compaction.Inputs[0], compaction.Inputs[1], out allStart, out allLimit);
 
 			if (compaction.Inputs[1].Count > 0)
@@ -234,7 +234,7 @@ namespace Raven.Storage.Impl
 				if (expanded0.Count > compaction.Inputs[0].Count
 					&& inputs1Size + expanded0Size < Config.ExpandedCompactionByteSizeLimit)
 				{
-					Slice newStart, newLimit;
+					InternalKey newStart, newLimit;
 					GetRange(expanded0, out newStart, out newLimit);
 					var expanded1 = Current.GetOverlappingInputs(level + 1, newStart, newLimit);
 
@@ -262,7 +262,7 @@ namespace Raven.Storage.Impl
 			// We update this immediately instead of waiting for the VersionEdit
 			// to be applied so that if the compaction fails, we will try a different
 			// key range next time.
-			CompactionPointers[level] = largestKey;
+			CompactionPointers[level] = largestKey.Encode();
 			compaction.Edit.SetCompactionPointer(level, largestKey);
 		}
 
@@ -274,12 +274,12 @@ namespace Raven.Storage.Impl
 		/// <param name="inputs"></param>
 		/// <param name="smallestKey"></param>
 		/// <param name="largestKey"></param>
-		private void GetRange(IReadOnlyList<FileMetadata> inputs, out Slice smallestKey, out Slice largestKey)
+		private void GetRange(IReadOnlyList<FileMetadata> inputs, out InternalKey smallestKey, out InternalKey largestKey)
 		{
 			Debug.Assert(inputs.Count > 0);
 
-			smallestKey = new Slice();
-			largestKey = new Slice();
+			smallestKey = new InternalKey();
+			largestKey = new InternalKey();
 
 			for (var i = 0; i < inputs.Count; i++)
 			{
@@ -313,7 +313,7 @@ namespace Raven.Storage.Impl
 		/// <param name="inputs2"></param>
 		/// <param name="smallestKey"></param>
 		/// <param name="largestKey"></param>
-		private void GetRange2(IEnumerable<FileMetadata> inputs1, IEnumerable<FileMetadata> inputs2, out Slice smallestKey, out Slice largestKey)
+		private void GetRange2(IEnumerable<FileMetadata> inputs1, IEnumerable<FileMetadata> inputs2, out InternalKey smallestKey, out InternalKey largestKey)
 		{
 			var all = new List<FileMetadata>(inputs1);
 			all.AddRange(inputs2);

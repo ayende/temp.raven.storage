@@ -26,8 +26,8 @@
 
 		public ulong FileNumber { get; set; }
 
-		public Slice SmallestKey { get; set; }
+		public InternalKey SmallestKey { get; set; }
 
-		public Slice LargestKey { get; set; }
+		public InternalKey LargestKey { get; set; }
 	}
 }

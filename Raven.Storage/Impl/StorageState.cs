@@ -1,24 +1,22 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Raven.Storage.Data;
-using Raven.Storage.Exceptions;
-using Raven.Storage.Reading;
-using Raven.Storage.Util;
-
-namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl
 {
+	using System.Collections.Generic;
+	using System.IO;
+
+	using Raven.Storage.Building;
+	using Raven.Storage.Comparing;
+	using Raven.Storage.Data;
+	using Raven.Storage.Exceptions;
+	using Raven.Storage.Impl.Caching;
+	using Raven.Storage.Impl.Compactions;
+	using Raven.Storage.Impl.Streams;
+	using Raven.Storage.Memtable;
 	using System;
 	using System.Diagnostics;
 	using System.Text;
 	using System.Threading.Tasks;
 
-	using Raven.Storage.Building;
-	using Raven.Storage.Comparing;
-	using Raven.Storage.Impl.Caching;
-	using Raven.Storage.Impl.Compactions;
-	using Raven.Storage.Impl.Streams;
-	using Raven.Storage.Memtable;
+	using Raven.Storage.Reading;
 
 	public class StorageState : IDisposable, IStorageContext
 	{
@@ -303,6 +301,16 @@ namespace Raven.Storage.Impl
 			}
 		}
 
+		/// <summary>
+		/// Build a Table file from the contents of *iter.  The generated file
+		/// will be named according to meta->number.  On success, the rest of
+		/// *meta will be filled with metadata about the generated table.
+		/// If no data is present in *iter, meta->file_size will be set to
+		/// zero, and no Table file will be produced.
+		/// </summary>
+		/// <param name="memTable"></param>
+		/// <param name="fileNumber"></param>
+		/// <returns></returns>
 		public FileMetadata BuildTable(MemTable memTable, ulong fileNumber)
 		{
 			TableBuilder builder = null;
@@ -325,13 +333,17 @@ namespace Raven.Storage.Impl
 					var tempFile = FileSystem.NewReadableWritable(tempFileName);
 					builder = new TableBuilder(Options, tableFile, () => tempFile);
 
-					meta.SmallestKey = iterator.Key;
+					InternalKey internalKey;
+					if(!InternalKey.TryParse(iterator.Key, out internalKey))
+						throw new FormatException("Invalid internal key format.");
+
+					meta.SmallestKey = internalKey;
 					while (iterator.IsValid)
 					{
 						var key = iterator.Key;
 						var stream = iterator.CreateValueStream();
 
-						meta.LargestKey = key;
+						meta.LargestKey = internalKey;
 						builder.Add(key, stream);
 
 						iterator.Next();

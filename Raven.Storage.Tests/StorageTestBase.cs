@@ -40,7 +40,7 @@
 				{
 				}
 
-				ClearDatabaseDirectory(storage.Name);
+				//ClearDatabaseDirectory(storage.Name);
 			}
 		}
 

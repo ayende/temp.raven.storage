@@ -2,7 +2,9 @@
 {
 	using System;
 
-	public struct ParsedInternalKey
+	using Raven.Storage.Util;
+
+	public struct InternalKey
 	{
 		public Slice UserKey { get; private set; }
 
@@ -10,7 +12,7 @@
 
 		public ItemType Type { get; private set; }
 
-		public ParsedInternalKey(Slice key, ulong seq, ItemType type)
+		public InternalKey(Slice key, ulong seq, ItemType type)
 			: this()
 		{
 			this.UserKey = key;
@@ -18,9 +20,18 @@
 			this.Type = type;
 		}
 
-		public static bool TryParseInternalKey(Slice input, out ParsedInternalKey internalKey)
+		public Slice Encode()
 		{
-			internalKey = new ParsedInternalKey();
+			var buffer = new byte[UserKey.Count + 8];
+			Buffer.BlockCopy(UserKey.Array, UserKey.Offset, buffer, 0, UserKey.Count);
+			buffer.WriteLong(UserKey.Count, Format.PackSequenceAndType(Sequence, Type));
+
+			return new Slice(buffer);
+		}
+
+		public static bool TryParse(Slice input, out InternalKey internalKey)
+		{
+			internalKey = new InternalKey();
 
 			if (input.Count < 8)
 				return false;
@@ -30,7 +41,7 @@
 			var type = (ItemType)number;
 
 			var key = new Slice(input.Array, input.Offset, input.Count - 8);
-			internalKey = new ParsedInternalKey(key, sequence, type);
+			internalKey = new InternalKey(key, sequence, type);
 
 			return type <= ItemType.Value;
 		}

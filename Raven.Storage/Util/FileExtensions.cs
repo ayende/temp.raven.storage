@@ -18,7 +18,7 @@
 				 var mid = (left + right) / 2;
 				 var file = files[mid];
 
-				 if (internalKeyComparator.Compare(file.LargestKey, key) < 0)
+				 if (internalKeyComparator.Compare(file.LargestKey.Encode(), key) < 0)
 				 {
 					 // Key at "mid.largest" is < "target".  Therefore all
 					 // files at or before "mid" are uninteresting.

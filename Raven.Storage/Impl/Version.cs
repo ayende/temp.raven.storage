@@ -110,6 +110,8 @@
 			int level = 0;
 			if (!OverlapInLevel(0, smallestKey, largestKey))
 			{
+				var start = new InternalKey(smallestKey, Format.MaxSequenceNumber, ItemType.ValueForSeek);
+				var limit = new InternalKey(largestKey, 0, 0);
 				while (level < Config.MaxMemCompactLevel)
 				{
 					if (OverlapInLevel(level + 1, smallestKey, largestKey))
@@ -117,7 +119,7 @@
 						break;
 					}
 
-					var overlaps = GetOverlappingInputs(level + 2, smallestKey, largestKey);
+					var overlaps = GetOverlappingInputs(level + 2, start, limit);
 					var totalFileSize = overlaps.Sum(x => x.FileSize);
 					if (totalFileSize > Config.MaxGrandParentOverlapBytes)
 					{
@@ -131,22 +133,25 @@
 			return level;
 		}
 
-		internal List<FileMetadata> GetOverlappingInputs(int level, Slice begin, Slice end)
+		internal List<FileMetadata> GetOverlappingInputs(int level, InternalKey begin, InternalKey end)
 		{
 			var inputs = new List<FileMetadata>();
 			var userComparator = this.storageContext.InternalKeyComparator.UserComparator;
 
+			var userBegin = begin.UserKey;
+			var userEnd = end.UserKey;
+
 			for (int i = 0; i < Files[level].Count; )
 			{
 				var f = Files[level][i++];
-				var fileStart = f.SmallestKey;
-				var fileLimit = f.LargestKey;
+				var fileStart = f.SmallestKey.UserKey;
+				var fileLimit = f.LargestKey.UserKey;
 
-				if (userComparator.Compare(fileLimit, begin) < 0)
+				if (userComparator.Compare(fileLimit, userBegin) < 0)
 				{
 					// "f" is completely before specified range; skip it
 				}
-				else if (userComparator.Compare(fileStart, end) > 0)
+				else if (userComparator.Compare(fileStart, userEnd) > 0)
 				{
 					// "f" is completely after specified range; skip it
 				}
@@ -157,15 +162,15 @@
 					{
 						// Level-0 files may overlap each other.  So check if the newly
 						// added file has expanded the range.  If so, restart search.
-						if (userComparator.Compare(fileStart, begin) < 0)
+						if (userComparator.Compare(fileStart, userBegin) < 0)
 						{
-							begin = fileStart;
+							userBegin = fileStart;
 							inputs.Clear();
 							i = 0;
 						}
-						else if (userComparator.Compare(fileLimit, end) > 0)
+						else if (userComparator.Compare(fileLimit, userEnd) > 0)
 						{
-							end = fileLimit;
+							userEnd = fileLimit;
 							inputs.Clear();
 							i = 0;
 						}
@@ -197,13 +202,13 @@
 		private bool BeforeFile(IComparator comparator, Slice key, FileMetadata file)
 		{
 			// NULL 'key' occurs after all keys and is therefore never before 'file'
-			return comparator.Compare(key, file.SmallestKey) < 0;
+			return comparator.Compare(key, file.SmallestKey.UserKey) < 0;
 		}
 
 		private bool AfterFile(IComparator comparator, Slice key, FileMetadata file)
 		{
 			// NULL 'key' occurs before all keys and is therefore never after 'file'
-			return comparator.Compare(key, file.LargestKey) > 0;
+			return comparator.Compare(key, file.LargestKey.UserKey) > 0;
 		}
 
 		public bool UpdateStats(GetStats stats)
@@ -236,14 +241,6 @@
 			// We can search level-by-level since entries never hop across
 			// levels.  Therefore we are guaranteed that if we find data
 			// in an smaller level, later levels are irrelevant.
-
-			Func<Slice, Slice> toUserKey = slice =>
-				{
-					ParsedInternalKey parsedKey;
-					ParsedInternalKey.TryParseInternalKey(slice, out parsedKey);
-					return parsedKey.UserKey;
-				};
-
 			for (var level = 0; level < Config.NumberOfLevels; level++)
 			{
 				if (Files[level].Count == 0)
@@ -260,8 +257,8 @@
 					var tempFiles =
 						files.Where(
 							f =>
-							storageContext.InternalKeyComparator.UserComparator.Compare(key, toUserKey(f.SmallestKey)) >= 0
-							&& storageContext.InternalKeyComparator.UserComparator.Compare(key, toUserKey(f.LargestKey)) <= 0)
+							storageContext.InternalKeyComparator.UserComparator.Compare(key, f.SmallestKey.UserKey) >= 0
+							&& storageContext.InternalKeyComparator.UserComparator.Compare(key, f.LargestKey.UserKey) <= 0)
 							 .OrderByDescending(x => x.FileNumber);
 
 					if (!tempFiles.Any())
@@ -281,7 +278,7 @@
 					}
 					else
 					{
-						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(key, toUserKey(files[index].SmallestKey)) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(key, files[index].SmallestKey.UserKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
 					}
 				}
 

@@ -36,7 +36,7 @@ namespace Raven.Storage.Impl.Compactions
 			if (manualCompaction != null)
 				throw new InvalidOperationException("Manual compaction is already in progess.");
 
-			manualCompaction = new ManualCompaction(level, begin, end);
+			manualCompaction = new ManualCompaction(level, new InternalKey(begin, Format.MaxSequenceNumber, ItemType.ValueForSeek), new InternalKey(end, Format.MaxSequenceNumber, ItemType.ValueForSeek));
 
 			return Task.Factory.StartNew(async () =>
 					{
@@ -134,7 +134,7 @@ namespace Raven.Storage.Impl.Compactions
 			try
 			{
 				Compaction compaction;
-				var manualEnd = new Slice();
+				var manualEnd = new InternalKey();
 				isManual = this.manualCompaction != null;
 				if (isManual)
 				{
@@ -236,7 +236,6 @@ namespace Raven.Storage.Impl.Compactions
 			IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction);
 			input.SeekToFirst();
 
-			ParsedInternalKey internalKey;
 			Slice currentUserKey = null;
 			var lastSequenceForKey = Format.MaxSequenceNumber;
 			for (; input.IsValid; )
@@ -260,7 +259,8 @@ namespace Raven.Storage.Impl.Compactions
 					}
 				}
 
-				if (!ParsedInternalKey.TryParseInternalKey(key, out internalKey))
+				InternalKey internalKey;
+				if (!InternalKey.TryParse(key, out internalKey))
 				{
 					currentUserKey = null;
 					lastSequenceForKey = Format.MaxSequenceNumber;
@@ -372,10 +372,9 @@ namespace Raven.Storage.Impl.Compactions
 			Debug.Assert(compactionState != null);
 			Debug.Assert(compactionState.Builder != null);
 
-			ulong fileNumber;
 			await locker.LockAsync();
 
-			fileNumber = this.state.VersionSet.NewFileNumber();
+			var fileNumber = this.state.VersionSet.NewFileNumber();
 			pendingOutputs.Add(fileNumber);
 			compactionState.AddOutput(fileNumber);
 
@@ -553,12 +552,12 @@ namespace Raven.Storage.Impl.Compactions
 			int level = 0;
 			if (fileMetadata.FileSize > 0)
 			{
-				var smallestKey = fileMetadata.SmallestKey;
-				var largestKey = fileMetadata.LargestKey;
+				var minUserKey = fileMetadata.SmallestKey.UserKey;
+				var maxUserKey = fileMetadata.LargestKey.UserKey;
 
 				if (currentVersion != null)
 				{
-					level = currentVersion.PickLevelForMemTableOutput(smallestKey, largestKey);
+					level = currentVersion.PickLevelForMemTableOutput(minUserKey, maxUserKey);
 				}
 
 				edit.AddFile(level, fileMetadata);

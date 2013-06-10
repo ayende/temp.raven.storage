@@ -1,5 +1,8 @@
 ﻿namespace Raven.Storage.Impl
 {
+	using System;
+
+	using Raven.Storage.Data;
 	using Raven.Storage.Impl.Streams;
 
 	public static class Snapshot
@@ -16,7 +19,11 @@
 				var compactionPointer = versionSet.CompactionPointers[level];
 				if (!compactionPointer.IsEmpty())
 				{
-					edit.SetCompactionPointer(level, compactionPointer);
+					InternalKey key;
+					if(!InternalKey.TryParse(compactionPointer, out key))
+						throw new FormatException("Invalid internal key format.");
+
+					edit.SetCompactionPointer(level, key);
 				}
 			}
 

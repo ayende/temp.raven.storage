@@ -46,6 +46,11 @@ namespace Raven.Storage.Comparing
 			return 0;
 		}
 
+		public int Compare(InternalKey a, InternalKey b)
+		{
+			return Compare(a.Encode(), b.Encode());
+		}
+
 		private static Slice ExtractUserKey(Slice a)
 		{
 			Debug.Assert(a.Count >= 8);

@@ -98,8 +98,8 @@
 				return ItemState.NotFound;
 			}
 
-			ParsedInternalKey internalKey;
-			if (!ParsedInternalKey.TryParseInternalKey(result.Item1, out internalKey))
+			InternalKey internalKey;
+			if (!InternalKey.TryParse(result.Item1, out internalKey))
 			{
 				return ItemState.Corrupt;
 			}

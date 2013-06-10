@@ -53,6 +53,7 @@
     <Compile Include="Comparing\IComparator.cs" />
     <Compile Include="Data\Format.cs" />
     <Compile Include="Data\GetStats.cs" />
+    <Compile Include="Data\InternalKey.cs" />
     <Compile Include="Data\ItemType.cs" />
     <Compile Include="Data\ReadOptions.cs" />
     <Compile Include="Data\Slice.cs" />
@@ -125,7 +126,6 @@
     <Compile Include="Util\CrcStream.cs" />
     <Compile Include="Util\FileExtensions.cs" />
     <Compile Include="Util\Info.cs" />
-    <Compile Include="Data\ParsedInternalKey.cs" />
     <Compile Include="Util\IOExtensions.cs" />
     <Compile Include="Util\StreamExtensions.cs" />
     <Compile Include="WriteBatch.cs" />

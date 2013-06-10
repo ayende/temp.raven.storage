@@ -12,6 +12,8 @@ using Xunit;
 
 namespace Raven.Storage.Tests.Compactions
 {
+	using Raven.Storage.Data;
+
 	public class VersionEditTests
 	{
 		[Fact]
@@ -30,22 +32,22 @@ namespace Raven.Storage.Tests.Compactions
 				{
 					FileNumber = 0,
 					FileSize = 128,
-					LargestKey = "begin",
-					SmallestKey = "end"
+					LargestKey = new InternalKey("begin", Format.MaxSequenceNumber, ItemType.Value),
+					SmallestKey = new InternalKey("end", Format.MaxSequenceNumber, ItemType.Value),
 				});
 			versionEdit.AddFile(1, new FileMetadata()
 			{
 				FileNumber = 1,
 				FileSize = 128,
-				LargestKey = "begin",
-				SmallestKey = "end"
+				LargestKey = new InternalKey("begin", Format.MaxSequenceNumber, ItemType.Value),
+				SmallestKey = new InternalKey("end", Format.MaxSequenceNumber, ItemType.Value),
 			});
 
 			versionEdit.DeleteFile(0, 3);
 			versionEdit.DeleteFile(1, 4);
 
-			versionEdit.SetCompactionPointer(0, "begin");
-			versionEdit.SetCompactionPointer(1, "begin");
+			versionEdit.SetCompactionPointer(0, new InternalKey("begin", Format.MaxSequenceNumber, ItemType.Value));
+			versionEdit.SetCompactionPointer(1, new InternalKey("end", Format.MaxSequenceNumber, ItemType.Value));
 
 			var memoryStream = new MemoryStream();
 			var logWriter = new LogWriter(memoryStream, new BufferPool());

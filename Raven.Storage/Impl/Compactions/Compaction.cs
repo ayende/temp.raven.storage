@@ -148,10 +148,10 @@
 				for (; this.levelPointers[lvl] < files.Count; )
 				{
 					var file = files[this.levelPointers[lvl]];
-					if (userComparator.Compare(userKey, file.LargestKey) <= 0)
+					if (userComparator.Compare(userKey, file.LargestKey.UserKey) <= 0)
 					{
 						// We've advanced far enough
-						if (userComparator.Compare(userKey, file.SmallestKey) >= 0)
+						if (userComparator.Compare(userKey, file.SmallestKey.UserKey) >= 0)
 						{
 							return false;
 						}
@@ -175,7 +175,7 @@
 		public bool ShouldStopBefore(Slice internalKey)
 		{
 			while (this.grandparentIndex < this.Grandparents.Count
-				   && storageContext.InternalKeyComparator.Compare(internalKey, this.Grandparents[this.grandparentIndex].LargestKey) > 0)
+				   && storageContext.InternalKeyComparator.Compare(internalKey, this.Grandparents[this.grandparentIndex].LargestKey.Encode()) > 0)
 			{
 				if (this.seenKey)
 				{
