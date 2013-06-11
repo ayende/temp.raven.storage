@@ -1,0 +1,33 @@
+﻿namespace Raven.Storage.Benchmark
+{
+	using System;
+
+	internal class BenchmarkParameters
+	{
+		public BenchmarkParameters(BenchmarkOptions options)
+		{
+			Num = options.Num;
+			Reads = options.Reads < 0 ? options.Num : options.Reads;
+			ValueSize = options.ValueSize;
+			EntriesPerBatch = 1;
+			FreshDatabase = false;
+			NumberOfThreads = options.Threads;
+		}
+
+		public int Num { get; set; }
+
+		public int Reads { get; set; }
+
+		public int ValueSize { get; set; }
+
+		public int EntriesPerBatch { get; set; }
+
+		public object WriteOptions { get; set; }
+
+		public int NumberOfThreads { get; set; }
+
+		public bool FreshDatabase { get; set; }
+
+		public Func<BenchmarkParameters, BenchmarkResult> Method { get; set; }
+	}
+}
