@@ -93,17 +93,34 @@
 
 		public override string ToString()
 		{
-			return Encoding.UTF8.GetString(Array, Offset, Count); 
+		    return DebugVal;
 		}
 
 		public override bool Equals(object obj)
 		{
-			return ToString() == obj.ToString();
+		    if (obj is Slice == false)
+		        return false;
+		    var other = (Slice) obj;
+
+		    if (other._count != _count)
+		        return false;
+
+		    for (int i = 0; i < _count; i++)
+		    {
+		        if (_array[i + _offset] != other._array[i + other._offset])
+		            return false;
+		    }
+		    return true;
 		}
 
 		public override int GetHashCode()
 		{
-			return ToString().GetHashCode();
+            var hashCode = 0;
+            for (int i = 0; i < _count; i++)
+		    {
+		        hashCode = (hashCode*397) ^ _array[i + _offset];
+		    }
+            return hashCode;
 		} 
 	}
 }

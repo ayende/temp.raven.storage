@@ -17,11 +17,7 @@
 		public InternalKey(Slice key, ulong seq, ItemType type)
 			: this()
 		{
-			var buffer = new byte[key.Count + 8];
-			Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, key.Count);
-			buffer.WriteLong(key.Count, Format.PackSequenceAndType(seq, type));
-
-			this.UserKey = new Slice(buffer);
+			this.UserKey = key;
 			this.Sequence = seq;
 			this.Type = type;
 		}
@@ -33,9 +29,9 @@
 			if (!TryParse(key, out internalKey))
 				throw new FormatException("Invalid internal key format.");
 
-			this.Sequence = internalKey.Sequence;
-			this.Type = internalKey.Type;
-			this.UserKey = internalKey.UserKey;
+			Sequence = internalKey.Sequence;
+			Type = internalKey.Type;
+			UserKey = internalKey.UserKey;
 		}
 
 		public Slice Encode()
@@ -71,5 +67,32 @@
 
 			return type <= ItemType.Value;
 		}
+
+	    public override string ToString()
+	    {
+	        return DebugVal;
+	    }
+
+	    public bool Equals(InternalKey other)
+	    {
+	        return UserKey.Equals(other.UserKey) && Sequence == other.Sequence && Type == other.Type;
+	    }
+
+	    public override bool Equals(object obj)
+	    {
+	        if (ReferenceEquals(null, obj)) return false;
+	        return obj is InternalKey && Equals((InternalKey) obj);
+	    }
+
+	    public override int GetHashCode()
+	    {
+	        unchecked
+	        {
+	            var hashCode = UserKey.GetHashCode();
+	            hashCode = (hashCode*397) ^ Sequence.GetHashCode();
+	            hashCode = (hashCode*397) ^ (int) Type;
+	            return hashCode;
+	        }
+	    }
 	}
 }
