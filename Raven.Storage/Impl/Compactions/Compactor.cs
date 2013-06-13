@@ -32,8 +32,8 @@ namespace Raven.Storage.Impl.Compactions
 			if (manualCompaction != null)
 				throw new InvalidOperationException("Manual compaction is already in progess.");
 
-			manualCompaction = new ManualCompaction(level, 
-				new InternalKey(begin, Format.MaxSequenceNumber, ItemType.ValueForSeek), 
+			manualCompaction = new ManualCompaction(level,
+				new InternalKey(begin, Format.MaxSequenceNumber, ItemType.ValueForSeek),
 				new InternalKey(end, Format.MaxSequenceNumber, ItemType.ValueForSeek));
 
 			return Task.Factory.StartNew(async () =>
@@ -565,9 +565,9 @@ namespace Raven.Storage.Impl.Compactions
 
 		public async Task CompactRangeAsync(Slice begin, Slice end)
 		{
+			int maxLevelWithFiles = 1;
 			using (await state.Lock.LockAsync())
 			{
-				int maxLevelWithFiles = 1;
 
 				var @base = state.VersionSet.Current;
 				for (var level = 1; level < Config.NumberOfLevels; level++)
@@ -577,11 +577,11 @@ namespace Raven.Storage.Impl.Compactions
 						maxLevelWithFiles = level;
 					}
 				}
+			}
 
-				for (var level = 0; level < maxLevelWithFiles; level++)
-				{
-					await CompactAsync(level, begin, end, state.Lock);
-				}
+			for (var level = 0; level < maxLevelWithFiles; level++)
+			{
+				await CompactAsync(level, begin, end, state.Lock);
 			}
 		}
 	}
