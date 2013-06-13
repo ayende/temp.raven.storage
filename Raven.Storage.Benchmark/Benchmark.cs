@@ -436,7 +436,7 @@
 			return DoWrite(parameters, true);
 		}
 
-		private Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
+		private async Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
 			var generator = new RandomGenerator();
@@ -456,19 +456,12 @@
 					result.FinishOperation();
 				}
 
-				//if (parameters.Sync)
-				//{
-				storage.Writer.Write(batch);
-				//}
-				//else
-				//{
-				//	await storage.Writer.WriteAsync(batch);
-				//}
+				await storage.Writer.WriteAsync(batch);
 			}
 
 			result.AddBytes(bytes);
 
-			return new CompletedTask<BenchmarkResult>(result);
+			return result;
 		}
 
 		private void Open()

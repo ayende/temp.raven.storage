@@ -45,10 +45,6 @@
 			this.state = state;
 		}
 
-		public void Write(WriteBatch batch)
-		{
-			WriteAsync(batch).Wait();
-		}
 
 		public async Task WriteAsync(WriteBatch batch)
 		{
