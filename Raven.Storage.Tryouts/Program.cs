@@ -24,7 +24,7 @@
 			var writeBatch = new WriteBatch();
 			writeBatch.Put("test", new MemoryStream(new byte[]{1,2,3}));
 			writeBatch.Put("test2", new MemoryStream(new byte[] { 1, 2}));
-			storage.Writer.Write(writeBatch);
+			storage.Writer.WriteAsync(writeBatch).Wait();
 		}
 	}
 }

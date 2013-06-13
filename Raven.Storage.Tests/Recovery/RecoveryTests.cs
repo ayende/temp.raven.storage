@@ -29,7 +29,7 @@ namespace Raven.Storage.Tests.Recovery
 			var writeBatch = new WriteBatch();
 			writeBatch.Put("A", s1);
 			writeBatch.Put("B", s2);
-			storage.Writer.Write(writeBatch);
+			storage.Writer.WriteAsync(writeBatch).Wait();
 
 			storage.Dispose();
 

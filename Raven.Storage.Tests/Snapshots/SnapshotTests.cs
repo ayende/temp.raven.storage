@@ -23,14 +23,14 @@
 				var writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s1);
 
-				storage.Writer.Write(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
 				var snapshot = storage.Commands.CreateSnapshot();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
 
-				storage.Writer.Write(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions
@@ -59,14 +59,14 @@
 				var writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s1);
 
-				storage.Writer.Write(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
 				var snapshot = storage.Commands.CreateSnapshot();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
 
-				storage.Writer.Write(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions

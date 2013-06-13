@@ -16,11 +16,11 @@
 				{
 					var writeBatch = new WriteBatch();
 					writeBatch.Put("p", new MemoryStream(Encoding.UTF8.GetBytes("begin")));
-					storage.Writer.Write(writeBatch);
+					storage.Writer.WriteAsync(writeBatch).Wait();
 
 					writeBatch = new WriteBatch();
 					writeBatch.Put("q", new MemoryStream(Encoding.UTF8.GetBytes("end")));
-					storage.Writer.Write(writeBatch);
+					storage.Writer.WriteAsync(writeBatch).Wait();
 
 					storage.Commands.Compact(0, "p", "q");
 				}
