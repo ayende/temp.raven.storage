@@ -54,7 +54,7 @@
 							await this.MaybeScheduleCompactionAsync(locker);
 							var task = state.BackgroundTask;
 							locker.Exit();
-							task.Wait();
+							await task;
 
 							return;
 						}
