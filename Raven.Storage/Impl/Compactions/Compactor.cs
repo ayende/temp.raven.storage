@@ -52,8 +52,12 @@ namespace Raven.Storage.Impl.Compactions
 							{
 								MaybeScheduleCompaction(actualLock);
 								task = state.BackgroundTask;
+								if (task == null)
+									continue;// shouldn't happen, but.. you know...
 							}
 							await task;
+
+							break;
 						}
 					});
 		}
@@ -64,7 +68,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			if (state.BackgroundCompactionScheduled)
 			{
-				return; // alread scheduled, nothing to do
+				return; // already scheduled, nothing to do
 			}
 			if (state.ShuttingDown)
 			{
@@ -107,7 +111,11 @@ namespace Raven.Storage.Impl.Compactions
 					// chew up resources for failed compactions for the duration of
 					// the problem.
 					if (needToWait)
+					{
+						locker.Exit();
 						await Task.Delay(1000);
+						await locker.LockAsync();
+					}
 				}
 				finally
 				{
