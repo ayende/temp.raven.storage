@@ -53,11 +53,17 @@ namespace Raven.Storage.Impl
 		{
 			private bool locked;
 			private readonly AsyncLock _asyncLock;
+			private bool _locked;
 
 			public LockScope(AsyncLock asyncLock)
 			{
 				_asyncLock = asyncLock;
 				locked = true;
+			}
+
+			public bool Locked
+			{
+				get { return _locked; }
 			}
 
 			public void Dispose()

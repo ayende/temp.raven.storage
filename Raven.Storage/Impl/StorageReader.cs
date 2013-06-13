@@ -14,11 +14,6 @@
 			this.state = state;
 		}
 
-		public Stream Read(Slice key, ReadOptions options = null)
-		{
-			return ReadAsync(key, options).Result;
-		}
-
 		public async Task<Stream> ReadAsync(Slice key, ReadOptions options = null)
 		{
 			if (options == null)
@@ -61,11 +56,6 @@
 			}
 
 			return null;
-		}
-
-		public DbIterator NewIterator(ReadOptions options)
-		{
-			return NewIteratorAsync(options).Result;
 		}
 
 		public async Task<DbIterator> NewIteratorAsync(ReadOptions options)

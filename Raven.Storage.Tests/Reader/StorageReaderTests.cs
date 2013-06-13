@@ -16,7 +16,7 @@
 				batch.Put("test1", new MemoryStream(Encoding.UTF8.GetBytes("test")));
 				await storage.Writer.WriteAsync(batch);
 
-				Assert.NotNull(storage.Reader.Read("test1"));
+				Assert.NotNull(await storage.Reader.ReadAsync("test1"));
 			}
 		}
 
@@ -36,7 +36,7 @@
 				batch2.Put("test2", new MemoryStream(Encoding.UTF8.GetBytes("test")));
 				await storage.Writer.WriteAsync(batch2);
 
-				Assert.NotNull(storage.Reader.Read("test1"));
+				Assert.NotNull(await storage.Reader.ReadAsync("test1"));
 			}
 		}
 	}
