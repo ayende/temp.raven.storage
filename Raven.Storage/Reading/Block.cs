@@ -22,7 +22,7 @@ namespace Raven.Storage.Reading
 	
 		private int usage;
 
-		public void InrementUsage()
+		public void IncrementUsage()
 		{
 			Interlocked.Increment(ref usage);
 		}
@@ -86,7 +86,7 @@ namespace Raven.Storage.Reading
 		{
 			if (RestartsCount == 0)
 				return new EmptyIterator();
-			InrementUsage(); // make sure that this object won't be disposed before its iterator
+			this.IncrementUsage(); // make sure that this object won't be disposed before its iterator
 			return new BlockIterator(comparator, this);
 		}
 
