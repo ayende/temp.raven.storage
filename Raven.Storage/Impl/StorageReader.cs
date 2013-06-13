@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Impl
+﻿using Raven.Storage.Util;
+
+namespace Raven.Storage.Impl
 {
 	using System.IO;
 	using System.Threading.Tasks;
@@ -14,7 +16,7 @@
 			this.state = state;
 		}
 
-		public async Task<Stream> ReadAsync(Slice key, ReadOptions options = null)
+		public Stream Read(Slice key, ReadOptions options = null)
 		{
 			if (options == null)
 			{
@@ -46,16 +48,21 @@
 			{
 				if (currentVersion.UpdateStats(stats))
 				{
-					using (var locker = await state.Lock.LockAsync())
-					{
-						await state.Compactor.MaybeScheduleCompactionAsync(locker);
-					}
+					Background.Work(MaybeScheduleCompactionAsync());
 				}
 
 				return stream;
 			}
 
 			return null;
+		}
+
+		private async Task MaybeScheduleCompactionAsync()
+		{
+			using (var locker = await state.Lock.LockAsync())
+			{
+				state.Compactor.MaybeScheduleCompaction(locker);
+			}
 		}
 
 		public async Task<DbIterator> NewIteratorAsync(ReadOptions options)

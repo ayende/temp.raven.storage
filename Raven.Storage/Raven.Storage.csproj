@@ -116,6 +116,7 @@
     <Compile Include="Memory\MemoryMappedFileAccessor.cs" />
     <Compile Include="Memory\MemoryMappedFileArrayAccessor.cs" />
     <Compile Include="Memory\UnmanagedMemoryAccessor.cs" />
+    <Compile Include="Util\Background.cs" />
     <Compile Include="Util\BufferPool.cs" />
     <Compile Include="Memtable\MemTable.cs" />
     <Compile Include="Memtable\SkipList.cs" />

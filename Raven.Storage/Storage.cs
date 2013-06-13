@@ -45,7 +45,7 @@ namespace Raven.Storage
 			{
 				await storageState.LogAndApplyAsync(edit, locker);
 				storageState.Compactor.DeleteObsoleteFiles();
-				await storageState.Compactor.MaybeScheduleCompactionAsync(locker);
+				storageState.Compactor.MaybeScheduleCompaction(locker);
 			}
 		}
 

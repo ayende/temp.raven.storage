@@ -15,9 +15,9 @@
 
 		public async Task CompactAsync(int level, Slice begin, Slice end)
 		{
-			using (var locker = await state.Lock.LockAsync())
+			using (await state.Lock.LockAsync())
 			{
-				await state.Compactor.CompactAsync(level, begin, end, locker);
+				await state.Compactor.CompactAsync(level, begin, end, state.Lock);
 			}
 		}
 

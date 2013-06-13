@@ -312,7 +312,7 @@
 			{
 				var k = random.Next() % range;
 				var key = string.Format("{0:0000000000000000}", k);
-				await storage.Reader.ReadAsync(key);
+				storage.Reader.Read(key);
 				result.FinishOperation();
 			}
 
@@ -357,7 +357,7 @@
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				await storage.Reader.ReadAsync(key);
+				storage.Reader.Read(key);
 				result.FinishOperation();
 			}
 
@@ -376,7 +376,7 @@
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				if (await storage.Reader.ReadAsync(key) != null)
+				if (storage.Reader.Read(key) != null)
 					found++;
 
 				result.FinishOperation();

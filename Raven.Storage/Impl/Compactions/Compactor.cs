@@ -50,7 +50,7 @@ namespace Raven.Storage.Impl.Compactions
 							Task task;
 							using (var actualLock = await locker.LockAsync())
 							{
-								MaybeScheduleCompactionAsync(actualLock);
+								MaybeScheduleCompaction(actualLock);
 								task = state.BackgroundTask;
 							}
 							await task;
@@ -58,7 +58,7 @@ namespace Raven.Storage.Impl.Compactions
 					});
 		}
 
-		internal void MaybeScheduleCompactionAsync(AsyncLock.LockScope locker)
+		internal void MaybeScheduleCompaction(AsyncLock.LockScope locker)
 		{
 			Debug.Assert(locker != null && locker.Locked);
 
@@ -114,7 +114,7 @@ namespace Raven.Storage.Impl.Compactions
 					state.BackgroundCompactionScheduled = false;
 				}
 
-				MaybeScheduleCompactionAsync(locker);
+				MaybeScheduleCompaction(locker);
 			}
 		}
 
