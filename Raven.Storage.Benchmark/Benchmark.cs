@@ -42,11 +42,11 @@
 					continue;
 
 				var result = RunBenchmark(benchmark, parameters);
-				Report(result);
+				Report(result, parameters);
 			}
 		}
 
-		private void Report(BenchmarkResultSet result)
+		private void Report(BenchmarkResultSet result, BenchmarkParameters parameters)
 		{
 			Output("Report for benchmark:		{0}", result.Benchmark);
 			Output("Bytes:				{0}", result.TotalBytes);
@@ -54,6 +54,13 @@
 			Output("Rate:				{0}", result.Rate);
 			Output("Operations:			{0}", result.TotalOperations);
 			Output("Operations per second:		{0:0} op/s", result.TotalOperations / result.ElapsedSeconds);
+
+			if (parameters.Histogram)
+			{
+				Output("Milliseconds per op: ");
+				Output(result.Histogram.ToString());
+			}
+
 			if (result.Messages.Count > 0)
 			{
 				Output("Messages:");
@@ -189,22 +196,22 @@
 			return parameters;
 		}
 
-		private Task<BenchmarkResult> SnappyUncompress(BenchmarkParameters arg)
+		private Task<BenchmarkResult> SnappyUncompress(BenchmarkParameters parameters)
 		{
 			throw new NotImplementedException();
 		}
 
-		private Task<BenchmarkResult> SnappyCompress(BenchmarkParameters arg)
+		private Task<BenchmarkResult> SnappyCompress(BenchmarkParameters parameters)
 		{
 			throw new NotImplementedException();
 		}
 
-		private Task<BenchmarkResult> AcquireLoad(BenchmarkParameters arg)
+		private Task<BenchmarkResult> AcquireLoad(BenchmarkParameters parameters)
 		{
 			throw new NotImplementedException();
 		}
 
-		private Task<BenchmarkResult> Crc32c(BenchmarkParameters arg)
+		private Task<BenchmarkResult> Crc32c(BenchmarkParameters parameters)
 		{
 			const long Size = 4096;
 			var buffer = new byte[Size];
@@ -213,7 +220,7 @@
 				buffer[i] = (byte)'x';
 			}
 
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			long bytes = 0;
 			uint crc = 0;
@@ -233,7 +240,7 @@
 
 		private Task<BenchmarkResult> Compact(BenchmarkParameters parameters)
 		{
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 			storage.Commands.CompactRange(null, null);
 
 			return new CompletedTask<BenchmarkResult>(result);
@@ -276,7 +283,7 @@
 		private Task<BenchmarkResult> DoDelete(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			for (var i = 0; i < parameters.Num; i += parameters.EntriesPerBatch)
 			{
@@ -300,7 +307,7 @@
 			var random = new Random();
 			var range = (options.Num + 99) / 100;
 
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			for (var i = 0; i < parameters.Reads; i++)
 			{
@@ -318,7 +325,7 @@
 			var random = new Random();
 			var found = 0;
 
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			for (var i = 0; i < parameters.Reads; i++)
 			{
@@ -344,7 +351,7 @@
 		private async Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
 		{
 			var random = new Random();
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			for (int i = 0; i < parameters.Reads; i++)
 			{
@@ -363,7 +370,7 @@
 			var random = new Random();
 			var found = 0;
 
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			for (int i = 0; i < parameters.Reads; i++)
 			{
@@ -383,7 +390,7 @@
 
 		private async Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
 		{
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
 			{
 				var i = 0;
@@ -402,7 +409,7 @@
 
 		private async Task<BenchmarkResult> ReadSequential(BenchmarkParameters parameters)
 		{
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
 			{
 				var i = 0;
@@ -434,7 +441,7 @@
 			var random = new Random();
 			var generator = new RandomGenerator();
 
-			var result = new BenchmarkResult();
+			var result = new BenchmarkResult(parameters);
 
 			long bytes = 0;
 			for (var i = 0; i < parameters.Num; i += parameters.EntriesPerBatch)

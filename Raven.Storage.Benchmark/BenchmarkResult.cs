@@ -1,11 +1,18 @@
 ﻿namespace Raven.Storage.Benchmark
 {
+	using System;
 	using System.Collections.Generic;
 	using System.Diagnostics;
 
 	internal class BenchmarkResult
 	{
+		private DateTime lastOperationFinishedDate;
+
 		private readonly List<string> messages;
+
+		private readonly BenchmarkParameters parameters;
+
+		public Histogram Histogram { get; private set; }
 
 		public Stopwatch Stopwatch { get; private set; }
 
@@ -21,9 +28,13 @@
 			}
 		}
 
-		public BenchmarkResult()
+		public BenchmarkResult(BenchmarkParameters parameters)
 		{
+			this.parameters = parameters;
+			lastOperationFinishedDate = DateTime.Now;
+
 			messages = new List<string>();
+			this.Histogram = new Histogram();
 
 			Stopwatch = new Stopwatch();
 			StartTimer();
@@ -41,6 +52,16 @@
 
 		public void FinishOperation()
 		{
+			if (parameters.Histogram)
+			{
+				var now = DateTime.Now;
+				var span = now - lastOperationFinishedDate;
+
+				Histogram.Add(span.TotalMilliseconds);
+
+				lastOperationFinishedDate = now;
+			}
+
 			Operations++;
 		}
 

@@ -72,5 +72,26 @@
 				return this.results.SelectMany(result => result.Messages).ToList();
 			}
 		}
+
+		public Histogram Histogram
+		{
+			get
+			{
+				if (results.Length > 0)
+				{
+					var histogram = results[0].Histogram;
+
+					for (int i = 1; i < results.Length; i++)
+					{
+						var result = results[i];
+						histogram.Merge(result.Histogram);
+					}
+
+					return histogram;
+				}
+
+				return null;
+			}
+		}
 	}
 }
