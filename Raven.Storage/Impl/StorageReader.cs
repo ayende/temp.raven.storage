@@ -18,6 +18,11 @@
 
 		public Stream Read(Slice key, ReadOptions options = null)
 		{
+			return ReadAsync(key, options).Result;
+		}
+
+		public async Task<Stream> ReadAsync(Slice key, ReadOptions options = null)
+		{
 			if (options == null)
 			{
 				options = new ReadOptions();
@@ -27,7 +32,7 @@
 			var imm = state.ImmutableMemTable;
 			var currentVersion = state.VersionSet.Current;
 
-			var snapshot = options.Snapshot != null ? options.Snapshot.Sequence : this.state.VersionSet.LastSequence;
+			var snapshot = options.Snapshot != null ? options.Snapshot.Sequence : state.VersionSet.LastSequence;
 
 			var reference = new Reference<Slice> { Value = key };
 
@@ -48,13 +53,21 @@
 			{
 				if (currentVersion.UpdateStats(stats))
 				{
-					//this.state.MaybeScheduleCompactionAsync();
+					using (var locker = await state.Lock.LockAsync())
+					{
+						await state.Compactor.MaybeScheduleCompactionAsync(locker);
+					}
 				}
 
 				return stream;
 			}
 
 			return null;
+		}
+
+		public DbIterator NewIterator(ReadOptions options)
+		{
+			return NewIteratorAsync(options).Result;
 		}
 
 		public async Task<DbIterator> NewIteratorAsync(ReadOptions options)

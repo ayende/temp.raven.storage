@@ -295,7 +295,7 @@
 			return new CompletedTask<BenchmarkResult>(result);
 		}
 
-		private Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
+		private async Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var range = (options.Num + 99) / 100;
@@ -306,11 +306,11 @@
 			{
 				var k = random.Next() % range;
 				var key = string.Format("{0:0000000000000000}", k);
-				storage.Reader.Read(key);
+				await storage.Reader.ReadAsync(key);
 				result.FinishOperation();
 			}
 
-			return new CompletedTask<BenchmarkResult>(result);
+			return result;
 		}
 
 		private async Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
@@ -341,7 +341,7 @@
 			return result;
 		}
 
-		private Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
+		private async Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var result = new BenchmarkResult();
@@ -351,14 +351,14 @@
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				storage.Reader.Read(key);
+				await storage.Reader.ReadAsync(key);
 				result.FinishOperation();
 			}
 
-			return new CompletedTask<BenchmarkResult>(result);
+			return result;
 		}
 
-		private Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
+		private async Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var found = 0;
@@ -370,7 +370,7 @@
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				if (storage.Reader.Read(key) != null)
+				if (await storage.Reader.ReadAsync(key) != null)
 					found++;
 
 				result.FinishOperation();
@@ -378,7 +378,7 @@
 
 			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
 
-			return new CompletedTask<BenchmarkResult>(result);
+			return result;
 		}
 
 		private async Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
