@@ -128,8 +128,11 @@ namespace Raven.Storage.Memory
 		{
 			foreach (var unamagedMemory in _memHandles)
 			{
-				if (unamagedMemory.Ptr != IntPtr.Zero)
-					Marshal.FreeHGlobal(unamagedMemory.Ptr);
+				if (unamagedMemory.Ptr == IntPtr.Zero)
+					continue;
+
+				Marshal.FreeHGlobal(unamagedMemory.Ptr);
+				unamagedMemory.Ptr = IntPtr.Zero;
 			}
 			GC.SuppressFinalize(this);
 		}
