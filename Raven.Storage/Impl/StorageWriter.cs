@@ -49,26 +49,26 @@
 		public async Task WriteAsync(WriteBatch batch)
 		{
 			var mine = new OutstandingWrite(batch);
-			this.pendingWrites.Enqueue(mine);
+			pendingWrites.Enqueue(mine);
 
-			while (mine.Done() == false && this.pendingWrites.Peek() != mine)
+			while (mine.Done() == false && pendingWrites.Peek() != mine)
 			{
-				await this.writeCompletedEvent.WaitAsync();
+				await writeCompletedEvent.WaitAsync();
 			}
 
 			if (mine.Done())
 				return;
 
-			using (var locker = await this.state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync())
 			{
 				try
 				{
 					if (mine.Done())
 						return;
 
-					await this.MakeRoomForWriteAsync(force: false, lockScope: locker);
+					await MakeRoomForWriteAsync(force: false, lockScope: locker);
 
-					var lastSequence = this.state.VersionSet.LastSequence;
+					var lastSequence = state.VersionSet.LastSequence;
 
 					var list = BuildBatchGroup(mine);
 
@@ -85,18 +85,18 @@
 					{
 						foreach (var write in list)
 						{
-							write.Batch.Prepare(this.state.MemTable);
+							write.Batch.Prepare(state.MemTable);
 						}
 
-						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, this.state);
+						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, state);
 
 						foreach (var write in list)
 						{
-							write.Batch.Apply(this.state.MemTable, currentSequence);
+							write.Batch.Apply(state.MemTable, currentSequence);
 						}
 					}
 					await locker.LockAsync();
-					this.state.VersionSet.LastSequence = lastSequence;
+					state.VersionSet.LastSequence = lastSequence;
 
 					foreach (var outstandingWrite in list)
 					{
@@ -106,7 +106,7 @@
 				}
 				finally
 				{
-					this.writeCompletedEvent.Pulse();
+					writeCompletedEvent.Pulse();
 				}
 			}
 		}
@@ -117,11 +117,11 @@
 			while (true)
 			{
 				await lockScope.LockAsync();
-				if (this.state.BackgroundTask.IsCanceled || this.state.BackgroundTask.IsFaulted)
+				if (state.BackgroundTask.IsCanceled || state.BackgroundTask.IsFaulted)
 				{
-					await this.state.BackgroundTask;// throws
+					await state.BackgroundTask;// throws
 				}
-				else if (allowDelay && this.state.VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
+				else if (allowDelay && state.VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
 				{
 					// We are getting close to hitting a hard limit on the number of
 					// L0 files.  Rather than delaying a single write by several
@@ -136,34 +136,34 @@
 					await lockScope.LockAsync();
 					allowDelay = false; // Do not delay a single write more than once
 				}
-				else if (force == false && this.state.MemTable.ApproximateMemoryUsage <= this.state.Options.WriteBatchSize)
+				else if (force == false && state.MemTable.ApproximateMemoryUsage <= state.Options.WriteBatchSize)
 				{
 					// There is room in current memtable
 					break;
 				}
-				else if (this.state.ImmutableMemTable != null)
+				else if (state.ImmutableMemTable != null)
 				{
 					// We have filled up the current memtable, but the previous
 					// one is still being compacted, so we wait.
-					await this.state.BackgroundTask;
+					await state.BackgroundTask;
 				}
-				else if (this.state.VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
+				else if (state.VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
 				{
 					// There are too many level-0 files.
-					await this.state.BackgroundTask;
+					await state.BackgroundTask;
 				}
 				else
 				{
 					// Attempt to switch to a new memtable and trigger compaction of old
-					Debug.Assert(this.state.VersionSet.PrevLogNumber == 0);
+					Debug.Assert(state.VersionSet.PrevLogNumber == 0);
 
-					this.state.LogWriter.Dispose();
+					state.LogWriter.Dispose();
 
-					this.state.CreateNewLog();
-					this.state.ImmutableMemTable = this.state.MemTable;
-					this.state.MemTable = new MemTable(this.state);
+					state.CreateNewLog();
+					state.ImmutableMemTable = state.MemTable;
+					state.MemTable = new MemTable(state);
 					force = false;
-					await this.state.Compactor.MaybeScheduleCompactionAsync(lockScope);
+					state.Compactor.MaybeScheduleCompaction(lockScope);
 				}
 
 				lockScope.Exit();
@@ -184,7 +184,7 @@
 			var list = new List<OutstandingWrite> { mine };
 
 			OutstandingWrite item;
-			while (maxSize >= 0 && this.pendingWrites.TryDequeue(out item))
+			while (maxSize >= 0 && pendingWrites.TryDequeue(out item))
 			{
 				if(item == mine)
 					continue;

@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Benchmark
+﻿using System.Threading.Tasks;
+
+namespace Raven.Storage.Benchmark
 {
 	using System;
 	using System.Xml;
@@ -69,10 +71,10 @@
 		public static void Main(string[] args)
 		{
 			var program = new Program();
-			program.Parse(args);
+			program.ParseAsync(args).Wait();
 		}
 
-		private void Parse(string[] args)
+		private async Task ParseAsync(string[] args)
 		{
 			// Do these arguments the traditional way to maintain compatibility
 			//if (args.Length < 3)
@@ -96,7 +98,7 @@
 			{
 				using (var benchmark = new Benchmark(options, Console.WriteLine))
 				{
-					benchmark.Run();
+					await benchmark.RunAsync();
 				}
 			}
 			catch (Exception e)
