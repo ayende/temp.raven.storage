@@ -48,7 +48,7 @@
 			{
 				if (currentVersion.UpdateStats(stats))
 				{
-					//this.state.MaybeScheduleCompaction();
+					//this.state.MaybeScheduleCompactionAsync();
 				}
 
 				return stream;
@@ -61,7 +61,7 @@
 		{
 			using (var locker = await state.Lock.LockAsync())
 			{
-				var result = await state.NewInternalIterator(options, locker);
+				var result = await state.NewInternalIteratorAsync(options, locker);
 				var internalIterator = result.Item1;
 				var latestSnapshot = result.Item2;
 

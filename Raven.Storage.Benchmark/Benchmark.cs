@@ -429,7 +429,7 @@
 			return DoWrite(parameters, true);
 		}
 
-		private async Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
+		private Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
 			var generator = new RandomGenerator();
@@ -461,7 +461,7 @@
 
 			result.AddBytes(bytes);
 
-			return result;
+			return new CompletedTask<BenchmarkResult>(result);
 		}
 
 		private void Open()

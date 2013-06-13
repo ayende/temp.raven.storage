@@ -51,7 +51,7 @@
 							}
 
 							await locker.LockAsync();
-							await MaybeScheduleCompaction(locker);
+							await this.MaybeScheduleCompactionAsync(locker);
 							var task = state.BackgroundTask;
 							locker.Exit();
 							task.Wait();
@@ -61,7 +61,7 @@
 					});
 		}
 
-		internal async Task MaybeScheduleCompaction(AsyncLock.LockScope locker)
+		internal async Task MaybeScheduleCompactionAsync(AsyncLock.LockScope locker)
 		{
 			Debug.Assert(locker != null);
 			await locker.LockAsync();
@@ -83,17 +83,17 @@
 			}
 
 			state.BackgroundCompactionScheduled = true;
-			state.BackgroundTask = Task.Factory.StartNew(() => RunCompaction());
+			state.BackgroundTask = Task.Factory.StartNew(() => this.RunCompactionAsync());
 		}
 
-		private async Task RunCompaction()
+		private async Task RunCompactionAsync()
 		{
 			using (LogManager.OpenMappedContext("storage", state.DatabaseName))
 			using (var locker = await state.Lock.LockAsync())
 			{
 				try
 				{
-					await BackgroundCompaction(locker);
+					await this.BackgroundCompactionAsync(locker);
 				}
 				catch (Exception e)
 				{
@@ -114,15 +114,15 @@
 					state.BackgroundCompactionScheduled = false;
 				}
 
-				await MaybeScheduleCompaction(locker);
+				await this.MaybeScheduleCompactionAsync(locker);
 			}
 		}
 
-		private async Task BackgroundCompaction(AsyncLock.LockScope locker)
+		private async Task BackgroundCompactionAsync(AsyncLock.LockScope locker)
 		{
 			if (state.ImmutableMemTable != null)
 			{
-				await CompactMemTable(locker);
+				await this.CompactMemTableAsync(locker);
 				return;
 			}
 
@@ -159,14 +159,14 @@
 					compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
 					compaction.Edit.AddFile(compaction.Level + 1, file);
 
-					await state.LogAndApply(compaction.Edit, locker);
+					await state.LogAndApplyAsync(compaction.Edit, locker);
 
 					log.Info("Moved {0} to level-{1} {2} bytes", file.FileNumber, compaction.Level + 1, file.FileSize);
 				}
 				else
 				{
 					var compactionState = new CompactionState(compaction);
-					await DoCompactionWork(compactionState, locker);
+					await this.DoCompactionWorkAsync(compactionState, locker);
 					CleanupCompaction(compactionState);
 					compaction.ReleaseInputs();
 					DeleteObsoleteFiles();
@@ -207,7 +207,7 @@
 			compactionState.Dispose();
 		}
 
-		private async Task DoCompactionWork(CompactionState compactionState, AsyncLock.LockScope locker)
+		private async Task DoCompactionWorkAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 			var watch = Stopwatch.StartNew();
@@ -232,7 +232,7 @@
 			{
 				if (this.state.ImmutableMemTable != null)
 				{
-					await this.CompactMemTable(locker);
+					await this.CompactMemTableAsync(locker);
 					// bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
 				}
 
@@ -293,7 +293,7 @@
 						{
 							try
 							{
-								await OpenCompactionOutputFile(compactionState, locker);
+								await this.OpenCompactionOutputFileAsync(compactionState, locker);
 							}
 							catch (Exception)
 							{
@@ -354,10 +354,10 @@
 
 			state.CompactionStats[compactionState.Compaction.Level + 1].Add(stats);
 
-			await InstallCompactionResults(compactionState, locker);
+			await this.InstallCompactionResultsAsync(compactionState, locker);
 		}
 
-		private async Task OpenCompactionOutputFile(CompactionState compactionState, AsyncLock.LockScope locker)
+		private async Task OpenCompactionOutputFileAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			Debug.Assert(compactionState != null);
 			Debug.Assert(compactionState.Builder != null);
@@ -378,7 +378,7 @@
 			compactionState.Builder = new TableBuilder(this.state.Options, file, () => state.FileSystem.NewReadableWritable(state.FileSystem.GetTempFileName(fileNumber)));
 		}
 
-		private async Task InstallCompactionResults(CompactionState compactionState, AsyncLock.LockScope locker)
+		private async Task InstallCompactionResultsAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 
@@ -391,7 +391,7 @@
 				compactionState.Compaction.Edit.AddFile(level + 1, output);
 			}
 
-			await this.state.LogAndApply(compactionState.Compaction.Edit, locker);
+			await this.state.LogAndApplyAsync(compactionState.Compaction.Edit, locker);
 		}
 
 		private void FinishCompactionOutputFile(CompactionState compactionState, IIterator input)
@@ -445,7 +445,7 @@
 		/// log-file/memtable and writes a new descriptor if successful.
 		/// </summary>
 		/// <param name="locker"></param>
-		private async Task CompactMemTable(AsyncLock.LockScope locker)
+		private async Task CompactMemTableAsync(AsyncLock.LockScope locker)
 		{
 			if (state.ImmutableMemTable == null)
 				throw new InvalidOperationException("ImmutableMemTable cannot be null.");
@@ -461,7 +461,7 @@
 
 			edit.SetPrevLogNumber(0);
 			edit.SetLogNumber(state.LogFileNumber);
-			await this.state.LogAndApply(edit, locker);
+			await this.state.LogAndApplyAsync(edit, locker);
 
 			this.state.ImmutableMemTable = null;
 			DeleteObsoleteFiles();

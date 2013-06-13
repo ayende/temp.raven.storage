@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.IO.MemoryMappedFiles;
 using System.Threading.Tasks;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Memory;
@@ -103,16 +102,11 @@ namespace Raven.Storage.Util
 
 		public static int Write7BitEncodedInt(this Stream stream, int value)
 		{
-			int size = 0;
-			var num = (uint)value;
-			while (num >= 128U)
-			{
-				size++;
-				stream.WriteByte((byte)(num | 128U));
-				num >>= 7;
-			}
-			stream.WriteByte((byte)num);
-			return size + 1;
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			stream.Write(buffer, 0, size);
+			return size;
 		}
 
 		public static int WriteLengthPrefixedSlice(this Stream stream, Slice slice)
@@ -123,9 +117,22 @@ namespace Raven.Storage.Util
 			return size + slice.Count;
 		}
 
+		public static async Task<int> WriteLengthPrefixedSliceAsync(this LogWriter stream, Slice slice)
+		{
+			var size = await stream.Write7BitEncodedIntAsync(slice.Count);
+			await stream.WriteAsync(slice.Array, slice.Offset, slice.Count);
+
+			return size + slice.Count;
+		}
+
 		public static int WriteLengthPrefixedInternalKey(this Stream stream, InternalKey internalKey)
 		{
 			return WriteLengthPrefixedSlice(stream, internalKey.Encode());
+		}
+
+		public static async Task<int> WriteLengthPrefixedInternalKeyAsync(this LogWriter stream, InternalKey internalKey)
+		{
+			return await WriteLengthPrefixedSliceAsync(stream, internalKey.Encode());
 		}
 
 		public static Slice ReadLengthPrefixedSlice(this Stream stream)
@@ -161,42 +168,27 @@ namespace Raven.Storage.Util
 			return size;
 		}
 
-
-		private static void Get7BitsBuffer(int value, out byte[] buffer, out int size)
+		public static async Task<int> Write7BitEncodedLongAsync(this LogWriter stream, long value)
 		{
-			buffer = new byte[5];
-			size = 0;
-			var num = (uint)value;
-			while (num >= 128U)
-			{
-				buffer[size++] = ((byte)(num | 128U));
-				num >>= 7;
-			}
-			buffer[size++] = (byte)num;
-		}
-
-		public static int Write7BitEncodedLong(this Stream stream, ulong value)
-		{
-			return stream.Write7BitEncodedLong((long)value);
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			await stream.WriteAsync(buffer, 0, size);
+			return size;
 		}
 
 		public static int Write7BitEncodedLong(this Stream stream, long value)
 		{
-			int size = 0;
-			var num = (ulong)value;
-			while (num >= 128U)
-			{
-				size++;
-				stream.WriteByte((byte)(num | 128U));
-				num >>= 7;
-			}
-			stream.WriteByte((byte)num);
-			return size + 1;
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			stream.Write(buffer, 0, size);
+			return size;
 		}
 
 		public static void WriteInt32(this Stream stream, int value)
 		{
-			var buffer = new byte[4]
+			var buffer = new[]
                 {
                     (byte) value,
                     (byte) (value >> 8),
@@ -205,7 +197,6 @@ namespace Raven.Storage.Util
                 };
 			stream.Write(buffer, 0, 4);
 		}
-
 
 		public static void WriteLong(this byte[] array, int offset, ulong value)
 		{
@@ -223,6 +214,24 @@ namespace Raven.Storage.Util
 				val |= (ulong)array[offset + i] << i * 8;
 			}
 			return val;
+		}
+
+		private static void Get7BitsBuffer(int value, out byte[] buffer, out int size)
+		{
+			Get7BitsBuffer((long)value, out buffer, out size);
+		}
+
+		private static void Get7BitsBuffer(long value, out byte[] buffer, out int size)
+		{
+			buffer = new byte[5];
+			size = 0;
+			var num = (ulong)value;
+			while (num >= 128U)
+			{
+				buffer[size++] = ((byte)(num | 128U));
+				num >>= 7;
+			}
+			buffer[size++] = (byte)num;
 		}
 	}
 }

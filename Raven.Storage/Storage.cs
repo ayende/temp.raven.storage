@@ -23,18 +23,18 @@ namespace Raven.Storage
 		public Storage(string name, StorageOptions options)
 		{
 			storageState = new StorageState(name, options);
-			Init().Wait();
+			InitAsync().Wait();
 		}
 
 		public Storage(StorageState storageState)
 		{
 			this.storageState = storageState;
-			Init().Wait();
+			InitAsync().Wait();
 		}
 
-		private async Task Init()
+		private async Task InitAsync()
 		{
-			var edit = storageState.Recover();
+			var edit = await storageState.RecoverAsync();
 			
 			storageState.CreateNewLog();
 			edit.SetComparatorName(storageState.Options.Comparator.Name);
@@ -45,9 +45,9 @@ namespace Raven.Storage
 			Commands = new StorageCommands(storageState);
 			using (var locker = await storageState.Lock.LockAsync())
 			{
-				await storageState.LogAndApply(edit, locker);
+				await storageState.LogAndApplyAsync(edit, locker);
 				storageState.Compactor.DeleteObsoleteFiles();
-				await storageState.Compactor.MaybeScheduleCompaction(locker);
+				await storageState.Compactor.MaybeScheduleCompactionAsync(locker);
 			}
 		}
 

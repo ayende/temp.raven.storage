@@ -27,7 +27,7 @@
 			this.snapshots = new List<Snapshot>();
 		}
 
-		public async Task<Snapshot> CreateNew(VersionSet versionSet, AsyncLock.LockScope locker)
+		public async Task<Snapshot> CreateNewSnapshotAsync(VersionSet versionSet, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 			var snapshot = new Snapshot
@@ -40,14 +40,14 @@
 			return snapshot;
 		}
 
-		public async Task Delete(Snapshot snapshot, AsyncLock.LockScope locker)
+		public async Task DeleteAsync(Snapshot snapshot, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 			if (snapshots.Contains(snapshot))
 				snapshots.Remove(snapshot);
 		}
 
-		public async Task WriteSnapshot(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
+		public async Task WriteSnapshotAsync(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 
@@ -56,7 +56,7 @@
 			AddCompactionPointers(edit, versionSet);
 			AddFiles(edit, versionSet);
 
-			edit.EncodeTo(logWriter);
+			await edit.EncodeToAsync(logWriter);
 		}
 
 		private static void AddFiles(VersionEdit edit, VersionSet versionSet)

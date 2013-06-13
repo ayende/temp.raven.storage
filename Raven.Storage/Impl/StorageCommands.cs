@@ -45,7 +45,7 @@
 		{
 			using (var locker = await state.Lock.LockAsync())
 			{
-				return await state.Snapshooter.CreateNew(this.state.VersionSet, locker);
+				return await state.Snapshooter.CreateNewSnapshotAsync(this.state.VersionSet, locker);
 			}
 		}
 
@@ -58,7 +58,7 @@
 		{
 			using (var locker = await state.Lock.LockAsync())
 			{
-				await state.Snapshooter.Delete(snapshot, locker);
+				await state.Snapshooter.DeleteAsync(snapshot, locker);
 			}
 		}
 	}

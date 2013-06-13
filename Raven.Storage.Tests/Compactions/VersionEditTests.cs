@@ -12,6 +12,8 @@ using Xunit;
 
 namespace Raven.Storage.Tests.Compactions
 {
+	using System;
+
 	using Raven.Storage.Data;
 
 	public class VersionEditTests
@@ -51,7 +53,7 @@ namespace Raven.Storage.Tests.Compactions
 
 			var memoryStream = new MemoryStream();
 			var logWriter = new LogWriter(memoryStream, new BufferPool());
-			versionEdit.EncodeTo(logWriter);
+			versionEdit.EncodeToAsync(logWriter).Wait(TimeSpan.FromSeconds(15));
 
 			memoryStream.Position = 0;
 

@@ -79,7 +79,7 @@
 			}
 		}
 
-		public async Task LogAndApply(VersionEdit edit, AsyncLock.LockScope locker)
+		public async Task LogAndApplyAsync(VersionEdit edit, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 
@@ -119,7 +119,7 @@
 					var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
 					DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
-					await Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet, locker);
+					await Snapshooter.WriteSnapshotAsync(DescriptorLogWriter, VersionSet, locker);
 				}
 
 				// Unlock during expensive MANIFEST log write
@@ -127,7 +127,7 @@
 
 				// Write new record to MANIFEST log
 
-				edit.EncodeTo(DescriptorLogWriter);
+				await edit.EncodeToAsync(DescriptorLogWriter);
 				DescriptorLogWriter.Flush();
 
 				//if (!s.ok()) {
@@ -144,7 +144,7 @@
 				// new CURRENT file that points to it.
 				if (!string.IsNullOrEmpty(newManifestFile))
 				{
-					this.SetCurrentFile(VersionSet.ManifestFileNumber);
+					await this.SetCurrentFileAsync(VersionSet.ManifestFileNumber);
 					// No need to double-check MANIFEST in case of error since it
 					// will be discarded below.
 				}
@@ -173,24 +173,21 @@
 			}
 		}
 
-		private void SetCurrentFile(ulong descriptorNumber)
+		private async Task SetCurrentFileAsync(ulong descriptorNumber)
 		{
 			var manifest = FileSystem.DescriptorFileName(descriptorNumber);
-			var contents = manifest;
-
 			var tempFileName = FileSystem.GetTempFileName(descriptorNumber);
 
-			using (var stream = FileSystem.NewWritable(tempFileName))
+			using (var writer = new StreamWriter(FileSystem.NewWritable(tempFileName)))
 			{
-				var encodedContents = Encoding.UTF8.GetBytes(contents);
-				stream.Write(encodedContents, 0, encodedContents.Length);
-				stream.Flush();
+				await writer.WriteAsync(manifest);
+				await writer.FlushAsync();
 			}
 
 			FileSystem.RenameFile(tempFileName, FileSystem.GetCurrentFileName());
 		}
 
-		public VersionEdit Recover()
+		public async Task<VersionEdit> RecoverAsync()
 		{
 			FileSystem.EnsureDatabaseDirectoryExists();
 			FileSystem.Lock();
@@ -199,7 +196,7 @@
 			{
 				if (Options.CreateIfMissing)
 				{
-					CreateNewDatabase();
+					await CreateNewDatabaseAsync();
 				}
 				else
 				{
@@ -367,7 +364,7 @@
 			return meta;
 		}
 
-		public void CreateNewDatabase()
+		public async Task CreateNewDatabaseAsync()
 		{
 			var newDb = new VersionEdit();
 
@@ -384,11 +381,11 @@
 				{
 					using (var logWriter = new LogWriter(file, Options.BufferPool))
 					{
-						newDb.EncodeTo(logWriter);
+						await newDb.EncodeToAsync(logWriter);
 					}
 				}
 
-				SetCurrentFile(1);
+				await this.SetCurrentFileAsync(1);
 			}
 			catch (Exception)
 			{
@@ -412,7 +409,7 @@
 				ImmutableMemTable.Dispose();
 		}
 
-		public async Task<Tuple<IIterator, ulong>> NewInternalIterator(ReadOptions options, AsyncLock.LockScope locker)
+		public async Task<Tuple<IIterator, ulong>> NewInternalIteratorAsync(ReadOptions options, AsyncLock.LockScope locker)
 		{
 			await locker.LockAsync();
 
@@ -433,7 +430,7 @@
 			// lazily.
 			for (var level = 1; level < Config.NumberOfLevels; level++)
 			{
-				if (VersionSet.Current.Files[level].Count > 0) 
+				if (VersionSet.Current.Files[level].Count > 0)
 					iterators.Add(new LevelFileNumIterator(InternalKeyComparator, VersionSet.Current.Files[level]));
 			}
 

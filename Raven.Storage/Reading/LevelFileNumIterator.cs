@@ -83,7 +83,7 @@
 		public Stream CreateValueStream()
 		{
 			var stream = new MemoryStream();
-			stream.Write7BitEncodedLong(files[index].FileNumber);
+			stream.Write7BitEncodedLong((long)files[index].FileNumber);
 			stream.Write7BitEncodedLong(files[index].FileSize);
 			stream.Position = 0;
 

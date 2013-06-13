@@ -70,7 +70,7 @@
 					if (mine.Done())
 						return;
 
-					await MakeRoomForWrite(force: false, lockScope: locker);
+					await this.MakeRoomForWriteAsync(force: false, lockScope: locker);
 
 					var lastSequence = this.state.VersionSet.LastSequence;
 
@@ -92,7 +92,7 @@
 							write.Batch.Prepare(this.state.MemTable);
 						}
 
-						await WriteBatch.WriteToLog(list.Select(x => x.Batch).ToArray(), currentSequence, this.state);
+						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, this.state);
 
 						foreach (var write in list)
 						{
@@ -115,7 +115,7 @@
 			}
 		}
 
-		private async Task MakeRoomForWrite(bool force, AsyncLock.LockScope lockScope)
+		private async Task MakeRoomForWriteAsync(bool force, AsyncLock.LockScope lockScope)
 		{
 			bool allowDelay = force == false;
 			while (true)
@@ -167,7 +167,7 @@
 					this.state.ImmutableMemTable = this.state.MemTable;
 					this.state.MemTable = new MemTable(this.state);
 					force = false;
-					await this.state.Compactor.MaybeScheduleCompaction(lockScope);
+					await this.state.Compactor.MaybeScheduleCompactionAsync(lockScope);
 				}
 
 				lockScope.Exit();

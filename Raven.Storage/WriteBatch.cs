@@ -76,7 +76,7 @@ namespace Raven.Storage
 			}
 		}
 
-		internal static async Task WriteToLog(WriteBatch[] writes, ulong seq, StorageState state)
+		internal static async Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state)
 		{
 			state.LogWriter.RecordStarted();
 
