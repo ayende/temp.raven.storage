@@ -94,7 +94,7 @@ namespace Raven.Storage.Reading
 			return CreateBlockIterator(handle, readOptions);
 		}
 
-		internal Tuple<Slice, Stream> InternalGet(ReadOptions readOptions, Slice key)
+		private Tuple<Slice, Stream> InternalGet(ReadOptions readOptions, Slice key)
 		{
 			using (var iterator = _indexBlock.CreateIterator(_storageOptions.Comparator))
 			{

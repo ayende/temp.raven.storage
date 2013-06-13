@@ -35,8 +35,8 @@ namespace Raven.Storage.Tests.Recovery
 
 			using (var newStorage = new Storage(name, new StorageOptions()))
 			{
-				AssertEqual(str1, newStorage.Reader.Read("A"));
-				AssertEqual(str2, newStorage.Reader.Read("B"));
+				AssertEqual(str1, newStorage.Reader.ReadAsync("A").Result);
+				AssertEqual(str2, newStorage.Reader.ReadAsync("B").Result);
 			}
 		}
 

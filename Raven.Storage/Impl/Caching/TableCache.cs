@@ -87,36 +87,34 @@
 
 		public ItemState Get(Slice key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator, out Stream stream)
 		{
-			var tableAndFile = FindTable(fileNumber, fileSize);
-
-			var result = tableAndFile.Table.InternalGet(readOptions, key);
-
 			stream = null;
 
-			if (result == null)
-			{
-				return ItemState.NotFound;
-			}
+			var tableAndFile = FindTable(fileNumber, fileSize);
 
-			InternalKey internalKey;
-			if (!InternalKey.TryParse(result.Item1, out internalKey))
+			using (var iterator = tableAndFile.Table.CreateIterator(readOptions))
 			{
-				return ItemState.Corrupt;
-			}
+				iterator.Seek(key);
+				if (!iterator.IsValid)
+					return ItemState.NotFound;
 
-			if (comparator.Compare(internalKey.UserKey, key) == 0)
-			{
-				var isFound = internalKey.Type == ItemType.Value;
-				if (!isFound)
+				InternalKey internalKey;
+				if (!InternalKey.TryParse(iterator.Key, out internalKey))
+					return ItemState.Corrupt;
+
+				if (comparator.Compare(internalKey.UserKey, key) == 0)
 				{
-					return ItemState.Deleted;
+					var isFound = internalKey.Type == ItemType.Value;
+					if (!isFound)
+					{
+						return ItemState.Deleted;
+					}
+
+					stream = iterator.CreateValueStream();
+					return ItemState.Found;
 				}
 
-				stream = result.Item2;
-				return ItemState.Found;
+				return ItemState.NotFound;
 			}
-
-			return ItemState.NotFound;
 		}
 	}
 
