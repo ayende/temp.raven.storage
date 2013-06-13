@@ -20,7 +20,7 @@
 		{
 			get
 			{
-				return this.outputs.AsReadOnly();
+				return outputs.AsReadOnly();
 			}
 		}
 
@@ -28,7 +28,7 @@
 		{
 			get
 			{
-				return this.outputs.Last();
+				return outputs.Last();
 			}
 		}
 
@@ -40,15 +40,15 @@
 
 		public CompactionState(Compaction compaction)
 		{
-			this.Compaction = compaction;
-			this.SmallestSnapshot = -1;
+			Compaction = compaction;
+			SmallestSnapshot = -1;
 
-			this.outputs = new List<FileMetadata>();
+			outputs = new List<FileMetadata>();
 		}
 
 		public void AddOutput(ulong fileNumber)
 		{
-			this.outputs.Add(new FileMetadata
+			outputs.Add(new FileMetadata
 			{
 				FileNumber = fileNumber,
 				SmallestKey = new InternalKey(),
@@ -59,9 +59,9 @@
 
 		public void Dispose()
 		{
-			if (this.Builder != null)
+			if (Builder != null)
 			{
-				this.Builder.Dispose();
+				Builder.Dispose();
 			}
 			//else
 			//{

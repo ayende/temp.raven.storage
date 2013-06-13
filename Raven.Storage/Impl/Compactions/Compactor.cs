@@ -134,15 +134,15 @@ namespace Raven.Storage.Impl.Compactions
 				return;
 			}
 
+			var isManual = manualCompaction != null;
 			try
 			{
 				Compaction compaction;
 				var manualEnd = new InternalKey();
-				if (manualCompaction != null)
+				if (isManual)
 				{
-					var mCompaction = manualCompaction;
-					compaction = state.VersionSet.CompactRange(mCompaction.Level, mCompaction.Begin, mCompaction.End);
-					mCompaction.Done = compaction == null;
+					compaction = state.VersionSet.CompactRange(manualCompaction.Level, manualCompaction.Begin, manualCompaction.End);
+					manualCompaction.Done = compaction == null;
 					if (compaction != null)
 					{
 						manualEnd = compaction.GetInput(0, compaction.GetNumberOfInputFiles(0) - 1).LargestKey;
@@ -157,7 +157,7 @@ namespace Raven.Storage.Impl.Compactions
 				{
 					// Nothing to do
 				}
-				else if (manualCompaction == null && compaction.IsTrivialMove())
+				else if (isManual == false && compaction.IsTrivialMove())
 				{
 					Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
 					var file = compaction.GetInput(0, 0);
@@ -170,32 +170,32 @@ namespace Raven.Storage.Impl.Compactions
 				}
 				else
 				{
-					var compactionState = new CompactionState(compaction);
-					await DoCompactionWorkAsync(compactionState, locker);
-					CleanupCompaction(compactionState);
+					using (var compactionState = new CompactionState(compaction))
+					{
+						await DoCompactionWorkAsync(compactionState, locker);
+						CleanupCompaction(compactionState);
+					}
 					compaction.ReleaseInputs();
 					DeleteObsoleteFiles();
 				}
 
-				if (manualCompaction != null)
+				if (isManual == false)
+					return;
+
+				if (manualCompaction.Done == false)
 				{
-					var mCompaction = manualCompaction;
-					if (!mCompaction.Done)
-					{
-						mCompaction.Begin = manualEnd;
-					}
-					else
-					{
-						manualCompaction = null;
-					}
+					// We only compacted part of the requested range.  Update *m
+					// to the range that is left to be compacted.
+					manualCompaction.Begin = manualEnd;
 				}
+				manualCompaction = null;
 			}
 			catch (Exception)
 			{
-				if (manualCompaction != null)
+				if (isManual)
 				{
-					var mCompaction = manualCompaction;
-					mCompaction.Done = true;
+					Debug.Assert(manualCompaction != null);
+					manualCompaction.Done = true;
 				}
 
 				throw;
@@ -208,8 +208,6 @@ namespace Raven.Storage.Impl.Compactions
 			{
 				pendingOutputs.Remove(output.FileNumber);
 			}
-
-			compactionState.Dispose();
 		}
 
 		private async Task DoCompactionWorkAsync(CompactionState compactionState, AsyncLock.LockScope locker)

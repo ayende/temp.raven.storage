@@ -9,9 +9,9 @@
 	{
 		public ManualCompaction(int level, InternalKey begin, InternalKey end)
 		{
-			this.Level = level;
-			this.Begin = begin;
-			this.End = end;
+			Level = level;
+			Begin = begin;
+			End = end;
 		}
 
 		public int Level { get; private set; }
