@@ -38,9 +38,9 @@ namespace Raven.Storage.Impl
 			return File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
 		}
 
-		public Stream NewWritable(string name, ulong num, string ext)
+		public Stream NewWritable(ulong num, string ext)
 		{
-			return NewWritable(GetFileName(name, num, ext));
+			return NewWritable(GetFileName(string.Empty, num, ext));
 		}
 
 		public void DeleteFile(string name)
@@ -201,17 +201,17 @@ namespace Raven.Storage.Impl
 
 		public string GetTempFileName(ulong fileNumber)
 		{
-			return GetFileName(string.Format("{0}_{1}_", databaseName, random.Next(0, int.MaxValue)), fileNumber, Constants.Files.Extensions.TempFile);
+			return GetFileName(Guid.NewGuid().ToString(), fileNumber, Constants.Files.Extensions.TempFile);
 		}
 
 		public string GetTableFileName(ulong fileNumber)
 		{
-			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.TableFile);
+			return GetFileName(string.Empty, fileNumber, Constants.Files.Extensions.TableFile);
 		}
 
 		public string GetLogFileName(ulong fileNumber)
 		{
-			return GetFileName(databaseName, fileNumber, Constants.Files.Extensions.LogFile);
+			return GetFileName(string.Empty, fileNumber, Constants.Files.Extensions.LogFile);
 		}
 
 		public Stream OpenForReading(string name)

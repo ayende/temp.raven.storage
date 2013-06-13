@@ -67,7 +67,7 @@
 			var newFileNumber = VersionSet.NewFileNumber();
 			try
 			{
-				var file = FileSystem.NewWritable(DatabaseName, newFileNumber, Constants.Files.Extensions.LogFile);
+				var file = FileSystem.NewWritable(newFileNumber, Constants.Files.Extensions.LogFile);
 				LogWriter = new LogWriter(file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}

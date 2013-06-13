@@ -44,6 +44,7 @@ namespace Raven.Storage.Tests.Recovery
 
 		public void AssertEqual(string expected, Stream actual)
 		{
+			Assert.NotNull(actual);
 			actual.Position = 0;
 
 			using (var reader = new StreamReader(actual))
