@@ -1,18 +1,19 @@
-﻿namespace Raven.Storage.Impl.Caching
+﻿using System;
+using System.Globalization;
+using System.IO;
+using System.IO.MemoryMappedFiles;
+using System.Runtime.Caching;
+using Raven.Abstractions.Logging;
+using Raven.Storage.Comparing;
+using Raven.Storage.Data;
+using Raven.Storage.Memory;
+using Raven.Storage.Reading;
+
+namespace Raven.Storage.Impl.Caching
 {
-	using System;
-	using System.Globalization;
-	using System.IO;
-	using System.IO.MemoryMappedFiles;
-	using System.Runtime.Caching;
-
-	using Raven.Storage.Comparing;
-	using Raven.Storage.Data;
-	using Raven.Storage.Memory;
-	using Raven.Storage.Reading;
-
 	public class TableCache
 	{
+		private ILog log = LogManager.GetCurrentClassLogger();
 		private readonly StorageState state;
 
 		public TableCache(StorageState state)
@@ -24,38 +25,40 @@
 		{
 			try
 			{
-				var tableAndFile = this.FindTable(fileNumber, fileSize);
+				var tableAndFile = FindTable(fileNumber, fileSize);
 
 				return tableAndFile.Table.CreateIterator(options);
 			}
-			catch
+			catch (Exception e)
 			{
+				log.InfoException("Could not open iterator for " + fileNumber + ", will return empty iterator", e);
 				return new EmptyIterator();
 			}
 		}
 
 		private TableAndFile FindTable(ulong fileNumber, long fileSize)
 		{
-			var key = fileNumber.ToString(CultureInfo.InvariantCulture);
+			string key = fileNumber.ToString(CultureInfo.InvariantCulture);
 
-			if (this.state.Options.TableCache.Contains(key))
+			var o = state.Options.TableCache.Get(key);
+			if (o != null)
 			{
-				return (TableAndFile)this.state.Options.TableCache.Get(key);
+				return (TableAndFile) o;
 			}
 
-			var filePath = this.state.FileSystem.GetFullFileName(
-				this.state.DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
+			string filePath = state.FileSystem.GetFullFileName(
+				state.DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
 
-			var file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
+			MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
 			var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
-			var table = new Table(this.state.Options, fileData);
+			var table = new Table(state.Options, fileData);
 
 			var tableAndFile = new TableAndFile(fileData, table);
 
-			this.state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
-																	 {
-																		 RemovedCallback = CacheRemovedCallback
-																	 });
+			state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
+				{
+					RemovedCallback = CacheRemovedCallback
+				});
 
 			return tableAndFile;
 		}
@@ -78,18 +81,19 @@
 
 		public void Evict(ulong fileNumber)
 		{
-			var key = fileNumber.ToString(CultureInfo.InvariantCulture);
+			string key = fileNumber.ToString(CultureInfo.InvariantCulture);
 			if (state.Options.TableCache.Contains(key))
 			{
 				state.Options.TableCache.Remove(key);
 			}
 		}
 
-		public ItemState Get(Slice key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator, out Stream stream)
+		public ItemState Get(Slice key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator,
+		                     out Stream stream)
 		{
-			var tableAndFile = FindTable(fileNumber, fileSize);
+			TableAndFile tableAndFile = FindTable(fileNumber, fileSize);
 
-			var result = tableAndFile.Table.InternalGet(readOptions, key);
+			Tuple<Slice, Stream> result = tableAndFile.Table.InternalGet(readOptions, key);
 
 			stream = null;
 
@@ -106,7 +110,7 @@
 
 			if (comparator.Compare(internalKey.UserKey, key) == 0)
 			{
-				var isFound = internalKey.Type == ItemType.Value;
+				bool isFound = internalKey.Type == ItemType.Value;
 				if (!isFound)
 				{
 					return ItemState.Deleted;
@@ -130,23 +134,23 @@
 
 	internal class TableAndFile : IDisposable
 	{
+		public TableAndFile(FileData fileData, Table table)
+		{
+			FileData = fileData;
+			Table = table;
+		}
+
 		public FileData FileData { get; private set; }
 
 		public Table Table { get; private set; }
 
-		public TableAndFile(FileData fileData, Table table)
-		{
-			this.FileData = fileData;
-			this.Table = table;
-		}
-
 		public void Dispose()
 		{
-			if (this.Table != null)
-				this.Table.Dispose();
+			if (Table != null)
+				Table.Dispose();
 
-			if (this.FileData != null)
-				this.FileData.File.Dispose();
+			if (FileData != null && FileData.File != null)
+				FileData.File.Dispose();
 		}
 	}
 }
