@@ -2,6 +2,7 @@
 {
 	using System.Collections.Generic;
 	using System.IO;
+	using System.Linq;
 
 	using Raven.Storage.Building;
 	using Raven.Storage.Comparing;
@@ -276,7 +277,7 @@
 
 			foreach (var item in writeBatches)
 			{
-				var lastSequence = item.WriteSequence + (ulong) item.WriteBatch.OperationCount - 1;
+				var lastSequence = item.WriteSequence + (ulong)item.WriteBatch.OperationCount - 1;
 
 				if (lastSequence > maxSequence)
 				{
@@ -409,6 +410,36 @@
 				MemTable.Dispose();
 			if (ImmutableMemTable != null)
 				ImmutableMemTable.Dispose();
+		}
+
+		public async Task<Tuple<IIterator, ulong>> NewInternalIterator(ReadOptions options, AsyncLock.LockScope locker)
+		{
+			await locker.LockAsync();
+
+			var latestSnapshot = VersionSet.LastSequence;
+			var iterators = new List<IIterator>
+				                {
+					                this.MemTable.NewIterator()
+				                };
+
+			if (ImmutableMemTable != null)
+				iterators.Add(ImmutableMemTable.NewIterator());
+
+			// Merge all level zero files together since they may overlap
+			iterators.AddRange(this.VersionSet.Current.Files[0].Select(file => this.TableCache.NewIterator(options, file.FileNumber, file.FileSize)));
+
+			// For levels > 0, we can use a concatenating iterator that sequentially
+			// walks through the non-overlapping files in the level, opening them
+			// lazily.
+			for (var level = 1; level < Config.NumberOfLevels; level++)
+			{
+				if (VersionSet.Current.Files[level].Count > 0) 
+					iterators.Add(new LevelFileNumIterator(InternalKeyComparator, VersionSet.Current.Files[level]));
+			}
+
+			var internalIterator = new MergingIterator(InternalKeyComparator, iterators, iterators.Count);
+
+			return new Tuple<IIterator, ulong>(internalIterator, latestSnapshot);
 		}
 	}
 }

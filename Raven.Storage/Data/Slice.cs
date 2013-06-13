@@ -56,7 +56,7 @@
 
 		public static implicit operator Slice(string val)
 		{
-			return new Slice(Encoding.UTF8.GetBytes(val));
+			return new Slice(!string.IsNullOrEmpty(val) ? Encoding.UTF8.GetBytes(val) : new byte[0]);
 		}
 
 		public int CompareTo(Slice other, IComparator comparator = null)

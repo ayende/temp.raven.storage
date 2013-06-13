@@ -10,6 +10,10 @@
 
 		Task CompactAsync(int level, Slice begin, Slice end);
 
+		void CompactRange(Slice begin, Slice end);
+
+		Task CompactRangeAsync(Slice begin, Slice end);
+
 		Snapshot CreateSnapshot();
 
 		Task<Snapshot> CreateSnapshotAsync();

@@ -1,5 +1,6 @@
 ﻿namespace Raven.Storage.Reading
 {
+	using System.Collections.Generic;
 	using System.Diagnostics;
 	using System.IO;
 
@@ -10,7 +11,7 @@
 	{
 		private readonly IComparator comparator;
 
-		private IIterator[] children;
+		private IList<IIterator> children;
 
 		private IIterator current;
 
@@ -18,7 +19,7 @@
 
 		private Direction direction;
 
-		public MergingIterator(IComparator comparator, IIterator[] children, int n)
+		public MergingIterator(IComparator comparator, IList<IIterator> children, int n)
 		{
 			this.comparator = comparator;
 			this.children = children;
@@ -30,12 +31,6 @@
 			{
 				this.children[i] = children[i];
 			}
-		}
-
-		internal enum Direction
-		{
-			Forward = 1,
-			Reverse = 2
 		}
 
 		public void Dispose()

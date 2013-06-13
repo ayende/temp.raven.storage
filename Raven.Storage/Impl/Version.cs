@@ -8,6 +8,7 @@
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 	using Raven.Storage.Impl.Caching;
+	using Raven.Storage.Reading;
 	using Raven.Storage.Util;
 
 	public class Version
@@ -181,7 +182,7 @@
 			return inputs;
 		}
 
-		private bool OverlapInLevel(int level, Slice smallestKey, Slice largestKey)
+		internal bool OverlapInLevel(int level, Slice smallestKey, Slice largestKey)
 		{
 			return SomeFileOverlapsRange(level > 0, Files[level], smallestKey, largestKey);
 		}

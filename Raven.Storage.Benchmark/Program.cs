@@ -118,12 +118,6 @@ Benchmarking utility for Raven Storage
 ----------------------------------------
 Copyright (C) 2008 - {0} - Hibernating Rhinos
 ----------------------------------------
-Usage:
-	- Import the dump.raven file to a local instance:
-		Raven.Smuggler in http://localhost:8080/ dump.raven
-	- Export a local instance to dump.raven:
-		Raven.Smuggler out http://localhost:8080/ dump.raven
-
 Command line options:", DateTime.UtcNow.Year);
 
 			optionSet.WriteOptionDescriptions(Console.Out);

@@ -18,9 +18,22 @@
 			CompactAsync(level, begin, end).Wait();
 		}
 
-		public Task CompactAsync(int level, Slice begin, Slice end)
+		public async Task CompactAsync(int level, Slice begin, Slice end)
 		{
-			return state.Compactor.CompactAsync(level, begin, end);
+			using (var locker = await state.Lock.LockAsync())
+			{
+				await state.Compactor.CompactAsync(level, begin, end, locker);
+			}
+		}
+
+		public void CompactRange(Slice begin, Slice end)
+		{
+			CompactRangeAsync(begin, end).Wait();
+		}
+
+		public Task CompactRangeAsync(Slice begin, Slice end)
+		{
+			return state.Compactor.CompactRangeAsync(begin, end);
 		}
 
 		public Snapshot CreateSnapshot()

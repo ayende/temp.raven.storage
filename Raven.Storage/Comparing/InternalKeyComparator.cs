@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using Raven.Storage.Data;
 using Raven.Storage.Util;
 
@@ -30,7 +29,7 @@ namespace Raven.Storage.Comparing
 
 		public int Compare(Slice a, Slice b)
 		{
-			var r = _comparator.Compare(ExtractUserKey(a), ExtractUserKey(b));
+			var r = _comparator.Compare(InternalKey.ExtractUserKey(a), InternalKey.ExtractUserKey(b));
 			if (r != 0)
 				return r;
 
@@ -51,16 +50,10 @@ namespace Raven.Storage.Comparing
 			return Compare(a.Encode(), b.Encode());
 		}
 
-		private static Slice ExtractUserKey(Slice a)
-		{
-			Debug.Assert(a.Count >= 8);
-			return new Slice(a.Array, a.Offset, a.Count - 8);
-		}
-
 		public int FindSharedPrefix(Slice a, Slice b)
 		{
-			var aUser = ExtractUserKey(a);
-			var bUser = ExtractUserKey(b);
+			var aUser = InternalKey.ExtractUserKey(a);
+			var bUser = InternalKey.ExtractUserKey(b);
 			var r = _comparator.FindSharedPrefix(aUser, bUser);
 			if (r != aUser.Count || r != aUser.Count)
 				return r;
@@ -77,8 +70,8 @@ namespace Raven.Storage.Comparing
 
 		public Slice FindShortestSeparator(Slice start, Slice limit, ref byte[] scratch)
 		{
-			var userStart = ExtractUserKey(start);
-			var userLimit = ExtractUserKey(limit);
+			var userStart = InternalKey.ExtractUserKey(start);
+			var userLimit = InternalKey.ExtractUserKey(limit);
 			var r = _comparator.FindShortestSeparator(userStart, userLimit, ref scratch);
 
 			return EnsureSortOrder(r, userStart, ref scratch);
@@ -86,7 +79,7 @@ namespace Raven.Storage.Comparing
 
 		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
 		{
-			var userKey = ExtractUserKey(key);
+			var userKey = InternalKey.ExtractUserKey(key);
 
 			var r = _comparator.FindShortestSuccessor(userKey, ref scratch);
 
@@ -112,8 +105,8 @@ namespace Raven.Storage.Comparing
 
 		public bool EqualKeys(Slice a, Slice b)
 		{
-			var aUser = ExtractUserKey(a);
-			var bUser = ExtractUserKey(b);
+			var aUser = InternalKey.ExtractUserKey(a);
+			var bUser = InternalKey.ExtractUserKey(b);
 			var r = _comparator.Compare(aUser, bUser);
 			return r == 0;
 		}

@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
+    <Compile Include="Reading\DbIterator.cs" />
     <Compile Include="Impl\Snapshooter.cs" />
     <Compile Include="Comparing\CaseInsensitiveComparator.cs" />
     <Compile Include="Comparing\ByteWiseComparator.cs" />
@@ -93,6 +94,7 @@
     <Compile Include="Impl\VersionSet.cs" />
     <Compile Include="Memory\MemoryAccessor.cs" />
     <Compile Include="Memtable\MemoryIterator.cs" />
+    <Compile Include="Reading\Direction.cs" />
     <Compile Include="Reading\LevelFileNumIterator.cs" />
     <Compile Include="Reading\MergingIterator.cs" />
     <Compile Include="Reading\LogReadResult.cs" />

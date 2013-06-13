@@ -1,6 +1,7 @@
 ﻿namespace Raven.Storage.Benchmark
 {
 	using System;
+	using System.Threading.Tasks;
 
 	internal class BenchmarkParameters
 	{
@@ -12,6 +13,7 @@
 			EntriesPerBatch = 1;
 			FreshDatabase = false;
 			NumberOfThreads = options.Threads;
+			Sync = false;
 		}
 
 		public int Num { get; set; }
@@ -28,6 +30,8 @@
 
 		public bool FreshDatabase { get; set; }
 
-		public Func<BenchmarkParameters, BenchmarkResult> Method { get; set; }
+		public Func<BenchmarkParameters, Task<BenchmarkResult>> Method { get; set; }
+
+		public bool Sync { get; set; }
 	}
 }

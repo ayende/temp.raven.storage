@@ -2,13 +2,15 @@
 {
 	using System;
 	using System.Diagnostics;
-	using System.Globalization;
 	using System.IO;
 	using System.Threading.Tasks;
 
+	using Raven.Abstractions.Util;
 	using Raven.Storage.Benchmark.Env;
 	using Raven.Storage.Benchmark.Generators;
+	using Raven.Storage.Data;
 	using Raven.Storage.Filtering;
+	using Raven.Storage.Util;
 
 	internal class Benchmark : IDisposable
 	{
@@ -39,7 +41,7 @@
 				if (parameters.Method == null)
 					continue;
 
-				var result = this.RunBenchmark(benchmark, parameters);
+				var result = RunBenchmark(benchmark, parameters);
 				Report(result);
 			}
 		}
@@ -52,6 +54,16 @@
 			Output("Rate:				{0}", result.Rate);
 			Output("Operations:			{0}", result.TotalOperations);
 			Output("Operations per second:		{0:0} op/s", result.TotalOperations / result.ElapsedSeconds);
+			if (result.Messages.Count > 0)
+			{
+				Output("Messages:");
+				for (var index = 0; index < result.Messages.Count; index++)
+				{
+					var message = result.Messages[index];
+					Output(string.Format("{0}. {1}", index + 1, message));
+				}
+			}
+
 			Output(Constants.Separator);
 		}
 
@@ -75,7 +87,7 @@
 
 			var result = new BenchmarkResultSet(benchmark, parameters);
 
-			Parallel.For(0, parameters.NumberOfThreads, i => result.AddResult(i, parameters.Method(parameters)));
+			Parallel.For(0, parameters.NumberOfThreads, async i => result.AddResult(i, await parameters.Method(parameters)));
 
 			return result;
 		}
@@ -93,6 +105,7 @@
 				case "fillbatch":
 					parameters.FreshDatabase = true;
 					parameters.EntriesPerBatch = 1000;
+					parameters.Method = WriteSeq;
 					break;
 				case "fillrandom":
 					parameters.FreshDatabase = true;
@@ -100,58 +113,75 @@
 					break;
 				case "overwrite":
 					parameters.FreshDatabase = false;
+					parameters.Method = WriteRandom;
 					break;
 				case "fillsync":
 					parameters.FreshDatabase = true;
 					parameters.Num /= 1000;
-					//parameters.WriteOptions.sync = true;
+					parameters.Sync = true;
+					parameters.Method = WriteRandom;
 					break;
 				case "fill100k":
 					parameters.FreshDatabase = true;
 					parameters.Num /= 1000;
 					parameters.ValueSize = 100 * 1000;
+					parameters.Method = WriteRandom;
 					break;
 				case "readseq":
+					parameters.Method = ReadSequential;
 					break;
 				case "readreverse":
+					parameters.Method = ReadReverse;
 					break;
 				case "readrandom":
+					parameters.Method = ReadRandom;
 					break;
 				case "readmissing":
+					parameters.Method = ReadMissing;
 					break;
 				case "seekrandom":
+					parameters.Method = SeekRandom;
 					break;
 				case "readhot":
+					parameters.Method = ReadHot;
 					break;
 				case "readrandomsmall":
 					parameters.Reads /= 1000;
+					parameters.Method = ReadRandom;
 					break;
 				case "deleteseq":
+					parameters.Method = DeleteSeq;
 					break;
 				case "deleterandom":
+					parameters.Method = DeleteRandom;
 					break;
 				case "readwhilewriting":
-					parameters.NumberOfThreads++;
+					parameters.Method = ReadWhileWriting;
 					break;
 				case "compact":
+					parameters.Method = Compact;
 					break;
 				case "crc32c":
+					parameters.Method = Crc32c;
 					break;
 				case "acquireload":
+					//parameters.Method = AcquireLoad;
 					break;
 				case "snappycomp":
+					//parameters.Method = SnappyCompress;
 					break;
 				case "snappyuncomp":
+					//parameters.Method = SnappyUncompress;
 					break;
-				case "heapprofile":
-					HeapProfile();
-					break;
-				case "stats":
-					PrintStats("raven.storage.stats");
-					break;
-				case "sstables":
-					PrintStats("raven.storage.sstables");
-					break;
+				//case "heapprofile":
+				//	HeapProfile();
+				//	break;
+				//case "stats":
+				//	PrintStats("raven.storage.stats");
+				//	break;
+				//case "sstables":
+				//	PrintStats("raven.storage.sstables");
+				//break;
 				default:
 					throw new NotSupportedException("Unknown benchmark: " + benchmark);
 			}
@@ -159,23 +189,252 @@
 			return parameters;
 		}
 
-		private BenchmarkResult WriteRandom(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> SnappyUncompress(BenchmarkParameters arg)
+		{
+			throw new NotImplementedException();
+		}
+
+		private Task<BenchmarkResult> SnappyCompress(BenchmarkParameters arg)
+		{
+			throw new NotImplementedException();
+		}
+
+		private Task<BenchmarkResult> AcquireLoad(BenchmarkParameters arg)
+		{
+			throw new NotImplementedException();
+		}
+
+		private Task<BenchmarkResult> Crc32c(BenchmarkParameters arg)
+		{
+			const long Size = 4096;
+			var buffer = new byte[Size];
+			for (int i = 0; i < Size; i++)
+			{
+				buffer[i] = (byte)'x';
+			}
+
+			var result = new BenchmarkResult();
+
+			long bytes = 0;
+			uint crc = 0;
+			while (bytes < 500 * 1048576)
+			{
+				crc = Crc.CalculateCrc(0, buffer, 0, buffer.Length);
+				bytes += Size;
+				result.FinishOperation();
+			}
+
+			result.AddBytes(bytes);
+			result.AddMessage("(4K per op)");
+			result.AddMessage(string.Format("CRC is {0}", crc));
+
+			return new CompletedTask<BenchmarkResult>(result);
+		}
+
+		private Task<BenchmarkResult> Compact(BenchmarkParameters parameters)
+		{
+			var result = new BenchmarkResult();
+			storage.Commands.CompactRange(null, null);
+
+			return new CompletedTask<BenchmarkResult>(result);
+		}
+
+		private Task<BenchmarkResult> ReadWhileWriting(BenchmarkParameters parameters)
+		{
+			var random = new Random();
+			var generator = new RandomGenerator();
+
+			var readTask = ReadRandom(parameters);
+			Task.Factory.StartNew(
+				() =>
+				{
+					while (readTask.IsCompleted == false)
+					{
+						var batch = new WriteBatch();
+
+						var k = random.Next() % options.Num;
+						var key = string.Format("{0:0000000000000000}", k);
+
+						batch.Put(key, generator.Generate(parameters.ValueSize));
+						storage.Writer.Write(batch);
+					}
+				});
+
+			return readTask;
+		}
+
+		private Task<BenchmarkResult> DeleteRandom(BenchmarkParameters parameters)
+		{
+			return DoDelete(parameters, false);
+		}
+
+		private Task<BenchmarkResult> DeleteSeq(BenchmarkParameters parameters)
+		{
+			return DoDelete(parameters, true);
+		}
+
+		private Task<BenchmarkResult> DoDelete(BenchmarkParameters parameters, bool seq)
+		{
+			var random = new Random();
+			var result = new BenchmarkResult();
+
+			for (var i = 0; i < parameters.Num; i += parameters.EntriesPerBatch)
+			{
+				var batch = new WriteBatch();
+				for (var j = 0; j < parameters.EntriesPerBatch; j++)
+				{
+					var k = seq ? i + j : random.Next() % options.Num;
+					var key = string.Format("{0:0000000000000000}", k);
+					batch.Delete(key);
+					result.FinishOperation();
+				}
+
+				storage.Writer.Write(batch);
+			}
+
+			return new CompletedTask<BenchmarkResult>(result);
+		}
+
+		private Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
+		{
+			var random = new Random();
+			var range = (options.Num + 99) / 100;
+
+			var result = new BenchmarkResult();
+
+			for (var i = 0; i < parameters.Reads; i++)
+			{
+				var k = random.Next() % range;
+				var key = string.Format("{0:0000000000000000}", k);
+				storage.Reader.Read(key);
+				result.FinishOperation();
+			}
+
+			return new CompletedTask<BenchmarkResult>(result);
+		}
+
+		private async Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
+		{
+			var random = new Random();
+			var found = 0;
+
+			var result = new BenchmarkResult();
+
+			for (var i = 0; i < parameters.Reads; i++)
+			{
+				using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+				{
+					var k = random.Next() % options.Num;
+					var key = string.Format("{0:0000000000000000}", k);
+					Slice sliceKey = key;
+
+					iterator.Seek(sliceKey);
+					if (iterator.IsValid && sliceKey.CompareTo(iterator.Key) == 0)
+						found++;
+
+					result.FinishOperation();
+				}
+			}
+
+			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
+
+			return result;
+		}
+
+		private Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
+		{
+			var random = new Random();
+			var result = new BenchmarkResult();
+
+			for (int i = 0; i < parameters.Reads; i++)
+			{
+				var k = random.Next() % options.Num;
+				var key = string.Format("{0:0000000000000000}", k);
+
+				storage.Reader.Read(key);
+				result.FinishOperation();
+			}
+
+			return new CompletedTask<BenchmarkResult>(result);
+		}
+
+		private Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
+		{
+			var random = new Random();
+			var found = 0;
+
+			var result = new BenchmarkResult();
+
+			for (int i = 0; i < parameters.Reads; i++)
+			{
+				var k = random.Next() % options.Num;
+				var key = string.Format("{0:0000000000000000}", k);
+
+				if (storage.Reader.Read(key) != null)
+					found++;
+
+				result.FinishOperation();
+			}
+
+			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
+
+			return new CompletedTask<BenchmarkResult>(result);
+		}
+
+		private async Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
+		{
+			var result = new BenchmarkResult();
+			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+			{
+				var i = 0;
+				long bytes = 0;
+				for (iterator.SeekToLast(); i < parameters.Reads && iterator.IsValid; iterator.Prev())
+				{
+					bytes += iterator.Key.Count + iterator.CreateValueStream().Length;
+					result.FinishOperation();
+					++i;
+				}
+
+				result.AddBytes(bytes);
+				return result;
+			}
+		}
+
+		private async Task<BenchmarkResult> ReadSequential(BenchmarkParameters parameters)
+		{
+			var result = new BenchmarkResult();
+			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+			{
+				var i = 0;
+				long bytes = 0;
+				for (iterator.SeekToFirst(); i < parameters.Reads && iterator.IsValid; iterator.Next())
+				{
+					bytes += iterator.Key.Count + iterator.CreateValueStream().Length;
+					result.FinishOperation();
+					++i;
+				}
+
+				result.AddBytes(bytes);
+				return result;
+			}
+		}
+
+		private Task<BenchmarkResult> WriteRandom(BenchmarkParameters parameters)
 		{
 			return DoWrite(parameters, false);
 		}
 
-		private BenchmarkResult WriteSeq(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> WriteSeq(BenchmarkParameters parameters)
 		{
 			return DoWrite(parameters, true);
 		}
 
-		private BenchmarkResult DoWrite(BenchmarkParameters parameters, bool seq)
+		private async Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
 			var generator = new RandomGenerator();
 
 			var result = new BenchmarkResult();
-			result.StartTimer();
 
 			long bytes = 0;
 			for (var i = 0; i < parameters.Num; i += parameters.EntriesPerBatch)
@@ -190,23 +449,19 @@
 					result.FinishOperation();
 				}
 
+				//if (parameters.Sync)
+				//{
 				storage.Writer.Write(batch);
+				//}
+				//else
+				//{
+				//	await storage.Writer.WriteAsync(batch);
+				//}
 			}
 
 			result.AddBytes(bytes);
 
-			result.StopTimer();
 			return result;
-		}
-
-		private void PrintStats(string key)
-		{
-			throw new NotImplementedException();
-		}
-
-		private void HeapProfile()
-		{
-			throw new NotImplementedException();
 		}
 
 		private void Open()

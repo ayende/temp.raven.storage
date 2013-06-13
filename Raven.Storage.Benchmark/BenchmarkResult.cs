@@ -1,21 +1,35 @@
 ﻿namespace Raven.Storage.Benchmark
 {
+	using System.Collections.Generic;
 	using System.Diagnostics;
 
 	internal class BenchmarkResult
 	{
+		private readonly List<string> messages;
+
 		public Stopwatch Stopwatch { get; private set; }
 
 		public long Bytes { get; private set; }
 
 		public long Operations { get; private set; }
 
-		public BenchmarkResult()
+		public IReadOnlyList<string> Messages
 		{
-			Stopwatch = new Stopwatch();
+			get
+			{
+				return messages.AsReadOnly();
+			}
 		}
 
-		public void StartTimer()
+		public BenchmarkResult()
+		{
+			messages = new List<string>();
+
+			Stopwatch = new Stopwatch();
+			StartTimer();
+		}
+
+		private void StartTimer()
 		{
 			Stopwatch.Start();
 		}
@@ -33,6 +47,11 @@
 		public void AddBytes(long bytes)
 		{
 			Bytes += bytes;
+		}
+
+		public void AddMessage(string message)
+		{
+			messages.Add(message);
 		}
 	}
 }

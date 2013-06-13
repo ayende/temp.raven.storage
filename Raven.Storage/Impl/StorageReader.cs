@@ -1,9 +1,11 @@
 ﻿namespace Raven.Storage.Impl
 {
 	using System.IO;
+	using System.Threading.Tasks;
 
 	using Raven.Abstractions.Extensions;
 	using Raven.Storage.Data;
+	using Raven.Storage.Reading;
 
 	public class StorageReader
 	{
@@ -53,6 +55,18 @@
 			}
 
 			return null;
+		}
+
+		public async Task<DbIterator> NewIteratorAsync(ReadOptions options)
+		{
+			using (var locker = await state.Lock.LockAsync())
+			{
+				var result = await state.NewInternalIterator(options, locker);
+				var internalIterator = result.Item1;
+				var latestSnapshot = result.Item2;
+
+				return new DbIterator(state, internalIterator, options.Snapshot != null ? options.Snapshot.Sequence : latestSnapshot);
+			}
 		}
 	}
 }

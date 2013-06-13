@@ -1,6 +1,4 @@
-﻿using Raven.Abstractions.Extensions;
-
-namespace Raven.Storage.Impl.Compactions
+﻿namespace Raven.Storage.Impl.Compactions
 {
 	using System;
 	using System.Collections.Generic;
@@ -32,7 +30,7 @@ namespace Raven.Storage.Impl.Compactions
 			this.state = state;
 		}
 
-		internal Task CompactAsync(int level, Slice begin, Slice end)
+		internal Task CompactAsync(int level, Slice begin, Slice end, AsyncLock.LockScope locker)
 		{
 			if (manualCompaction != null)
 				throw new InvalidOperationException("Manual compaction is already in progess.");
@@ -52,15 +50,13 @@ namespace Raven.Storage.Impl.Compactions
 								continue;
 							}
 
-							using (var locker = await this.state.Lock.LockAsync())
-							{
-								await MaybeScheduleCompaction(locker);
-								var task = state.BackgroundTask;
-								locker.Exit();
-								task.Wait();
+							await locker.LockAsync();
+							await MaybeScheduleCompaction(locker);
+							var task = state.BackgroundTask;
+							locker.Exit();
+							task.Wait();
 
-								return;
-							}
+							return;
 						}
 					});
 		}
@@ -92,7 +88,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task RunCompaction()
 		{
-			using(LogManager.OpenMappedContext("storage", state.DatabaseName))
+			using (LogManager.OpenMappedContext("storage", state.DatabaseName))
 			using (var locker = await state.Lock.LockAsync())
 			{
 				try
@@ -560,6 +556,28 @@ namespace Raven.Storage.Impl.Compactions
 				BytesRead = 0,
 				BytesWritten = fileMetadata.FileSize
 			});
+		}
+
+		public async Task CompactRangeAsync(Slice begin, Slice end)
+		{
+			using (var locker = await state.Lock.LockAsync())
+			{
+				int maxLevelWithFiles = 1;
+
+				var @base = state.VersionSet.Current;
+				for (var level = 1; level < Config.NumberOfLevels; level++)
+				{
+					if (@base.OverlapInLevel(level, begin, end))
+					{
+						maxLevelWithFiles = level;
+					}
+				}
+
+				for (var level = 0; level < maxLevelWithFiles; level++)
+				{
+					await CompactAsync(level, begin, end, locker);
+				}
+			}
 		}
 	}
 }

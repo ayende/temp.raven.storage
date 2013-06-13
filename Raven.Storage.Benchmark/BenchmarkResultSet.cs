@@ -1,5 +1,6 @@
 ﻿namespace Raven.Storage.Benchmark
 {
+	using System.Collections.Generic;
 	using System.Linq;
 
 	internal class BenchmarkResultSet
@@ -61,6 +62,14 @@
 			get
 			{
 				return results.Sum(x => x.Operations);
+			}
+		}
+
+		public IList<string> Messages
+		{
+			get
+			{
+				return this.results.SelectMany(result => result.Messages).ToList();
 			}
 		}
 	}
