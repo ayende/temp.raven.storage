@@ -14,9 +14,9 @@ namespace Raven.Storage.Tests.Recovery
 	public class RecoveryTests : StorageTestBase
 	{
 		[Fact]
-		public async void ShouldRecoverDataFromLogFile()
+		public void ShouldRecoverDataFromLogFile()
 		{
-			var storage = await NewStorageAsync();
+			var storage = NewStorage();
 
 			var name = storage.Name;
 
@@ -29,13 +29,12 @@ namespace Raven.Storage.Tests.Recovery
 			var writeBatch = new WriteBatch();
 			writeBatch.Put("A", s1);
 			writeBatch.Put("B", s2);
-			await storage.Writer.WriteAsync(writeBatch);
+			storage.Writer.WriteAsync(writeBatch).Wait();
 
 			storage.Dispose();
 
 			using (var newStorage = new Storage(name, new StorageOptions()))
 			{
-				await newStorage.InitAsync();
 				AssertEqual(str1, newStorage.Reader.Read("A"));
 				AssertEqual(str2, newStorage.Reader.Read("B"));
 			}

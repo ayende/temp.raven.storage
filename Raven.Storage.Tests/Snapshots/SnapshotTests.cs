@@ -10,9 +10,9 @@
 	public class SnapshotTests : StorageTestBase
 	{
 		[Fact]
-		public async void SnapshotTest()
+		public void SnapshotTest()
 		{
-			using (var storage = await NewStorageAsync())
+			using (var storage = NewStorage())
 			{
 				var str1 = "test1";
 				var str2 = "test2";
@@ -23,14 +23,14 @@
 				var writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s1);
 
-				await storage.Writer.WriteAsync(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
-				var snapshot = await storage.Commands.CreateSnapshotAsync();
+				var snapshot = storage.Commands.CreateSnapshot();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
 
-				await storage.Writer.WriteAsync(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions
@@ -38,14 +38,14 @@
 						                                                  Snapshot = snapshot
 					                                                  }));
 
-				await storage.Commands.ReleaseSnapshotAsync(snapshot);
+				storage.Commands.ReleaseSnapshot(snapshot);
 			}
 		}
 
 		[Fact]
-		public async void SnapshotWithCompactionTest()
+		public void SnapshotWithCompactionTest()
 		{
-			using (var storage = await NewStorageAsync(new StorageOptions
+			using (var storage = NewStorage(new StorageOptions
 				                                {
 					                                WriteBatchSize = 1
 				                                }))
@@ -59,14 +59,14 @@
 				var writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s1);
 
-				await storage.Writer.WriteAsync(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
-				var snapshot = await storage.Commands.CreateSnapshotAsync();
+				var snapshot = storage.Commands.CreateSnapshot();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
 
-				await storage.Writer.WriteAsync(writeBatch);
+				storage.Writer.WriteAsync(writeBatch).Wait();
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions
@@ -74,7 +74,7 @@
 					Snapshot = snapshot
 				}));
 
-				await storage.Commands.CompactAsync(0, "key1", "key1");
+				storage.Commands.Compact(0, "key1", "key1");
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions
@@ -82,7 +82,7 @@
 					Snapshot = snapshot
 				}));
 
-				await storage.Commands.ReleaseSnapshotAsync(snapshot);
+				storage.Commands.ReleaseSnapshot(snapshot);
 			}
 		}
 

@@ -131,7 +131,7 @@ namespace Raven.Storage.Reading
 				try
 				{
 					uncachedBlock = new Block(_storageOptions, readOptions, handle, _fileData);
-					// uncachedBlock.InrementUsage(); - intentionally not calling this, will be disposed when the iterator is disposed
+					// uncachedBlock.IncrementUsage(); - intentionally not calling this, will be disposed when the iterator is disposed
 					blockIterator = uncachedBlock.CreateIterator(_storageOptions.Comparator);
 					return blockIterator;
 				}
@@ -150,7 +150,7 @@ namespace Raven.Storage.Reading
 			if (cachedBlock != null)
 				return cachedBlock.CreateIterator(_storageOptions.Comparator);
 			var block = new Block(_storageOptions, readOptions, handle, _fileData);
-			block.InrementUsage(); // the cache is using this, so avoid having it disposed by the cache while in use
+			block.IncrementUsage(); // the cache is using this, so avoid having it disposed by the cache while in use
 			blockCache.Set(cacheKey, block, new CacheItemPolicy
 				{
 					RemovedCallback = CacheRemovedCallback
