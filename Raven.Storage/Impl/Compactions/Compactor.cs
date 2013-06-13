@@ -51,10 +51,10 @@
 							}
 
 							await locker.LockAsync();
-							await this.MaybeScheduleCompactionAsync(locker);
+							await MaybeScheduleCompactionAsync(locker);
 							var task = state.BackgroundTask;
 							locker.Exit();
-							task.Wait();
+							await task;
 
 							return;
 						}

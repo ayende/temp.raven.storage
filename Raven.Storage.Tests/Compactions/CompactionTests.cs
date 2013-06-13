@@ -8,21 +8,21 @@
 	public class CompactionTests : StorageTestBase
 	{
 		[Fact]
-		public void T1()
+		public async void T1()
 		{
-			using (var storage = NewStorage())
+			using (var storage = await NewStorageAsync())
 			{
 				for (int i = 0; i < 3; i++)
 				{
 					var writeBatch = new WriteBatch();
 					writeBatch.Put("p", new MemoryStream(Encoding.UTF8.GetBytes("begin")));
-					storage.Writer.Write(writeBatch);
+					await storage.Writer.WriteAsync(writeBatch);
 
 					writeBatch = new WriteBatch();
 					writeBatch.Put("q", new MemoryStream(Encoding.UTF8.GetBytes("end")));
-					storage.Writer.Write(writeBatch);
+					await storage.Writer.WriteAsync(writeBatch);
 
-					storage.Commands.Compact(0, "p", "q");
+					await storage.Commands.CompactAsync(0, "p", "q");
 				}
 			}
 		}

@@ -13,11 +13,6 @@
 			this.state = state;
 		}
 
-		public void Compact(int level, Slice begin, Slice end)
-		{
-			CompactAsync(level, begin, end).Wait();
-		}
-
 		public async Task CompactAsync(int level, Slice begin, Slice end)
 		{
 			using (var locker = await state.Lock.LockAsync())
@@ -26,19 +21,9 @@
 			}
 		}
 
-		public void CompactRange(Slice begin, Slice end)
-		{
-			CompactRangeAsync(begin, end).Wait();
-		}
-
 		public Task CompactRangeAsync(Slice begin, Slice end)
 		{
 			return state.Compactor.CompactRangeAsync(begin, end);
-		}
-
-		public Snapshot CreateSnapshot()
-		{
-			return CreateSnapshotAsync().Result;
 		}
 
 		public async Task<Snapshot> CreateSnapshotAsync()
@@ -47,11 +32,6 @@
 			{
 				return await state.Snapshooter.CreateNewSnapshotAsync(this.state.VersionSet, locker);
 			}
-		}
-
-		public void ReleaseSnapshot(Snapshot snapshot)
-		{
-			ReleaseSnapshotAsync(snapshot).Wait();
 		}
 
 		public async Task ReleaseSnapshotAsync(Snapshot snapshot)

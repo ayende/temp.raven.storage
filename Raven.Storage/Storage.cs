@@ -23,16 +23,14 @@ namespace Raven.Storage
 		public Storage(string name, StorageOptions options)
 		{
 			storageState = new StorageState(name, options);
-			InitAsync().Wait();
 		}
 
 		public Storage(StorageState storageState)
 		{
 			this.storageState = storageState;
-			InitAsync().Wait();
 		}
 
-		private async Task InitAsync()
+		public async Task InitAsync()
 		{
 			var edit = await storageState.RecoverAsync();
 			

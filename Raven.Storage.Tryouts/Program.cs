@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Tryouts
+﻿using System.Threading.Tasks;
+
+namespace Raven.Storage.Tryouts
 {
 	using System.IO;
 	using System.Xml;
@@ -20,11 +22,17 @@
 		{
 			ConfigureLogging();
 
+			MainAsync().Wait();
+		}
+
+		private static async Task MainAsync()
+		{
 			var storage = new Storage("test", new StorageOptions());
+			await storage.InitAsync();
 			var writeBatch = new WriteBatch();
-			writeBatch.Put("test", new MemoryStream(new byte[]{1,2,3}));
-			writeBatch.Put("test2", new MemoryStream(new byte[] { 1, 2}));
-			storage.Writer.Write(writeBatch);
+			writeBatch.Put("test", new MemoryStream(new byte[] {1, 2, 3}));
+			writeBatch.Put("test2", new MemoryStream(new byte[] {1, 2}));
+			await storage.Writer.WriteAsync(writeBatch);
 		}
 	}
 }

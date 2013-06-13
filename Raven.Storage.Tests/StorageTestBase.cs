@@ -6,6 +6,7 @@
 	using System.Xml;
 
 	using NLog.Config;
+	using System.Threading.Tasks;
 
 	public abstract class StorageTestBase : IDisposable
 	{
@@ -17,12 +18,13 @@
 			storages = new List<Storage>();
 		}
 
-		public Storage NewStorage(StorageOptions storageOptions = null)
+		public async Task<Storage> NewStorageAsync(StorageOptions storageOptions = null)
 		{
 			if (storageOptions == null)
 				storageOptions = new StorageOptions();
 
 			var storage = new Storage(string.Format("TestStorage-{0}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss")), storageOptions);
+			await storage.InitAsync();
 			storages.Add(storage);
 
 			return storage;

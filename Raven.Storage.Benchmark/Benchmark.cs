@@ -26,17 +26,17 @@
 			this.output = output;
 		}
 
-		public void Run()
+		public async Task RunAsync()
 		{
 			PrintHeader();
 
-			Open();
+			await OpenAsync();
 
 			foreach (var benchmark in options.Benchmarks)
 			{
 				var parameters = CreateBenchmarkParameters(benchmark);
 				if (parameters.FreshDatabase)
-					RefreshDatabase(parameters);
+					await RefreshDatabaseAsync(parameters);
 
 				if (parameters.Method == null)
 					continue;
@@ -74,7 +74,7 @@
 			Output(Constants.Separator);
 		}
 
-		private void RefreshDatabase(BenchmarkParameters parameters)
+		private async Task RefreshDatabaseAsync(BenchmarkParameters parameters)
 		{
 			Debug.Assert(parameters.FreshDatabase);
 
@@ -85,7 +85,7 @@
 				return;
 			}
 
-			Open();
+			await OpenAsync();
 		}
 
 		private BenchmarkResultSet RunBenchmark(string benchmark, BenchmarkParameters parameters)
@@ -238,12 +238,11 @@
 			return new CompletedTask<BenchmarkResult>(result);
 		}
 
-		private Task<BenchmarkResult> Compact(BenchmarkParameters parameters)
+		private async Task<BenchmarkResult> Compact(BenchmarkParameters parameters)
 		{
 			var result = new BenchmarkResult(parameters);
-			storage.Commands.CompactRange(null, null);
-
-			return new CompletedTask<BenchmarkResult>(result);
+			await storage.Commands.CompactRangeAsync(null, null);
+			return result;
 		}
 
 		private Task<BenchmarkResult> ReadWhileWriting(BenchmarkParameters parameters)
@@ -464,7 +463,7 @@
 			return result;
 		}
 
-		private void Open()
+		private async Task OpenAsync()
 		{
 			if (!options.UseExistingDatabase)
 				Close();
@@ -482,6 +481,7 @@
 									 };
 
 			storage = new Storage(options.DatabaseName, storageOptions);
+			await storage.InitAsync();
 		}
 
 		private void PrintHeader()
