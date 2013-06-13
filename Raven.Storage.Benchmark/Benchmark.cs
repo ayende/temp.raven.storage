@@ -253,7 +253,7 @@
 
 			var readTask = ReadRandom(parameters);
 			Task.Factory.StartNew(
-				() =>
+				async () =>
 				{
 					while (readTask.IsCompleted == false)
 					{
@@ -263,7 +263,7 @@
 						var key = string.Format("{0:0000000000000000}", k);
 
 						batch.Put(key, generator.Generate(parameters.ValueSize));
-						storage.Writer.Write(batch);
+						await storage.Writer.WriteAsync(batch);
 					}
 				});
 
@@ -280,7 +280,7 @@
 			return DoDelete(parameters, true);
 		}
 
-		private Task<BenchmarkResult> DoDelete(BenchmarkParameters parameters, bool seq)
+		private async Task<BenchmarkResult> DoDelete(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
 			var result = new BenchmarkResult(parameters);
@@ -296,10 +296,10 @@
 					result.FinishOperation();
 				}
 
-				storage.Writer.Write(batch);
+				await storage.Writer.WriteAsync(batch);
 			}
 
-			return new CompletedTask<BenchmarkResult>(result);
+			return (result);
 		}
 
 		private async Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
