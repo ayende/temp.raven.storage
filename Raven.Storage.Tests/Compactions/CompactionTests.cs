@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Tests.Compactions
+﻿using System.Threading.Tasks;
+
+namespace Raven.Storage.Tests.Compactions
 {
 	using System.IO;
 	using System.Text;
@@ -8,21 +10,21 @@
 	public class CompactionTests : StorageTestBase
 	{
 		[Fact]
-		public void T1()
+		public async Task T1()
 		{
-			using (var storage = NewStorage())
+			using (var storage = await NewStorageAsync())
 			{
 				for (int i = 0; i < 3; i++)
 				{
 					var writeBatch = new WriteBatch();
 					writeBatch.Put("p", new MemoryStream(Encoding.UTF8.GetBytes("begin")));
-					storage.Writer.WriteAsync(writeBatch).Wait();
+					await storage.Writer.WriteAsync(writeBatch);
 
 					writeBatch = new WriteBatch();
 					writeBatch.Put("q", new MemoryStream(Encoding.UTF8.GetBytes("end")));
-					storage.Writer.WriteAsync(writeBatch).Wait();
+					await storage.Writer.WriteAsync(writeBatch);
 
-					storage.Commands.Compact(0, "p", "q");
+					await storage.Commands.CompactAsync(0, "p", "q");
 				}
 			}
 		}

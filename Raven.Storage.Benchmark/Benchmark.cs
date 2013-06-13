@@ -26,17 +26,17 @@
 			this.output = output;
 		}
 
-		public void Run()
+		public async Task RunAsync()
 		{
 			PrintHeader();
 
-			Open();
+			await OpenAsync();
 
 			foreach (var benchmark in options.Benchmarks)
 			{
 				var parameters = CreateBenchmarkParameters(benchmark);
 				if (parameters.FreshDatabase)
-					RefreshDatabase(parameters);
+					await RefreshDatabaseAysnc(parameters);
 
 				if (parameters.Method == null)
 					continue;
@@ -74,7 +74,7 @@
 			Output(Constants.Separator);
 		}
 
-		private void RefreshDatabase(BenchmarkParameters parameters)
+		private async Task RefreshDatabaseAysnc(BenchmarkParameters parameters)
 		{
 			Debug.Assert(parameters.FreshDatabase);
 
@@ -85,7 +85,7 @@
 				return;
 			}
 
-			Open();
+			await OpenAsync();
 		}
 
 		private BenchmarkResultSet RunBenchmark(string benchmark, BenchmarkParameters parameters)
@@ -312,7 +312,7 @@
 			{
 				var k = random.Next() % range;
 				var key = string.Format("{0:0000000000000000}", k);
-				await storage.Reader.ReadAsync(key);
+				storage.Reader.Read(key);
 				result.FinishOperation();
 			}
 
@@ -357,7 +357,7 @@
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				await storage.Reader.ReadAsync(key);
+				storage.Reader.Read(key);
 				result.FinishOperation();
 			}
 
@@ -376,7 +376,7 @@
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				if (await storage.Reader.ReadAsync(key) != null)
+				if (storage.Reader.Read(key) != null)
 					found++;
 
 				result.FinishOperation();
@@ -463,7 +463,7 @@
 			return result;
 		}
 
-		private void Open()
+		private async Task OpenAsync()
 		{
 			if (!options.UseExistingDatabase)
 				Close();
@@ -481,6 +481,7 @@
 									 };
 
 			storage = new Storage(options.DatabaseName, storageOptions);
+			await storage.InitAsync();
 		}
 
 		private void PrintHeader()

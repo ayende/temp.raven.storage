@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 using System.IO;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Raven.Storage.Tests.Recovery
@@ -14,9 +15,9 @@ namespace Raven.Storage.Tests.Recovery
 	public class RecoveryTests : StorageTestBase
 	{
 		[Fact]
-		public void ShouldRecoverDataFromLogFile()
+		public async Task ShouldRecoverDataFromLogFile()
 		{
-			var storage = NewStorage();
+			var storage = await NewStorageAsync();
 
 			var name = storage.Name;
 
@@ -35,6 +36,7 @@ namespace Raven.Storage.Tests.Recovery
 
 			using (var newStorage = new Storage(name, new StorageOptions()))
 			{
+				await newStorage.InitAsync();
 				AssertEqual(str1, newStorage.Reader.Read("A"));
 				AssertEqual(str2, newStorage.Reader.Read("B"));
 			}
