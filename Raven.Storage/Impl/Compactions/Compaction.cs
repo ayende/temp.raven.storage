@@ -3,7 +3,7 @@
 	using System.Collections.Generic;
 	using System.Linq;
 
-	using Raven.Storage.Data;
+	using Data;
 
 	public class Compaction
 	{
@@ -66,21 +66,21 @@
 		public Compaction(IStorageContext storageContext, int level, Version inputVersion = null)
 		{
 			this.storageContext = storageContext;
-			this.Level = level;
-			this.MaxOutputFileSize = Config.TargetFileSize;
+			Level = level;
+			MaxOutputFileSize = Config.TargetFileSize;
 			this.inputVersion = inputVersion;
-			this.Edit = new VersionEdit();
-			this.Inputs = new List<FileMetadata>[2];
-			this.Grandparents = new List<FileMetadata>();
-			this.grandparentIndex = 0;
-			this.seenKey = false;
-			this.overlappedBytes = 0;
+			Edit = new VersionEdit();
+			Inputs = new List<FileMetadata>[2];
+			Grandparents = new List<FileMetadata>();
+			grandparentIndex = 0;
+			seenKey = false;
+			overlappedBytes = 0;
 
-			this.levelPointers = new int[Config.NumberOfLevels];
+			levelPointers = new int[Config.NumberOfLevels];
 
 			for (int lvl = 0; lvl < Config.NumberOfLevels; lvl++)
 			{
-				this.levelPointers[lvl] = 0;
+				levelPointers[lvl] = 0;
 			}
 		}
 
@@ -91,7 +91,7 @@
 		/// <returns></returns>
 		public int GetNumberOfInputFiles(int which)
 		{
-			return this.Inputs[which].Count;
+			return Inputs[which].Count;
 		}
 
 		/// <summary>
@@ -102,7 +102,7 @@
 		/// <returns></returns>
 		public FileMetadata GetInput(int which, int i)
 		{
-			return this.Inputs[which][i];
+			return Inputs[which][i];
 		}
 
 		/// <summary>
@@ -112,8 +112,8 @@
 		/// <returns></returns>
 		public bool IsTrivialMove()
 		{
-			return (this.GetNumberOfInputFiles(0) == 1 && this.GetNumberOfInputFiles(1) == 0
-					&& this.Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
+			return (GetNumberOfInputFiles(0) == 1 && GetNumberOfInputFiles(1) == 0
+					&& Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
 		}
 
 		/// <summary>
@@ -124,9 +124,9 @@
 		{
 			for (var which = 0; which < 2; which++)
 			{
-				for (var i = 0; i < this.Inputs[which].Count; i++)
+				for (var i = 0; i < Inputs[which].Count; i++)
 				{
-					edit.DeleteFile(this.Level + which, this.Inputs[which][i].FileNumber);
+					edit.DeleteFile(Level + which, Inputs[which][i].FileNumber);
 				}
 			}
 		}
@@ -142,12 +142,12 @@
 		{
 			// Maybe use binary search to find right entry instead of linear search?
 			var userComparator = storageContext.InternalKeyComparator.UserComparator;
-			for (int lvl = this.Level + 2; lvl < Config.NumberOfLevels; lvl++)
+			for (int lvl = Level + 2; lvl < Config.NumberOfLevels; lvl++)
 			{
-				var files = this.inputVersion.Files[lvl];
-				for (; this.levelPointers[lvl] < files.Count; )
+				var files = inputVersion.Files[lvl];
+				for (; levelPointers[lvl] < files.Count; )
 				{
-					var file = files[this.levelPointers[lvl]];
+					var file = files[levelPointers[lvl]];
 					if (userComparator.Compare(userKey, file.LargestKey.UserKey) <= 0)
 					{
 						// We've advanced far enough
@@ -159,7 +159,7 @@
 						break;
 					}
 
-					this.levelPointers[lvl]++;
+					levelPointers[lvl]++;
 				}
 			}
 
@@ -174,23 +174,23 @@
 		/// <returns></returns>
 		public bool ShouldStopBefore(Slice internalKey)
 		{
-			while (this.grandparentIndex < this.Grandparents.Count
-				   && storageContext.InternalKeyComparator.Compare(internalKey, this.Grandparents[this.grandparentIndex].LargestKey.Encode()) > 0)
+			while (grandparentIndex < Grandparents.Count
+				   && storageContext.InternalKeyComparator.Compare(internalKey, Grandparents[grandparentIndex].LargestKey.Encode()) > 0)
 			{
-				if (this.seenKey)
+				if (seenKey)
 				{
-					this.overlappedBytes += this.Grandparents[this.grandparentIndex].FileSize;
+					overlappedBytes += Grandparents[grandparentIndex].FileSize;
 				}
 
-				this.grandparentIndex++;
+				grandparentIndex++;
 			}
 
-			this.seenKey = true;
+			seenKey = true;
 
-			if (this.overlappedBytes > Config.MaxGrandParentOverlapBytes)
+			if (overlappedBytes > Config.MaxGrandParentOverlapBytes)
 			{
 				// Too much overlap for current output; start new output
-				this.overlappedBytes = 0;
+				overlappedBytes = 0;
 				return true;
 			}
 
@@ -204,7 +204,7 @@
 		/// <returns></returns>
 		public void ReleaseInputs()
 		{
-			this.inputVersion = null;
+			inputVersion = null;
 		}
 	}
 }
