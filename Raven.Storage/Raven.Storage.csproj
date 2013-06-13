@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="NLog">
+      <HintPath>..\packages\NLog.2.0.1.2\lib\net45\NLog.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Caching" />
@@ -44,6 +47,7 @@
   <ItemGroup>
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
+    <Compile Include="Impl\Reference.cs" />
     <Compile Include="Reading\DbIterator.cs" />
     <Compile Include="Impl\Snapshooter.cs" />
     <Compile Include="Comparing\CaseInsensitiveComparator.cs" />
@@ -59,7 +63,6 @@
     <Compile Include="Data\ItemType.cs" />
     <Compile Include="Data\ReadOptions.cs" />
     <Compile Include="Data\Slice.cs" />
-    <Compile Include="Data\SliceJsonConverter.cs" />
     <Compile Include="Data\Snapshot.cs" />
     <Compile Include="Exceptions\ManifestFileException.cs" />
     <Compile Include="Impl\AsyncLock.cs" />
@@ -133,9 +136,9 @@
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ravendb-2.5\Raven.Abstractions\Raven.Abstractions.csproj">
-      <Project>{41ac479e-1eb2-4d23-aaf2-e4c8df1bc2ba}</Project>
-      <Name>Raven.Abstractions</Name>
+    <ProjectReference Include="..\Raven.Temp\Raven.Temp.csproj">
+      <Project>{d84a706b-bb17-4e84-b30f-b8fe73166cfd}</Project>
+      <Name>Raven.Temp</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

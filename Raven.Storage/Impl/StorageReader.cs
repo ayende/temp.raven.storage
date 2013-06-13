@@ -2,8 +2,6 @@
 {
 	using System.IO;
 	using System.Threading.Tasks;
-
-	using Raven.Abstractions.Extensions;
 	using Raven.Storage.Data;
 	using Raven.Storage.Reading;
 

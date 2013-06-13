@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Util;
 using Xunit;
@@ -9,14 +10,14 @@ namespace Raven.Storage.Tests.Logs
 	public class CanReadAndWriteOkaySingleRecord
 	{
 		[Fact]
-		public void Small()
+		public async Task Small()
 		{
 			var buffer = new byte[1044];
 			new Random().NextBytes(buffer);
 
 			var memoryStream = new MemoryStream();
 			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
-			WriteRecord(logWriterStream, buffer);
+			await WriteRecordAsync(logWriterStream, buffer);
 			logWriterStream.Flush();
 			memoryStream.Position = 0;
 
@@ -31,22 +32,22 @@ namespace Raven.Storage.Tests.Logs
 
 		}
 
-		public static void WriteRecord(LogWriter logWriterStream, byte[] buffer)
+		public static async Task WriteRecordAsync(LogWriter logWriterStream, byte[] buffer)
 		{
 			logWriterStream.RecordStarted();
-			logWriterStream.WriteAsync(buffer, 0, buffer.Length).Wait();
-			logWriterStream.RecordCompletedAsync().Wait();
+			await logWriterStream.WriteAsync(buffer, 0, buffer.Length);
+			await logWriterStream.RecordCompletedAsync();
 		}
 
 		[Fact]
-		public void Big()
+		public async Task Big()
 		{
 			var buffer = new byte[1046 * 32];
 			new Random().NextBytes(buffer);
 
 			var memoryStream = new MemoryStream();
 			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
-			WriteRecord(logWriterStream, buffer);
+			await WriteRecordAsync(logWriterStream, buffer);
 			logWriterStream.Flush();
 		
 			memoryStream.Position = 0;
@@ -64,14 +65,14 @@ namespace Raven.Storage.Tests.Logs
 
 
 		[Fact]
-		public void VeryBig()
+		public async Task VeryBig()
 		{
 			var buffer = new byte[1046 * 32 * 3];
 			new Random().NextBytes(buffer);
 
 			var memoryStream = new MemoryStream();
 			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
-			WriteRecord(logWriterStream, buffer);
+			await WriteRecordAsync(logWriterStream, buffer);
 			logWriterStream.Flush();
 
 			memoryStream.Position = 0;

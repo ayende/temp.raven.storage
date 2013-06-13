@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Util;
 using Xunit;
@@ -11,7 +12,7 @@ namespace Raven.Storage.Tests.Logs
 	{
 	
 		[Fact]
-		public void BigEnoughForOneFullBlock()
+		public async Task BigEnoughForOneFullBlock()
 		{
 			var random = new Random();
 			var buffers = new List<byte[]>();
@@ -28,7 +29,7 @@ namespace Raven.Storage.Tests.Logs
 
 			foreach (var buffer in buffers)
 			{
-				CanReadAndWriteOkaySingleRecord.WriteRecord(logWriterStream, buffer);
+				await CanReadAndWriteOkaySingleRecord.WriteRecordAsync(logWriterStream, buffer);
 			}
 
 			logWriterStream.Flush();
@@ -49,7 +50,7 @@ namespace Raven.Storage.Tests.Logs
 		}
 
 		[Fact]
-		public void SmallLots()
+		public async Task SmallLots()
 		{
 			var random = new Random();
 			var buffers = new List<byte[]>();
@@ -67,7 +68,7 @@ namespace Raven.Storage.Tests.Logs
 
 			foreach (var buffer in buffers)
 			{
-				CanReadAndWriteOkaySingleRecord.WriteRecord(logWriterStream, buffer);
+				await CanReadAndWriteOkaySingleRecord.WriteRecordAsync(logWriterStream, buffer);
 			}
 
 			logWriterStream.Flush();
