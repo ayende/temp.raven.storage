@@ -32,34 +32,35 @@ namespace Raven.Storage.Impl.Compactions
 			if (manualCompaction != null)
 				throw new InvalidOperationException("Manual compaction is already in progess.");
 
-			manualCompaction = new ManualCompaction(level, new InternalKey(begin, Format.MaxSequenceNumber, ItemType.ValueForSeek), new InternalKey(end, Format.MaxSequenceNumber, ItemType.ValueForSeek));
+			manualCompaction = new ManualCompaction(level, 
+				new InternalKey(begin, Format.MaxSequenceNumber, ItemType.ValueForSeek), 
+				new InternalKey(end, Format.MaxSequenceNumber, ItemType.ValueForSeek));
 
 			return Task.Factory.StartNew(async () =>
+				{
+					Task task = null;
+
+					while (task == null)
 					{
-						while (true)
+						if (state.ShuttingDown)
+							throw new InvalidOperationException("Database is shutting down.");
+
+						if (state.BackgroundCompactionScheduled)
 						{
-							if (state.ShuttingDown)
-								throw new InvalidOperationException("Database is shutting down.");
-
-							if (state.BackgroundCompactionScheduled)
-							{
-								await Task.Delay(100);
-								continue;
-							}
-
-							Task task;
-							using (var actualLock = await locker.LockAsync())
-							{
-								MaybeScheduleCompaction(actualLock);
-								task = state.BackgroundTask;
-								if (task == null)
-									continue;// shouldn't happen, but.. you know...
-							}
-							await task;
-
-							break;
+							await Task.Delay(100);
+							continue;
 						}
-					});
+
+						using (var actualLocker = await locker.LockAsync())
+						{
+							MaybeScheduleCompaction(actualLocker);
+							task = state.BackgroundTask;
+						}
+					}
+
+					await task;
+					return 1;// make R# happy
+				}).Unwrap();
 		}
 
 		internal void MaybeScheduleCompaction(AsyncLock.LockScope locker)
@@ -83,7 +84,7 @@ namespace Raven.Storage.Impl.Compactions
 			}
 
 			state.BackgroundCompactionScheduled = true;
-			state.BackgroundTask = Task.Factory.StartNew(() => RunCompactionAsync());
+			state.BackgroundTask = Task.Factory.StartNew(async () => await RunCompactionAsync()).Unwrap();
 		}
 
 		private async Task RunCompactionAsync()

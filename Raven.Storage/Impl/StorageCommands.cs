@@ -15,10 +15,13 @@
 
 		public async Task CompactAsync(int level, Slice begin, Slice end)
 		{
+			Task compactAsync;
 			using (await state.Lock.LockAsync())
 			{
-				await state.Compactor.CompactAsync(level, begin, end, state.Lock);
+				compactAsync = state.Compactor.CompactAsync(level, begin, end, state.Lock);
 			}
+			await compactAsync; // we do the wait _outside_ the lock
+
 		}
 
 		public Task CompactRangeAsync(Slice begin, Slice end)
