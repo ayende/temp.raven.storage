@@ -301,7 +301,7 @@
 			return (result);
 		}
 
-		private async Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var range = (options.Num + 99) / 100;
@@ -316,7 +316,7 @@
 				result.FinishOperation();
 			}
 
-			return result;
+			return Task.FromResult(result);
 		}
 
 		private async Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
@@ -347,7 +347,7 @@
 			return result;
 		}
 
-		private async Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var result = new BenchmarkResult(parameters);
@@ -361,10 +361,10 @@
 				result.FinishOperation();
 			}
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var found = 0;
@@ -384,7 +384,7 @@
 
 			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
 
-			return result;
+			return Task.FromResult(result);
 		}
 
 		private async Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)

@@ -229,7 +229,6 @@ namespace Raven.Storage.Impl.Streams
 			return stream.WriteAsync(_buffer, 0, 8);
 		}
 
-		[CLSCompliant(false)]
 		public Task WriteAsync(sbyte value)
 		{
 			if (disposed)
@@ -274,7 +273,6 @@ namespace Raven.Storage.Impl.Streams
 			}
 		}
 
-		[CLSCompliant(false)]
 		public Task WriteAsync(ushort value)
 		{
 			if (disposed)
@@ -285,7 +283,6 @@ namespace Raven.Storage.Impl.Streams
 			return stream.WriteAsync(_buffer, 0, 2);
 		}
 
-		[CLSCompliant(false)]
 		public Task WriteAsync(uint value)
 		{
 			if (disposed)
@@ -298,7 +295,6 @@ namespace Raven.Storage.Impl.Streams
 			return stream.WriteAsync(_buffer, 0, 4);
 		}
 
-		[CLSCompliant(false)]
 		public Task WriteAsync(ulong value)
 		{
 			if (disposed)

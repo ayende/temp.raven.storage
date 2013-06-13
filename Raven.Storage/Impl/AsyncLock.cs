@@ -51,14 +51,13 @@ namespace Raven.Storage.Impl
 
 		public class LockScope : IDisposable
 		{
-			private bool locked;
 			private readonly AsyncLock _asyncLock;
 			private bool _locked;
 
 			public LockScope(AsyncLock asyncLock)
 			{
 				_asyncLock = asyncLock;
-				locked = true;
+				_locked = true;
 			}
 
 			public bool Locked
@@ -68,23 +67,23 @@ namespace Raven.Storage.Impl
 
 			public void Dispose()
 			{
-				if (locked)
+				if (_locked)
 					_asyncLock.Exit();
-				locked = false;
+				_locked = false;
 			}
 
 			public void Exit()
 			{
 				_asyncLock.Exit();
-				locked = false;
+				_locked = false;
 			}
 
 			public async Task LockAsync()
 			{
-				if (locked)
+				if (_locked)
 					return;
 				await _asyncLock.LockAsync();
-				locked = true;
+				_locked = true;
 			}
 		}
 	}
