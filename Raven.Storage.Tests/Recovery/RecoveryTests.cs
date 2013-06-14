@@ -6,6 +6,7 @@
 
 using System.IO;
 using System.Threading.Tasks;
+using Raven.Storage.Filtering;
 using Xunit;
 
 namespace Raven.Storage.Tests.Recovery
@@ -17,7 +18,10 @@ namespace Raven.Storage.Tests.Recovery
 		[Fact]
 		public async Task ShouldRecoverDataFromLogFile()
 		{
-			var storage = await NewStorageAsync();
+			var storage = await NewStorageAsync(new StorageOptions
+				{
+					FilterPolicy = new BloomFilterPolicy(caseInsensitive: false)
+				});
 
 			var name = storage.Name;
 

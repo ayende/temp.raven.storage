@@ -58,11 +58,11 @@ namespace Raven.Storage.Filtering
 			}
 
 			uint h = _bloomFilterPolicy.HashKey(key);
-			uint delta = ((h >> 17) | (h << 16)); // rotate right 17 bits
+			uint delta = ((h >> 17) | (h << 15)); // rotate right 17 bits
 			for (var i = 0; i < k; i++)
 			{
 				var bitpos = (int) (h%bits);
-				var b = _accessor[filterStart + bitpos/8];
+				byte b = _accessor[filterStart + bitpos/8];
 				if ((b & (1 << (bitpos%8))) == 0)
 					return false;
 				h += delta;

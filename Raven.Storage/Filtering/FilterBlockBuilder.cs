@@ -54,6 +54,12 @@ namespace Raven.Storage.Filtering
 				return;
 			}
 
+			for (int i = 0; i < _slices.Count; i++)
+			{
+				//effectively calling ExtractUserKey
+				_slices[i] = new Slice(_slices[i].Array, _slices[i].Offset, _slices[i].Count - 8);
+			}
+
 			_filterBuilder.CreateFilter(_slices, _stream);
 			foreach (var slice in _slices)
 			{

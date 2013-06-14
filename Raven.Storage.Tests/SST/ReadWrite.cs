@@ -8,6 +8,7 @@ using System.Text;
 using Raven.Storage.Building;
 using Raven.Storage.Data;
 using Raven.Storage.Filtering;
+using Raven.Storage.Impl;
 using Raven.Storage.Memory;
 using Raven.Storage.Reading;
 using Xunit;
@@ -21,16 +22,16 @@ namespace Raven.Storage.Tests.SST
 		[Fact]
 		public void CanReadValuesBackWithoutFilter()
 		{
-			var options = new StorageOptions
+			var state = new StorageState("none", new StorageOptions
 			{
 				ParanoidChecks = true,
 				FilterPolicy = null
-			};
+			});
 			string name;
 			using (var file = CreateFile())
 			{
 				name = file.Name;
-				using (var tblBuilder = new TableBuilder(options, file, TempStreamGenerator))
+				using (var tblBuilder = new TableBuilder(state.Options, file, TempStreamGenerator))
 				{
 					for (int i = 0; i < 10; i++)
 					{
@@ -46,7 +47,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				using (var table = new Table(options, new FileData(new MemoryMappedFileAccessor(mmf), length)))
+				using (var table = new Table(state, new FileData(new MemoryMappedFileAccessor(mmf), length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < 10; i++)
@@ -67,17 +68,17 @@ namespace Raven.Storage.Tests.SST
 		[Fact]
 		public void CanReadValuesBack()
 		{
-			var options = new StorageOptions
-			{
-				ParanoidChecks = true,
-				FilterPolicy = new BloomFilterPolicy()
-			};
+			var state = new StorageState("none", new StorageOptions
+				{
+					ParanoidChecks = true,
+					FilterPolicy = new BloomFilterPolicy()
+				});
 			const int count = 5;
 			string name;
 			using (var file = CreateFile())
 			{
 				name = file.Name;
-				using (var tblBuilder = new TableBuilder(options, file, TempStreamGenerator))
+				using (var tblBuilder = new TableBuilder(state.Options, file, TempStreamGenerator))
 				{
 					for (int i = 0; i < count; i++)
 					{
@@ -93,7 +94,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				using (var table = new Table(options, new FileData(new MemoryMappedFileAccessor(mmf), length)))
+				using (var table = new Table(state, new FileData(new MemoryMappedFileAccessor(mmf), length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < count; i++)

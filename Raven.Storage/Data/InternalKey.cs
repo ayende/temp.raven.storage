@@ -8,30 +8,56 @@
 	[DebuggerDisplay("Val: {DebugVal}")]
 	public struct InternalKey
 	{
-		public Slice UserKey { get; private set; }
+		private readonly Slice _userKey;
+		private readonly Slice _ikey;
+		private readonly ulong _sequence;
+		private readonly ItemType _type;
 
-		public ulong Sequence { get; private set; }
+		public Slice UserKey
+		{
+			get { return _userKey; }
+		}
 
-		public ItemType Type { get; private set; }
+		public ulong Sequence
+		{
+			get { return _sequence; }
+		}
 
-		public InternalKey(Slice key, ulong seq, ItemType type)
+		public ItemType Type
+		{
+			get { return _type; }
+		}
+
+		public Slice TheInternalKey
+		{
+			get { return _ikey; }
+		}
+
+		public InternalKey(Slice userKey, ulong seq, ItemType type)
 			: this()
 		{
-			UserKey = key;
-			Sequence = seq;
-			Type = type;
+			_userKey = userKey;
+			_sequence= seq;
+			_type = type;
+			_ikey = Encode();
 		}
 
 		public InternalKey(Slice key)
 			: this()
 		{
-			InternalKey internalKey;
-			if (!TryParse(key, out internalKey))
-				throw new FormatException("Invalid internal key format.");
+			_ikey = key;
 
-			Sequence = internalKey.Sequence;
-			Type = internalKey.Type;
-			UserKey = internalKey.UserKey;
+			if (key.Count < 8)
+				throw new ArgumentException("Key is too small");
+
+			var number = BitConverter.ToUInt64(key.Array, key.Offset + key.Count - 8);
+			_sequence = number >> 8;
+			_type = (ItemType)number;
+
+			if (_type > ItemType.Value)
+				throw new ArgumentException("Invalid key type");
+
+			_userKey = new Slice(key.Array, key.Offset, key.Count - 8);
 		}
 
 		public Slice Encode()

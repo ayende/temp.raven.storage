@@ -28,6 +28,11 @@ namespace Raven.Storage.Impl
 			return Path.Combine(databaseName, string.Format("{0}{1:000000}{2}", name, num, ext));
 		}
 
+		public string GetFullFileName(ulong num, string ext)
+		{
+			return Path.Combine(databaseName, string.Format("{0:000000}{1}", num, ext));
+		}
+
 		public virtual Stream NewWritable(string name)
 		{
 			return File.OpenWrite(Path.Combine(databaseName, name));

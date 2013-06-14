@@ -46,12 +46,11 @@ namespace Raven.Storage.Impl.Caching
 				return (TableAndFile) o;
 			}
 
-			string filePath = state.FileSystem.GetFullFileName(
-				state.DatabaseName, fileNumber, Constants.Files.Extensions.TableFile);
+			string filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
 
 			MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
 			var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
-			var table = new Table(state.Options, fileData);
+			var table = new Table(state, fileData);
 
 			var tableAndFile = new TableAndFile(fileData, table);
 
@@ -88,7 +87,7 @@ namespace Raven.Storage.Impl.Caching
 			}
 		}
 
-		public ItemState Get(Slice key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator,
+		public ItemState Get(InternalKey key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator,
 		                     out Stream stream)
 		{
 			TableAndFile tableAndFile = FindTable(fileNumber, fileSize);
@@ -102,25 +101,35 @@ namespace Raven.Storage.Impl.Caching
 				return ItemState.NotFound;
 			}
 
-			InternalKey internalKey;
-			if (!InternalKey.TryParse(result.Item1, out internalKey))
+			bool shouldDispose = true;
+			try
 			{
-				return ItemState.Corrupt;
-			}
-
-			if (comparator.Compare(internalKey.UserKey, key) == 0)
-			{
-				bool isFound = internalKey.Type == ItemType.Value;
-				if (!isFound)
+				InternalKey internalKey;
+				if (!InternalKey.TryParse(result.Item1, out internalKey))
 				{
-					return ItemState.Deleted;
+					return ItemState.Corrupt;
 				}
 
-				stream = result.Item2;
-				return ItemState.Found;
-			}
+				if (comparator.Compare(internalKey.UserKey, key.UserKey) == 0)
+				{
+					bool isFound = internalKey.Type == ItemType.Value;
+					if (!isFound)
+					{
+						return ItemState.Deleted;
+					}
 
-			return ItemState.NotFound;
+					stream = result.Item2;
+					shouldDispose = false;
+					return ItemState.Found;
+				}
+
+				return ItemState.NotFound;
+			}
+			finally
+			{
+				if (shouldDispose && result.Item2 != null)
+					result.Item2.Dispose();
+			}
 		}
 	}
 

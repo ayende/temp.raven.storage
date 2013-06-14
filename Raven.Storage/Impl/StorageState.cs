@@ -291,14 +291,14 @@
 
 				if (mem.ApproximateMemoryUsage > Options.WriteBatchSize)
 				{
-					Compactor.WriteLevel0Table(mem, null, ref edit);
+					Compactor.WriteLevel0Table(mem, null, edit);
 					mem = null;
 				}
 			}
 
 			if (mem != null)
 			{
-				Compactor.WriteLevel0Table(mem, null, ref edit);
+				Compactor.WriteLevel0Table(mem, null, edit);
 			}
 		}
 

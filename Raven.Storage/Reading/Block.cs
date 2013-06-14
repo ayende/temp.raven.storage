@@ -86,7 +86,7 @@ namespace Raven.Storage.Reading
 		{
 			if (RestartsCount == 0)
 				return new EmptyIterator();
-			this.IncrementUsage(); // make sure that this object won't be disposed before its iterator
+			IncrementUsage(); // make sure that this object won't be disposed before its iterator
 			return new BlockIterator(comparator, this);
 		}
 

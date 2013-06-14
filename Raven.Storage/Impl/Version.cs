@@ -297,8 +297,13 @@
 					lastFileRead = f;
 					lastFileReadLevel = level;
 
-					var state = this.storageContext.TableCache.Get(
-						internalKey.UserKey, f.FileNumber, f.FileSize, readOptions, this.storageContext.InternalKeyComparator.UserComparator, out stream);
+					var state = storageContext.TableCache.Get(
+						internalKey, 
+						f.FileNumber, 
+						f.FileSize, 
+						readOptions,
+						storageContext.InternalKeyComparator.UserComparator,
+						out stream);
 
 					switch (state)
 					{

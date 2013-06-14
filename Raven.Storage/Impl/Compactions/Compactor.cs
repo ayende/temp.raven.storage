@@ -460,7 +460,7 @@ namespace Raven.Storage.Impl.Compactions
 			var edit = new VersionEdit();
 			var currentVersion = state.VersionSet.Current;
 
-			WriteLevel0Table(immutableMemTable, currentVersion, ref edit);
+			WriteLevel0Table(immutableMemTable, currentVersion, edit);
 
 			// Replace immutable memtable with the generated Table
 
@@ -528,7 +528,7 @@ namespace Raven.Storage.Impl.Compactions
 			}
 		}
 
-		public void WriteLevel0Table(MemTable memTable, Version currentVersion, ref VersionEdit edit)
+		public void WriteLevel0Table(MemTable memTable, Version currentVersion, VersionEdit edit)
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var fileNumber = state.VersionSet.NewFileNumber();

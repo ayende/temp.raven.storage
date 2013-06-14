@@ -77,14 +77,6 @@
 			return comparator.FindSharedPrefix(this, other) == otherSize;
 		}
 
-		public void RemovePrefix(int prefixLength)
-		{
-			if (prefixLength > Count)
-				throw new InvalidOperationException(string.Format("Prefix length: {0}. Array Count: {1}", prefixLength, Count));
-
-			_offset += prefixLength;
-			_count -= prefixLength;
-		}
 
 		public bool IsEmpty()
 		{

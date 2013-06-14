@@ -10,12 +10,12 @@ namespace Raven.Storage.Impl
 	using System.IO;
 	using System.Linq;
 
-	using Raven.Abstractions.Logging;
-	using Raven.Storage.Comparing;
-	using Raven.Storage.Data;
-	using Raven.Storage.Impl.Compactions;
-	using Raven.Storage.Reading;
-	using Raven.Storage.Util;
+	using Abstractions.Logging;
+	using Comparing;
+	using Data;
+	using Compactions;
+	using Reading;
+	using Util;
 
 	public class VersionSet
 	{
@@ -47,11 +47,11 @@ namespace Raven.Storage.Impl
 		/// </summary>
 		public ulong LastSequence
 		{
-			get { return this.lastSequence; }
+			get { return lastSequence; }
 			set
 			{
-				Debug.Assert(value >= this.lastSequence);
-				this.lastSequence = value;
+				Debug.Assert(value >= lastSequence);
+				lastSequence = value;
 			}
 		}
 
@@ -59,7 +59,7 @@ namespace Raven.Storage.Impl
 		{
 			get
 			{
-				return this.current;
+				return current;
 			}
 		}
 
@@ -75,7 +75,7 @@ namespace Raven.Storage.Impl
 		{
 			get
 			{
-				var v = this.current;
+				var v = current;
 				return v.CompactionScore >= 1 || v.FileToCompact != null;
 			}
 		}
@@ -86,7 +86,7 @@ namespace Raven.Storage.Impl
 
 		public int GetNumberOfFilesAtLevel(int level)
 		{
-			return this.current.Files[level].Count;
+			return current.Files[level].Count;
 		}
 
 		public ulong NewFileNumber()
@@ -110,10 +110,7 @@ namespace Raven.Storage.Impl
 
 			for (int level = 0; level < Config.NumberOfLevels; level++)
 			{
-				foreach (var file in current.Files[level])
-				{
-					result.Add(file.FileNumber);
-				}
+				result.AddRange(current.Files[level].Select(file => file.FileNumber));
 			}
 
 			return result;
@@ -131,7 +128,7 @@ namespace Raven.Storage.Impl
 
 		public void AppendVersion(Version version)
 		{
-			this.current = version;
+			current = version;
 		}
 
 		public Compaction PickCompaction()
@@ -200,11 +197,11 @@ namespace Raven.Storage.Impl
 
 		public Compaction CompactRange(int level, InternalKey begin, InternalKey end)
 		{
-			var inputs = this.Current.GetOverlappingInputs(level, begin, end);
+			var inputs = Current.GetOverlappingInputs(level, begin, end);
 			if (inputs.Count == 0)
 				return null;
 
-			var compaction = new Compaction(storageContext, level, this.Current);
+			var compaction = new Compaction(storageContext, level, Current);
 			compaction.Inputs[0] = inputs;
 
 			SetupOtherInputs(compaction);
@@ -242,7 +239,6 @@ namespace Raven.Storage.Impl
 					{
 						log.Info("Expanding@{0} {1}+{2} ({3}+{4} bytes) to {5}+{6} ({7}+{8} bytes).", level, compaction.Inputs[0].Count, compaction.Inputs[1].Count, inputs0Size, inputs1Size, expanded0.Count, expanded1.Count, expanded0Size, inputs1Size);
 
-						smallestKey = newStart;
 						largestKey = newLimit;
 
 						compaction.Inputs[0] = expanded0;
@@ -384,97 +380,95 @@ namespace Raven.Storage.Impl
 
 		public void Recover()
 		{
+			string currentManifest;
+
 			using (var currentFile = storageContext.FileSystem.OpenForReading(storageContext.FileSystem.GetCurrentFileName()))
+			using (var reader = new StreamReader(currentFile))
 			{
-				string currentManifest;
+				currentManifest = reader.ReadToEnd();
+			}
 
-				using (var reader = new StreamReader(currentFile))
+			if (string.IsNullOrEmpty(currentManifest))
+			{
+				throw new FormatException("CURRENT file should not be empty.");
+			}
+
+			using (var manifestFile = storageContext.FileSystem.OpenForReading(currentManifest))
+			{
+				var logReader = new LogReader(manifestFile, true, 0, storageContext.Options.BufferPool);
+				var builder = new Builder(storageContext, this, current);
+
+				ulong? nextFileFromManifest = null;
+				ulong? lastSequenceFromManifest = null;
+				ulong? logNumberFromManifest = null;
+				ulong? prevLogNumberFromManifest = null;
+
+				Stream recordStream;
+				while (logReader.TryReadRecord(out recordStream))
 				{
-					currentManifest = reader.ReadToEnd();
+					VersionEdit edit;
+					using (recordStream)
+					{
+						edit = VersionEdit.DecodeFrom(recordStream);
+					}
+
+					if (edit.Comparator != storageContext.Options.Comparator.Name)
+					{
+						throw new InvalidOperationException(
+							string.Format("Decoded version edit comparator '{0}' does not match '{1}' that is currently in use.",
+										  edit.Comparator, storageContext.Options.Comparator.Name));
+					}
+
+					builder.Apply(edit);
+
+					if (edit.NextFileNumber.HasValue)
+					{
+						nextFileFromManifest = edit.NextFileNumber;
+					}
+					if (edit.PrevLogNumber.HasValue)
+					{
+						prevLogNumberFromManifest = edit.PrevLogNumber;
+					}
+					if (edit.LogNumber.HasValue)
+					{
+						logNumberFromManifest = edit.LogNumber;
+					}
+					if (edit.LastSequence.HasValue)
+					{
+						lastSequenceFromManifest = edit.LastSequence;
+					}
 				}
 
-				if (string.IsNullOrEmpty(currentManifest))
+				if (nextFileFromManifest == null)
 				{
-					throw new FormatException("CURRENT file should not be empty.");
+					throw new ManifestFileException("No NextFileNumber entry");
+				}
+				if (logNumberFromManifest == null)
+				{
+					throw new ManifestFileException("No LogNumber entry");
+				}
+				if (lastSequenceFromManifest == null)
+				{
+					throw new ManifestFileException("No LastSequenceNumber entry");
+				}
+				if (prevLogNumberFromManifest == null)
+				{
+					prevLogNumberFromManifest = 0;
 				}
 
-				using (var manifestFile = storageContext.FileSystem.OpenForReading(currentManifest))
-				{
-					var logReader = new LogReader(manifestFile, true, 0, storageContext.Options.BufferPool);
-					var builder = new Builder(storageContext, this, current);
-					
-					ulong? nextFileFromManifest = null;
-					ulong? lastSequenceFromManifest = null;
-					ulong? logNumberFromManifest = null;
-					ulong? prevLogNumberFromManifest = null;
+				MarkFileNumberUsed(prevLogNumberFromManifest.Value);
+				MarkFileNumberUsed(logNumberFromManifest.Value);
 
-					Stream recordStream;
-					while (logReader.TryReadRecord(out recordStream))
-					{
-						VersionEdit edit;
-						using (recordStream)
-						{
-							edit = VersionEdit.DecodeFrom(recordStream);
-						}
+				var version = new Version(storageContext, this);
+				builder.SaveTo(version);
+				Version.Finalize(version);
+				AppendVersion(version);
 
-						if (edit.Comparator != storageContext.Options.Comparator.Name)
-						{
-							throw new InvalidOperationException(
-								string.Format("Decoded version edit comparator '{0}' does not match '{1}' that is currently in use.",
-											  edit.Comparator, storageContext.Options.Comparator.Name));
-						}
-
-						builder.Apply(edit);
-
-						if (edit.NextFileNumber.HasValue)
-						{
-							nextFileFromManifest = edit.NextFileNumber;
-						}
-						if (edit.PrevLogNumber.HasValue)
-						{
-							prevLogNumberFromManifest = edit.PrevLogNumber;
-						}
-						if(edit.LogNumber.HasValue)
-						{
-							logNumberFromManifest = edit.LogNumber;
-						}
-						if (edit.LastSequence.HasValue)
-						{
-							lastSequenceFromManifest = edit.LastSequence;
-						}
-					}
-
-					if (nextFileFromManifest == null)
-					{
-						throw new ManifestFileException("No NextFileNumber entry");
-					}
-					if (logNumberFromManifest == null)
-					{
-						throw new ManifestFileException("No LogNumber entry");
-					}
-					if (lastSequenceFromManifest == null)
-					{
-						throw new ManifestFileException("No LastSequenceNumber entry");
-					}
-					if (prevLogNumberFromManifest == null)
-					{
-						prevLogNumberFromManifest = 0;
-					}
-
-					MarkFileNumberUsed(prevLogNumberFromManifest.Value);
-					MarkFileNumberUsed(logNumberFromManifest.Value);
-
-					var version = new Version(storageContext, this);
-					builder.SaveTo(version);
-					Version.Finalize(version);
-					AppendVersion(version);
-
-					ManifestFileNumber = nextFileFromManifest.Value;
-					NextFileNumber = nextFileFromManifest.Value + 1;
-					LastSequence = lastSequenceFromManifest.Value;
-					LogNumber = logNumberFromManifest.Value;
-					PrevLogNumber = prevLogNumberFromManifest.Value;
-				}
+				ManifestFileNumber = nextFileFromManifest.Value;
+				NextFileNumber = nextFileFromManifest.Value + 1;
+				LastSequence = lastSequenceFromManifest.Value;
+				LogNumber = logNumberFromManifest.Value;
+				PrevLogNumber = prevLogNumberFromManifest.Value;
 			}
 		}
 
