@@ -36,7 +36,7 @@ namespace Raven.Storage.Tests.SST
 					for (int i = 0; i < 10; i++)
 					{
 						string k = "tests/" + i.ToString("0000");
-						tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes(k)));
+						tblBuilder.Add(new InternalKey(k, 1, ItemType.Value).TheInternalKey, new MemoryStream(Encoding.UTF8.GetBytes(k)));
 					}
 
 					tblBuilder.Finish();
@@ -53,7 +53,7 @@ namespace Raven.Storage.Tests.SST
 					for (int i = 0; i < 10; i++)
 					{
 						string k = "tests/" + i.ToString("0000");
-						iterator.Seek(k);
+						iterator.Seek(new InternalKey(k, 100, ItemType.Value).TheInternalKey);
 						Assert.True(iterator.IsValid);
 						using (var stream = iterator.CreateValueStream())
 						using (var reader = new StreamReader(stream))
@@ -83,7 +83,7 @@ namespace Raven.Storage.Tests.SST
 					for (int i = 0; i < count; i++)
 					{
 						string k = "tests/" + i.ToString("0000");
-						tblBuilder.Add(k, new MemoryStream(Encoding.UTF8.GetBytes("values/" + i)));
+						tblBuilder.Add(new InternalKey(k, 1, ItemType.Value).TheInternalKey, new MemoryStream(Encoding.UTF8.GetBytes("values/" + i)));
 					}
 
 					tblBuilder.Finish();
@@ -100,7 +100,7 @@ namespace Raven.Storage.Tests.SST
 					for (int i = 0; i < count; i++)
 					{
 						string k = "tests/" + i.ToString("0000");
-						iterator.Seek(k);
+						iterator.Seek(new InternalKey(k, 1000, ItemType.Value).TheInternalKey);
 						Assert.True(iterator.IsValid);
 						using (var stream = iterator.CreateValueStream())
 						using (var reader = new StreamReader(stream))
