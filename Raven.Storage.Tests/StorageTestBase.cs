@@ -23,7 +23,7 @@
 			if (storageOptions == null)
 				storageOptions = new StorageOptions();
 
-			var storage = new Storage(string.Format("TestStorage-{0}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss")), storageOptions);
+			var storage = new Storage(string.Format("TestStorage-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid()), storageOptions);
 			await storage.InitAsync();
 			storages.Add(storage);
 
