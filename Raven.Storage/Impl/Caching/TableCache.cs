@@ -46,44 +46,50 @@ namespace Raven.Storage.Impl.Caching
 		{
 			string key = fileNumber.ToString(CultureInfo.InvariantCulture);
 
+			slim.EnterReadLock();
 			try
 			{
-				slim.EnterUpgradeableReadLock();
+				var o = state.Options.TableCache.Get(key);
+				if (o != null)
+				{
+					return (TableAndFile)o;
+				}
+			}
+			finally
+			{
+				slim.ExitReadLock();
+			}
+
+			slim.EnterWriteLock();
+			try
+			{
 				var o = state.Options.TableCache.Get(key);
 				if (o != null)
 				{
 					return (TableAndFile)o;
 				}
 
-				try
+				var filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
+
+				MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
+				TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
+				var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
+				var table = new Table(state, fileData);
+
+				var tableAndFile = new TableAndFile(fileData, table);
+
+				state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
 				{
-					slim.EnterWriteLock();
+					RemovedCallback = CacheRemovedCallback
+				});
 
-					string filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
-
-					MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
-					TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
-					var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
-					var table = new Table(state, fileData);
-
-					var tableAndFile = new TableAndFile(fileData, table);
-
-					state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
-					{
-						RemovedCallback = CacheRemovedCallback
-					});
-
-					return tableAndFile;
-				}
-				finally
-				{
-					slim.ExitWriteLock();
-				}
+				return tableAndFile;
 			}
 			finally
 			{
-				slim.ExitUpgradeableReadLock();
+				slim.ExitWriteLock();
 			}
+
 		}
 
 		private static void CacheRemovedCallback(CacheEntryRemovedArguments arguments)
