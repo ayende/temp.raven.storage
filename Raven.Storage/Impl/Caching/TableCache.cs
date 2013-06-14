@@ -12,9 +12,14 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage.Impl.Caching
 {
+	using System.Threading;
+
 	public class TableCache : IDisposable
 	{
 		private ILog log = LogManager.GetCurrentClassLogger();
+
+		private readonly ReaderWriterLockSlim slim = new ReaderWriterLockSlim();
+
 		private readonly StorageState state;
 
 		public TableCache(StorageState state)
@@ -41,27 +46,44 @@ namespace Raven.Storage.Impl.Caching
 		{
 			string key = fileNumber.ToString(CultureInfo.InvariantCulture);
 
-			var o = state.Options.TableCache.Get(key);
-			if (o != null)
+			try
 			{
-				return (TableAndFile) o;
-			}
-
-			string filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
-
-			MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
-			TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
-			var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
-			var table = new Table(state, fileData);
-
-			var tableAndFile = new TableAndFile(fileData, table);
-
-			state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
+				slim.EnterUpgradeableReadLock();
+				var o = state.Options.TableCache.Get(key);
+				if (o != null)
 				{
-					RemovedCallback = CacheRemovedCallback
-				});
+					return (TableAndFile)o;
+				}
 
-			return tableAndFile;
+				try
+				{
+					slim.EnterWriteLock();
+
+					string filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
+
+					MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
+					TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
+					var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
+					var table = new Table(state, fileData);
+
+					var tableAndFile = new TableAndFile(fileData, table);
+
+					state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
+					{
+						RemovedCallback = CacheRemovedCallback
+					});
+
+					return tableAndFile;
+				}
+				finally
+				{
+					slim.ExitWriteLock();
+				}
+			}
+			finally
+			{
+				slim.ExitUpgradeableReadLock();
+			}
 		}
 
 		private static void CacheRemovedCallback(CacheEntryRemovedArguments arguments)
@@ -90,7 +112,7 @@ namespace Raven.Storage.Impl.Caching
 		}
 
 		public ItemState Get(InternalKey key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator,
-		                     out Stream stream)
+							 out Stream stream)
 		{
 			TableAndFile tableAndFile = FindTable(fileNumber, fileSize);
 
@@ -151,7 +173,7 @@ namespace Raven.Storage.Impl.Caching
 				{
 					if (tableAndFile.FileData != null && tableAndFile.FileData.File != null)
 						tableAndFile.FileData.File.Dispose();
-					if(tableAndFile.Table != null)
+					if (tableAndFile.Table != null)
 						tableAndFile.Table.Dispose();
 				}
 			}
