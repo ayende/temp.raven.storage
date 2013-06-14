@@ -32,7 +32,6 @@ namespace Raven.Storage.Tests.Logs
 				await CanReadAndWriteOkaySingleRecord.WriteRecordAsync(logWriterStream, buffer);
 			}
 
-			logWriterStream.Flush();
 			memoryStream.Position = 0;
 
 			var logReader = new LogReader(memoryStream, true, 0, new BufferPool());
@@ -70,7 +69,6 @@ namespace Raven.Storage.Tests.Logs
 				await CanReadAndWriteOkaySingleRecord.WriteRecordAsync(logWriterStream, buffer);
 			}
 
-			logWriterStream.Flush();
 			memoryStream.Position = 0;
 
 			var logReader = new LogReader(memoryStream, true, 0, new BufferPool());
@@ -108,7 +106,6 @@ namespace Raven.Storage.Tests.Logs
 				await CanReadAndWriteOkaySingleRecord.WriteRecordAsync(logWriterStream, buffer);
 			}
 
-			logWriterStream.Flush();
 			memoryStream.Position = 0;
 
 			var logReader = new LogReader(memoryStream, true, 0, new BufferPool());
@@ -147,7 +144,6 @@ namespace Raven.Storage.Tests.Logs
 				await CanReadAndWriteOkaySingleRecord.WriteRecordAsync(logWriterStream, buffer);
 			}
 
-			logWriterStream.Flush();
 			memoryStream.Position = 0;
 
 			var logReader = new LogReader(memoryStream, true, 0, new BufferPool());

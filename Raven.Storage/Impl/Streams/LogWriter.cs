@@ -107,11 +107,6 @@ namespace Raven.Storage.Impl.Streams
 			}
 		}
 
-		public void Flush()
-		{
-			stream.Flush();
-		}
-
 		public void Dispose()
 		{
 			_bufferPool.Return(_buffer);

@@ -128,7 +128,6 @@
 				// Write new record to MANIFEST log
 
 				await edit.EncodeToAsync(DescriptorLogWriter);
-				DescriptorLogWriter.Flush();
 
 				//if (!s.ok()) {
 				//	Log(options_->info_log, "MANIFEST write: %s\n", s.ToString().c_str());
