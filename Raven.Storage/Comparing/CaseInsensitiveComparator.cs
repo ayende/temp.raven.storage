@@ -4,10 +4,10 @@ using Raven.Storage.Data;
 namespace Raven.Storage.Comparing
 {
 	public class CaseInsensitiveComparator : IComparator
-	{	
+	{
 		public static readonly CaseInsensitiveComparator Default = new CaseInsensitiveComparator();
 
-		public string Name { get { return "CaseInsensitiveComparator"; }}
+		public string Name { get { return "CaseInsensitiveComparator"; } }
 
 		/// <summary>
 		/// Note that this probably won't do very well for case insensitive chars that uses
@@ -19,12 +19,24 @@ namespace Raven.Storage.Comparing
 			for (int i = 0; i < minLen; i++)
 			{
 				var cha = (char)a.Array[a.Offset + i];
-				var chb = (char) b.Array[b.Offset + i];
+				var chb = (char)b.Array[b.Offset + i];
 
-				var diff = char.ToUpperInvariant(cha) - char.ToUpperInvariant(chb);
-				if (diff != 0)
+				if (char.IsLetter(cha) && char.IsLetter(chb))
+				{
+					var diff = cha - chb;
+					if (diff == 0 || diff == 32 || diff == -32)
+						continue;
+
 					return diff;
+				}
+				else
+				{
+					var diff = cha - chb;
+					if (diff != 0)
+						return diff;
+				}
 			}
+
 			return a.Count - b.Count;
 		}
 

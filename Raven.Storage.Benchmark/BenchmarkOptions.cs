@@ -8,7 +8,7 @@
 		{
 			var options = new StorageOptions();
 
-			Num = 1000000;
+			Num = 10000;
 			Reads = -1;
 			Threads = 1;
 			ValueSize = 100;
