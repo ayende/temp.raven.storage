@@ -196,10 +196,10 @@
 			while (iterator.IsValid)
 			{
 				InternalKey internalKey;
-				if (InternalKey.TryParse(this.iterator.Key, out internalKey) && internalKey.Sequence <= this.sequence)
+				if (InternalKey.TryParse(iterator.Key, out internalKey) && internalKey.Sequence <= sequence)
 				{
 					if ((itemType != ItemType.Deletion)
-					    && this.storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, this.savedKey) < 0)
+					    && storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, savedKey) < 0)
 					{
 						// We encountered a non-deleted value in entries for previous keys,
 						break;
@@ -208,17 +208,17 @@
 					itemType = internalKey.Type;
 					if (itemType == ItemType.Deletion)
 					{
-						this.savedKey = null;
-						this.savedValueStream = null;
+						savedKey = null;
+						savedValueStream = null;
 					}
 					else
 					{
-						this.savedKey = InternalKey.ExtractUserKey(this.iterator.Key);
-						this.savedValueStream = this.iterator.CreateValueStream();
+						savedKey = InternalKey.ExtractUserKey(iterator.Key);
+						savedValueStream = iterator.CreateValueStream();
 					}
 				}
 
-				this.iterator.Prev();
+				iterator.Prev();
 			}
 
 			if (itemType == ItemType.Deletion)

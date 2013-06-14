@@ -69,7 +69,7 @@
 		{
 			get
 			{
-				return this.results.SelectMany(result => result.Messages).ToList();
+				return results.SelectMany(result => result.Messages).ToList();
 			}
 		}
 

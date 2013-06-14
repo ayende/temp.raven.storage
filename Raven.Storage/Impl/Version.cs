@@ -18,13 +18,13 @@
 		private Version(IStorageContext storageContext)
 		{
 			this.storageContext = storageContext;
-			this.Files = new List<FileMetadata>[Config.NumberOfLevels];
+			Files = new List<FileMetadata>[Config.NumberOfLevels];
 
-			this.FileToCompact = null;
-			this.FileToCompactLevel = -1;
+			FileToCompact = null;
+			FileToCompactLevel = -1;
 
-			this.CompactionScore = -1;
-			this.CompactionLevel = -1;
+			CompactionScore = -1;
+			CompactionLevel = -1;
 
 			for (var level = 0; level < Config.NumberOfLevels; level++)
 			{
@@ -137,7 +137,7 @@
 		internal List<FileMetadata> GetOverlappingInputs(int level, InternalKey begin, InternalKey end)
 		{
 			var inputs = new List<FileMetadata>();
-			var userComparator = this.storageContext.InternalKeyComparator.UserComparator;
+			var userComparator = storageContext.InternalKeyComparator.UserComparator;
 
 			var userBegin = begin.UserKey;
 			var userEnd = end.UserKey;
@@ -191,10 +191,10 @@
 		{
 			if (!disjointSortedFiles)
 			{
-				var userComparator = this.storageContext.InternalKeyComparator.UserComparator;
+				var userComparator = storageContext.InternalKeyComparator.UserComparator;
 
 				// Need to check against all files
-				return files.Any(file => !this.AfterFile(userComparator, smallestKey, file) && !this.BeforeFile(userComparator, largestKey, file));
+				return files.Any(file => !AfterFile(userComparator, smallestKey, file) && !BeforeFile(userComparator, largestKey, file));
 			}
 
 			return false;
@@ -275,13 +275,13 @@
 				{
 					// Binary search to find earliest index whose largest key >= ikey.
 					int index;
-					if (Files[level].TryFindFile(internalKey.Encode(), this.storageContext.InternalKeyComparator, out index) == false)
+					if (Files[level].TryFindFile(internalKey.Encode(), storageContext.InternalKeyComparator, out index) == false)
 					{
 						files = new List<FileMetadata>();
 					}
 					else
 					{
-						files = this.storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, files[index].SmallestKey.UserKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
+						files = storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, files[index].SmallestKey.UserKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
 					}
 				}
 

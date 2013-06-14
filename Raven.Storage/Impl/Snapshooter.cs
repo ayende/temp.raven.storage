@@ -24,7 +24,7 @@
 		public Snapshooter(IStorageContext storageContext)
 		{
 			this.storageContext = storageContext;
-			this.snapshots = new List<Snapshot>();
+			snapshots = new List<Snapshot>();
 		}
 
 		public async Task<Snapshot> CreateNewSnapshotAsync(VersionSet versionSet, AsyncLock.LockScope locker)
@@ -35,7 +35,7 @@
 					               Sequence = versionSet.LastSequence
 				               };
 
-			this.snapshots.Add(snapshot);
+			snapshots.Add(snapshot);
 
 			return snapshot;
 		}
@@ -52,7 +52,7 @@
 			await locker.LockAsync();
 
 			var edit = new VersionEdit();
-			AddMetadata(edit, this.storageContext.Options);
+			AddMetadata(edit, storageContext.Options);
 			AddCompactionPointers(edit, versionSet);
 			AddFiles(edit, versionSet);
 

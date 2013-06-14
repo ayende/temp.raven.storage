@@ -34,7 +34,7 @@
 			this.storageContext = storageContext;
 			this.versionSet = versionSet;
 			this.@base = @base;
-			comparator = new BySmallestKey(this.storageContext.InternalKeyComparator);
+			comparator = new BySmallestKey(storageContext.InternalKeyComparator);
 
 			levels = new LevelState[Config.NumberOfLevels];
 			for (var level = 0; level < Config.NumberOfLevels; level++)
@@ -57,7 +57,7 @@
 				}
 
 				var last = edit.CompactionPointers[level].Last();
-				this.versionSet.CompactionPointers[level] = last.Encode();
+				versionSet.CompactionPointers[level] = last.Encode();
 			}
 
 			var deletedFiles = new Dictionary<int, IList<ulong>>(edit.DeletedFiles);
@@ -176,8 +176,8 @@
 		{
 			public LevelState()
 			{
-				this.DeletedFiles = new List<ulong>();
-				this.AddedFiles = new List<FileMetadata>();
+				DeletedFiles = new List<ulong>();
+				AddedFiles = new List<FileMetadata>();
 			}
 
 			public IList<ulong> DeletedFiles { get; private set; }

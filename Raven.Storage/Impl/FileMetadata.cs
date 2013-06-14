@@ -6,15 +6,15 @@
 	{
 		public FileMetadata()
 		{
-			this.AllowedSeeks = 1 << 30; // 1073741824
+			AllowedSeeks = 1 << 30; // 1073741824
 		}
 
 		public FileMetadata(FileMetadata file)
 		{
-			this.FileSize = file.FileSize;
-			this.FileNumber = file.FileNumber;
-			this.LargestKey = file.LargestKey;
-			this.SmallestKey = file.SmallestKey;
+			FileSize = file.FileSize;
+			FileNumber = file.FileNumber;
+			LargestKey = file.LargestKey;
+			SmallestKey = file.SmallestKey;
 		}
 
 		/// <summary>

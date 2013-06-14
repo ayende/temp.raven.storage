@@ -10,9 +10,9 @@
 
 		public void Add(CompactionStats compactionStats)
 		{
-			this.Micros += compactionStats.Micros;
-			this.BytesRead += compactionStats.BytesRead;
-			this.BytesWritten += compactionStats.BytesWritten;
+			Micros += compactionStats.Micros;
+			BytesRead += compactionStats.BytesRead;
+			BytesWritten += compactionStats.BytesWritten;
 		}
 	}
 }

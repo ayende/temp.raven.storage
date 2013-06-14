@@ -144,7 +144,7 @@
 				// new CURRENT file that points to it.
 				if (!string.IsNullOrEmpty(newManifestFile))
 				{
-					await this.SetCurrentFileAsync(VersionSet.ManifestFileNumber);
+					await SetCurrentFileAsync(VersionSet.ManifestFileNumber);
 					// No need to double-check MANIFEST in case of error since it
 					// will be discarded below.
 				}
@@ -385,7 +385,7 @@
 					}
 				}
 
-				await this.SetCurrentFileAsync(1);
+				await SetCurrentFileAsync(1);
 			}
 			catch (Exception)
 			{
@@ -418,14 +418,14 @@
 			var latestSnapshot = VersionSet.LastSequence;
 			var iterators = new List<IIterator>
 				                {
-					                this.MemTable.NewIterator()
+					                MemTable.NewIterator()
 				                };
 
 			if (ImmutableMemTable != null)
 				iterators.Add(ImmutableMemTable.NewIterator());
 
 			// Merge all level zero files together since they may overlap
-			iterators.AddRange(this.VersionSet.Current.Files[0].Select(file => this.TableCache.NewIterator(options, file.FileNumber, file.FileSize)));
+			iterators.AddRange(VersionSet.Current.Files[0].Select(file => TableCache.NewIterator(options, file.FileNumber, file.FileSize)));
 
 			// For levels > 0, we can use a concatenating iterator that sequentially
 			// walks through the non-overlapping files in the level, opening them

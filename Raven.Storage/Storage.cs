@@ -60,7 +60,7 @@ namespace Raven.Storage
 			if (wasDisposed)
 				return;
 
-			this.storageState.Dispose();
+			storageState.Dispose();
 			wasDisposed = true;
 		}
 	}

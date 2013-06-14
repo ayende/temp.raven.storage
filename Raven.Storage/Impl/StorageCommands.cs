@@ -33,7 +33,7 @@
 		{
 			using (var locker = await state.Lock.LockAsync())
 			{
-				return await state.Snapshooter.CreateNewSnapshotAsync(this.state.VersionSet, locker);
+				return await state.Snapshooter.CreateNewSnapshotAsync(state.VersionSet, locker);
 			}
 		}
 

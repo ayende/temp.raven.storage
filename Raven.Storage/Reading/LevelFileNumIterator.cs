@@ -49,7 +49,7 @@
 
 		public void Seek(Slice target)
 		{
-			this.files.TryFindFile(target, internalKeyComparator, out index);
+			files.TryFindFile(target, internalKeyComparator, out index);
 		}
 
 		public void Next()

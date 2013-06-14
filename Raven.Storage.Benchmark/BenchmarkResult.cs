@@ -34,7 +34,7 @@
 			lastOperationFinishedDate = DateTime.Now;
 
 			messages = new List<string>();
-			this.Histogram = new Histogram();
+			Histogram = new Histogram();
 
 			Stopwatch = new Stopwatch();
 			StartTimer();
