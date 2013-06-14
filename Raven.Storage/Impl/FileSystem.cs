@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Impl
 {
@@ -10,12 +11,9 @@ namespace Raven.Storage.Impl
 		private readonly string databaseName;
 		private FileStream lockFile;
 
-		private readonly Random random;
-
 		public FileSystem(string databaseName)
 		{
 			this.databaseName = databaseName;
-			this.random = new Random();
 		}
 
 		public string GetFileName(string name, ulong num, string ext)
@@ -35,12 +33,16 @@ namespace Raven.Storage.Impl
 
 		public virtual Stream NewWritable(string name)
 		{
-			return File.OpenWrite(Path.Combine(databaseName, name));
+			var stream = File.OpenWrite(Path.Combine(databaseName, name));
+			TrackResourceUsage.Track(() => stream.SafeFileHandle);
+			return stream;
 		}
 
 		public virtual Stream NewReadableWritable(string name)
 		{
-			return File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
+			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
+			TrackResourceUsage.Track(() => stream.SafeFileHandle);
+			return stream;
 		}
 
 		public Stream NewWritable(ulong num, string ext)
@@ -189,9 +191,12 @@ namespace Raven.Storage.Impl
 
 		public void Lock()
 		{
+			if (lockFile != null)
+				return;
 			lockFile =
 				new FileStream(Path.Combine(databaseName, Constants.Files.DBLockFile), FileMode.Create, FileAccess.ReadWrite,
 							   FileShare.None, 4096, FileOptions.DeleteOnClose);
+			TrackResourceUsage.Track(() => lockFile.SafeFileHandle);
 		}
 
 		public bool Exists(string name)
@@ -221,7 +226,9 @@ namespace Raven.Storage.Impl
 
 		public Stream OpenForReading(string name)
 		{
-			return File.Open(Path.Combine(databaseName, name), FileMode.Open, FileAccess.Read);
+			var stream = File.Open(Path.Combine(databaseName, name), FileMode.Open, FileAccess.Read);
+			TrackResourceUsage.Track(() => stream.SafeFileHandle);
+			return stream;
 		}
 	}
 }

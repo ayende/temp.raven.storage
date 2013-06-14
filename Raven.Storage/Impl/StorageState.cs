@@ -407,6 +407,8 @@
 				MemTable.Dispose();
 			if (ImmutableMemTable != null)
 				ImmutableMemTable.Dispose();
+			if (TableCache != null)
+				TableCache.Dispose();
 		}
 
 		public async Task<Tuple<IIterator, ulong>> NewInternalIteratorAsync(ReadOptions options, AsyncLock.LockScope locker)

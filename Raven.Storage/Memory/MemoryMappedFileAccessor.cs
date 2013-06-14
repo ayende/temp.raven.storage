@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.IO.MemoryMappedFiles;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Memory
 {
@@ -14,12 +15,16 @@ namespace Raven.Storage.Memory
 
 		public IArrayAccessor CreateAccessor(long pos, long count)
 		{
-			return new MemoryMappedFileArrayAccessor(_mappedFile.CreateViewAccessor(pos, count, MemoryMappedFileAccess.Read));
+			var memoryMappedViewAccessor = _mappedFile.CreateViewAccessor(pos, count, MemoryMappedFileAccess.Read);
+			TrackResourceUsage.Track(() => memoryMappedViewAccessor.SafeMemoryMappedViewHandle);
+			return new MemoryMappedFileArrayAccessor(memoryMappedViewAccessor);
 		}
 
 		public Stream CreateStream(long pos, long count)
 		{
-			return _mappedFile.CreateViewStream(pos, count, MemoryMappedFileAccess.Read);
+			var memoryMappedViewStream = _mappedFile.CreateViewStream(pos, count, MemoryMappedFileAccess.Read);
+			TrackResourceUsage.Track(() => memoryMappedViewStream.SafeMemoryMappedViewHandle);
+			return memoryMappedViewStream;
 		}
 
 		public void Dispose()

@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Tests
+﻿using Raven.Storage.Util;
+
+namespace Raven.Storage.Tests
 {
 	using System;
 	using System.Collections.Generic;
@@ -23,9 +25,11 @@
 			if (storageOptions == null)
 				storageOptions = new StorageOptions();
 
-			var storage = new Storage(string.Format("TestStorage-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid()), storageOptions);
+			string name = string.Format("TestStorage-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid());
+			var storage = new Storage(name, storageOptions);
 			await storage.InitAsync();
 			storages.Add(storage);
+
 
 			return storage;
 		}
@@ -42,7 +46,7 @@
 				{
 				}
 
-				//ClearDatabaseDirectory(storage.Name);
+				ClearDatabaseDirectory(storage.Name);
 			}
 		}
 
@@ -55,17 +59,24 @@
 				try
 				{
 					Directory.Delete(directory, true);
-					break;
+					return;
 				}
 				catch (IOException)
 				{
 					if (isRetry)
 						throw;
-
-					GC.Collect();
-					GC.WaitForPendingFinalizers();
-					isRetry = true;
 				}
+				catch (UnauthorizedAccessException)
+				{
+					if (isRetry)
+						throw;
+				}
+
+				TrackResourceUsage.Pending();
+
+				GC.Collect();
+				GC.WaitForPendingFinalizers();
+				isRetry = true;
 			}
 		}
 

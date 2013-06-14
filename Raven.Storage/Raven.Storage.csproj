@@ -17,7 +17,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;RESOURCES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -134,6 +134,7 @@
     <Compile Include="Util\Info.cs" />
     <Compile Include="Util\IOExtensions.cs" />
     <Compile Include="Util\StreamExtensions.cs" />
+    <Compile Include="Util\TrackResourceUsage.cs" />
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
   <ItemGroup>

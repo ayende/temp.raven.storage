@@ -7,12 +7,12 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage
 {
-	public class StorageOptions
+	public class StorageOptions : IDisposable
 	{
 		private ObjectCache _blockCache;
 		private bool _blockCacheSet;
 
-		private ObjectCache tableCache;
+		private ObjectCache _tableCache;
 		private bool tableCacheSet;
 
 		/// <summary>
@@ -93,9 +93,9 @@ namespace Raven.Storage
 		{
 			get
 			{
-				if (tableCache == null && tableCacheSet == false)
+				if (_tableCache == null && tableCacheSet == false)
 				{
-					tableCache = new MemoryCache("Raven.Storage.Default", new NameValueCollection
+					_tableCache = new MemoryCache("Raven.Storage.TableCache.Default", new NameValueCollection
 						{
 							{"physicalMemoryLimitPercentage", "10"},
 							{"pollingInterval", "00:05:00"},
@@ -103,16 +103,16 @@ namespace Raven.Storage
 						});
 					tableCacheSet = true;
 				}
-				return tableCache;
+				return _tableCache;
 			}
 			set
 			{
-				var disposable = tableCache as IDisposable;
+				var disposable = _tableCache as IDisposable;
 				if (disposable != null)
 				{
 					disposable.Dispose();
 				}
-				tableCache = value;
+				_tableCache = value;
 			}
 		}
 
@@ -129,7 +129,7 @@ namespace Raven.Storage
 			{
 				if (_blockCache == null && _blockCacheSet == false)
 				{
-					_blockCache = new MemoryCache("Raven.Storage.Default", new NameValueCollection
+					_blockCache = new MemoryCache("Raven.Storage.BlockCache.Default", new NameValueCollection
 						{
 							{"physicalMemoryLimitPercentage", "10"},
 							{"pollingInterval", "00:05:00"},
@@ -163,8 +163,17 @@ namespace Raven.Storage
 			Comparator = new CaseInsensitiveComparator();
 			FilterPolicy = new BloomFilterPolicy();
 			MaximumExpectedKeySize = 2048;
-			WriteBatchSize = 1024*1024*4;
+			WriteBatchSize = 1024 * 1024 * 4;
 			BufferPool = new BufferPool();
+		}
+
+		public void Dispose()
+		{
+			using (_blockCache as IDisposable)
+			using (_tableCache as IDisposable)
+			{
+
+			}
 		}
 	}
 }

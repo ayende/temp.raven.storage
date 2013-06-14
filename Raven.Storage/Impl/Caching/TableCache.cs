@@ -8,10 +8,11 @@ using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Memory;
 using Raven.Storage.Reading;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Impl.Caching
 {
-	public class TableCache
+	public class TableCache : IDisposable
 	{
 		private ILog log = LogManager.GetCurrentClassLogger();
 		private readonly StorageState state;
@@ -49,6 +50,7 @@ namespace Raven.Storage.Impl.Caching
 			string filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
 
 			MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
+			TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
 			var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
 			var table = new Table(state, fileData);
 
@@ -129,6 +131,29 @@ namespace Raven.Storage.Impl.Caching
 			{
 				if (shouldDispose && result.Item2 != null)
 					result.Item2.Dispose();
+			}
+		}
+
+		public void Dispose()
+		{
+			foreach (var item in state.Options.BlockCache)
+			{
+				var block = item.Value as Block;
+				if (block != null)
+				{
+					block.Dispose();
+				}
+			}
+			foreach (var item in state.Options.TableCache)
+			{
+				var tableAndFile = item.Value as TableAndFile;
+				if (tableAndFile != null)
+				{
+					if (tableAndFile.FileData != null && tableAndFile.FileData.File != null)
+						tableAndFile.FileData.File.Dispose();
+					if(tableAndFile.Table != null)
+						tableAndFile.Table.Dispose();
+				}
 			}
 		}
 	}
