@@ -18,10 +18,7 @@ namespace Raven.Storage.Tests.Recovery
 		[Fact]
 		public async Task ShouldRecoverDataFromLogFile()
 		{
-			var storage = await NewStorageAsync(new StorageOptions
-				{
-					FilterPolicy = new BloomFilterPolicy(caseInsensitive: false)
-				});
+			var storage = await NewStorageAsync();
 
 			var name = storage.Name;
 
