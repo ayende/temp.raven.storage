@@ -56,8 +56,7 @@ namespace Raven.Storage.Filtering
 
 			for (int i = 0; i < _slices.Count; i++)
 			{
-				//effectively calling ExtractUserKey
-				_slices[i] = new Slice(_slices[i].Array, _slices[i].Offset, _slices[i].Count - 8);
+				_slices[i] = InternalKey.ExtractUserKey(_slices[i]);
 			}
 
 			_filterBuilder.CreateFilter(_slices, _stream);

@@ -85,7 +85,7 @@ namespace Raven.Storage.Reading
 		/// </summary>
 		public IIterator CreateIterator(ReadOptions readOptions)
 		{
-			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageState.InternalKeyComparator), GetIterator, readOptions);
+			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageState.Options.Comparator), GetIterator, readOptions);
 		}
 
 		private IIterator GetIterator(ReadOptions readOptions, Stream stream)
