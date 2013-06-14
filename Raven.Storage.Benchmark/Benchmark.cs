@@ -41,7 +41,7 @@
 				if (parameters.Method == null)
 					continue;
 
-				var result = RunBenchmark(benchmark, parameters);
+				var result = await RunBenchmarkAsync(benchmark, parameters);
 				Report(result, parameters);
 			}
 		}
@@ -88,13 +88,24 @@
 			await OpenAsync();
 		}
 
-		private BenchmarkResultSet RunBenchmark(string benchmark, BenchmarkParameters parameters)
+		private async Task<BenchmarkResultSet> RunBenchmarkAsync(string benchmark, BenchmarkParameters parameters)
 		{
 			Debug.Assert(parameters.Method != null);
 
 			var result = new BenchmarkResultSet(benchmark, parameters);
 
-			Parallel.For(0, parameters.NumberOfThreads, async i => result.AddResult(i, await parameters.Method(parameters)));
+			var tasks = new Task<BenchmarkResult>[parameters.NumberOfThreads];
+			for (var i = 0; i < parameters.NumberOfThreads; i++)
+			{
+				tasks[i] = parameters.Method(parameters);
+			}
+
+			await Task.WhenAll(tasks);
+
+			for (var i = 0; i < parameters.NumberOfThreads; i++)
+			{
+				result.AddResult(i, tasks[i].Result);
+			}
 
 			return result;
 		}
