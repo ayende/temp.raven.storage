@@ -20,9 +20,9 @@ namespace Raven.Storage.Tests.Filtering
 			 var builder = bloomFilterPolicy.CreateBuilder();
 			var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
 			filterBlockBuilder.StartBlock(0);
-			filterBlockBuilder.Add("test/1");
-			filterBlockBuilder.Add("test/2");
-			filterBlockBuilder.Add("test/231");
+			filterBlockBuilder.Add(new InternalKey("test/1", 0, ItemType.Value).TheInternalKey);
+			filterBlockBuilder.Add(new InternalKey("test/2", 0, ItemType.Value).TheInternalKey);
+			filterBlockBuilder.Add(new InternalKey("test/231", 0, ItemType.Value).TheInternalKey);
 			var memoryStream = new MemoryStream();
 			filterBlockBuilder.Finish(memoryStream);
 
@@ -36,9 +36,9 @@ namespace Raven.Storage.Tests.Filtering
 			 var builder = bloomFilterPolicy.CreateBuilder();
 			 var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
 			 filterBlockBuilder.StartBlock(0);
-			 filterBlockBuilder.Add("test/1");
-			 filterBlockBuilder.Add("test/2");
-			 filterBlockBuilder.Add("test/231");
+			 filterBlockBuilder.Add(new InternalKey("test/1", 0, ItemType.Value).TheInternalKey);
+			 filterBlockBuilder.Add(new InternalKey("test/2", 0, ItemType.Value).TheInternalKey);
+			 filterBlockBuilder.Add(new InternalKey("test/231", 0, ItemType.Value).TheInternalKey);
 			 var memoryStream = new MemoryStream();
 			 filterBlockBuilder.Finish(memoryStream);
 
@@ -53,7 +53,7 @@ namespace Raven.Storage.Tests.Filtering
 			 var builder = bloomFilterPolicy.CreateBuilder();
 			 var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
 			 filterBlockBuilder.StartBlock(0);
-			 filterBlockBuilder.Add("test");
+			 filterBlockBuilder.Add(new InternalKey("test", 0, ItemType.Value).TheInternalKey);
 			 var memoryStream = new MemoryStream();
 			 filterBlockBuilder.Finish(memoryStream);
 
@@ -69,7 +69,7 @@ namespace Raven.Storage.Tests.Filtering
 			 var builder = bloomFilterPolicy.CreateBuilder();
 			 var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
 			 filterBlockBuilder.StartBlock(0);
-			 filterBlockBuilder.Add("test");
+			 filterBlockBuilder.Add(new InternalKey("test", 0, ItemType.Value).TheInternalKey);
 			 var memoryStream = new MemoryStream();
 			 filterBlockBuilder.Finish(memoryStream);
 
@@ -85,11 +85,11 @@ namespace Raven.Storage.Tests.Filtering
 			 var builder = bloomFilterPolicy.CreateBuilder();
 			 var filterBlockBuilder = new FilterBlockBuilder(new MemoryStream(), builder);
 			 filterBlockBuilder.StartBlock(0);
-			 filterBlockBuilder.Add("test/1");
-			 filterBlockBuilder.Add("test/2");
-			 filterBlockBuilder.Add("test/3");
-			 filterBlockBuilder.Add("test/142");
-			 filterBlockBuilder.Add("test/3432");
+			 filterBlockBuilder.Add(new InternalKey("test/1", 0, ItemType.Value).TheInternalKey);
+			 filterBlockBuilder.Add(new InternalKey("test/2", 0, ItemType.Value).TheInternalKey);
+			 filterBlockBuilder.Add(new InternalKey("test/3", 0, ItemType.Value).TheInternalKey);
+			 filterBlockBuilder.Add(new InternalKey("test/142", 0, ItemType.Value).TheInternalKey);
+			 filterBlockBuilder.Add(new InternalKey("test/3432", 0, ItemType.Value).TheInternalKey);
 			 var memoryStream = new MemoryStream();
 			 filterBlockBuilder.Finish(memoryStream);
 
