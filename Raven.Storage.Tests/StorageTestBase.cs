@@ -1,4 +1,5 @@
-﻿using Raven.Storage.Util;
+﻿using Raven.Storage.Impl;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Tests
 {
@@ -26,7 +27,10 @@ namespace Raven.Storage.Tests
 				storageOptions = new StorageOptions();
 
 			string name = string.Format("TestStorage-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid());
-			var storage = new Storage(name, storageOptions);
+			var storage = new Storage(new StorageState(name, storageOptions)
+				{
+					FileSystem = new InMemoryFileSystem(name)
+				});
 			await storage.InitAsync();
 			storages.Add(storage);
 

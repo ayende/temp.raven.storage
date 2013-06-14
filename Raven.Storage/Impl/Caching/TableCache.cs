@@ -71,9 +71,8 @@ namespace Raven.Storage.Impl.Caching
 
 				var filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
 
-				MemoryMappedFile file = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
-				TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
-				var fileData = new FileData(new MemoryMappedFileAccessor(file), fileSize);
+				IAccessor file = state.FileSystem.OpenMemoryMap(filePath);
+				var fileData = new FileData(file, fileSize);
 				var table = new Table(state, fileData);
 
 				var tableAndFile = new TableAndFile(fileData, table);

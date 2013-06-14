@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
+    <Compile Include="Impl\InMemoryFileSystem.cs" />
     <Compile Include="Impl\Reference.cs" />
     <Compile Include="Reading\DbIterator.cs" />
     <Compile Include="Impl\Snapshooter.cs" />

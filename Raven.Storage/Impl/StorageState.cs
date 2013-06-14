@@ -34,7 +34,7 @@
 		public AsyncLock Lock { get; private set; }
 		public VersionSet VersionSet { get; private set; }
 		public StorageOptions Options { get; private set; }
-		public FileSystem FileSystem { get; private set; }
+		public FileSystem FileSystem { get; set; }
 		public string DatabaseName { get; private set; }
 		public ulong LogFileNumber { get; private set; }
 
@@ -329,7 +329,7 @@
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
-					builder = new TableBuilder(Options, tableFile, () => FileSystem.NewReadableWritable(FileSystem.GetTempFileName(fileNumber)));
+					builder = new TableBuilder(Options, tableFile, () => FileSystem.NewWritable(FileSystem.GetTempFileName(fileNumber)));
 
 					meta.SmallestKey = new InternalKey(iterator.Key);
 					while (iterator.IsValid)

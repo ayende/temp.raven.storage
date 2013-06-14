@@ -30,6 +30,11 @@ namespace Raven.Storage
 			this.storageState = storageState;
 		}
 
+		public StorageState StorageState
+		{
+			get { return storageState; }
+		}
+
 		public async Task InitAsync()
 		{
 			var edit = await storageState.RecoverAsync();

@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.Text.RegularExpressions;
+using Raven.Storage.Memory;
 using Raven.Storage.Util;
+using System.Linq;
 
 namespace Raven.Storage.Impl
 {
@@ -26,37 +29,30 @@ namespace Raven.Storage.Impl
 			return Path.Combine(databaseName, string.Format("{0}{1:000000}{2}", name, num, ext));
 		}
 
-		public string GetFullFileName(ulong num, string ext)
+		public virtual string GetFullFileName(ulong num, string ext)
 		{
 			return Path.Combine(databaseName, string.Format("{0:000000}{1}", num, ext));
 		}
 
 		public virtual Stream NewWritable(string name)
 		{
-			var stream = File.OpenWrite(Path.Combine(databaseName, name));
-			TrackResourceUsage.Track(() => stream.SafeFileHandle);
-			return stream;
-		}
-
-		public virtual Stream NewReadableWritable(string name)
-		{
 			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
 			TrackResourceUsage.Track(() => stream.SafeFileHandle);
 			return stream;
 		}
-
+		
 		public Stream NewWritable(ulong num, string ext)
 		{
 			return NewWritable(GetFileName(string.Empty, num, ext));
 		}
 
-		public void DeleteFile(string name)
+		public virtual void DeleteFile(string name)
 		{
 			if (File.Exists(Path.Combine(databaseName, name)))
 				File.Delete(Path.Combine(databaseName, name));
 		}
 
-		public bool TryParseDatabaseFile(FileSystemInfo file, out ulong number, out FileType fileType)
+		public bool TryParseDatabaseFile(string file, out ulong number, out FileType fileType)
 		{
 			number = 0;
 			fileType = FileType.Unknown;
@@ -73,20 +69,20 @@ namespace Raven.Storage.Impl
 				number = 0;
 				fileType = FileType.DBLockFile;
 			}
-			else if (fileName.Equals(Constants.Files.LogFile) || file.FullName.Equals(Constants.Files.CurrentFile + ".old"))
+			else if (fileName.Equals(Constants.Files.LogFile) || file.Equals(Constants.Files.CurrentFile + ".old"))
 			{
 				number = 0;
 				fileType = FileType.InfoLogFile;
 			}
 			else if (fileName.StartsWith(Constants.Files.ManifestPrefix, StringComparison.InvariantCultureIgnoreCase))
 			{
-				if (!string.IsNullOrEmpty(file.Extension))
+				if (!string.IsNullOrEmpty(Path.GetExtension(file)))
 				{
 					return false;
 				}
 
 				var prefixLength = Constants.Files.ManifestPrefix.Length;
-				if (!ulong.TryParse(fileName.Substring(prefixLength, file.Name.Length - prefixLength), out number))
+				if (!ulong.TryParse(fileName.Substring(prefixLength, file.Length - prefixLength), out number))
 				{
 					return false;
 				}
@@ -103,7 +99,7 @@ namespace Raven.Storage.Impl
 					return false;
 				}
 
-				switch (file.Extension)
+				switch (Path.GetExtension(file))
 				{
 					case Constants.Files.Extensions.LogFile:
 						fileType = FileType.LogFile;
@@ -124,20 +120,18 @@ namespace Raven.Storage.Impl
 			return true;
 		}
 
-		private string ExtractFileName(FileSystemInfo file)
+		private string ExtractFileName(string file)
 		{
-			var fileName = file.Name;
-
-			var index = fileName.IndexOf(databaseName, StringComparison.InvariantCultureIgnoreCase);
+			var index = file.IndexOf(databaseName, StringComparison.InvariantCultureIgnoreCase);
 			if (index == -1)
-				return fileName;
+				return file;
 
-			fileName = fileName.Substring(index + databaseName.Length);
-			index = fileName.LastIndexOf("_", StringComparison.InvariantCultureIgnoreCase);
+			file = file.Substring(index + databaseName.Length);
+			index = file.LastIndexOf("_", StringComparison.InvariantCultureIgnoreCase);
 			if (index == -1)
-				return fileName;
+				return file;
 
-			return fileName.Substring(index + 1);
+			return file.Substring(index + 1);
 		}
 
 		public string DescriptorFileName(ulong manifestFileNumber)
@@ -148,14 +142,14 @@ namespace Raven.Storage.Impl
 			return string.Format("{0}{1}", Constants.Files.ManifestPrefix, manifestFileNumber);
 		}
 
-		public void RenameFile(string source, string destination)
+		public virtual void RenameFile(string source, string destination)
 		{
 			var src = Path.Combine(databaseName, source);
 			var dst = Path.Combine(databaseName, destination);
 
 			if (!File.Exists(src))
 			{
-				throw new InvalidOperationException("Source file does not exist.");
+				throw new FileNotFoundException(source);
 			}
 
 			if (File.Exists(dst))
@@ -184,12 +178,12 @@ namespace Raven.Storage.Impl
 			Directory.CreateDirectory(name);
 		}
 
-		public IEnumerable<FileSystemInfo> GetFiles()
+		public virtual IEnumerable<string> GetFiles()
 		{
-			return new DirectoryInfo(databaseName).GetFiles();
+			return new DirectoryInfo(databaseName).GetFiles().Select(x => x.Name);
 		}
 
-		public void Lock()
+		public virtual void Lock()
 		{
 			if (lockFile != null)
 				return;
@@ -206,7 +200,8 @@ namespace Raven.Storage.Impl
 
 		public void Dispose()
 		{
-			lockFile.Dispose();
+			if (lockFile != null)
+				lockFile.Dispose();
 		}
 
 		public string GetTempFileName(ulong fileNumber)
@@ -224,11 +219,18 @@ namespace Raven.Storage.Impl
 			return GetFileName(string.Empty, fileNumber, Constants.Files.Extensions.LogFile);
 		}
 
-		public Stream OpenForReading(string name)
+		public virtual Stream OpenForReading(string name)
 		{
 			var stream = File.Open(Path.Combine(databaseName, name), FileMode.Open, FileAccess.Read);
 			TrackResourceUsage.Track(() => stream.SafeFileHandle);
 			return stream;
+		}
+
+		public virtual IAccessor OpenMemoryMap(string name)
+		{
+			var file = MemoryMappedFile.CreateFromFile(name, FileMode.Open);
+			TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
+			return new MemoryMappedFileAccessor(file);
 		}
 	}
 }

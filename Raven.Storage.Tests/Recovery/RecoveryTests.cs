@@ -7,6 +7,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Raven.Storage.Filtering;
+using Raven.Storage.Impl;
 using Xunit;
 
 namespace Raven.Storage.Tests.Recovery
@@ -33,9 +34,14 @@ namespace Raven.Storage.Tests.Recovery
 			writeBatch.Put("B", s2);
 			storage.Writer.WriteAsync(writeBatch).Wait();
 
+			var fileSystem = storage.StorageState.FileSystem;
+
 			storage.Dispose();
 
-			using (var newStorage = new Storage(name, new StorageOptions()))
+			using (var newStorage = new Storage(new StorageState(name, new StorageOptions())
+				{
+					FileSystem = fileSystem
+				}))
 			{
 				await newStorage.InitAsync();
 				AssertEqual(str1, newStorage.Reader.Read("A"));

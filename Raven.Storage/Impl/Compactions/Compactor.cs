@@ -380,7 +380,7 @@ namespace Raven.Storage.Impl.Compactions
 			var file = state.FileSystem.NewWritable(fileName);
 
 			compactionState.OutFile = file;
-			compactionState.Builder = new TableBuilder(state.Options, file, () => state.FileSystem.NewReadableWritable(state.FileSystem.GetTempFileName(fileNumber)));
+			compactionState.Builder = new TableBuilder(state.Options, file, () => state.FileSystem.NewWritable(state.FileSystem.GetTempFileName(fileNumber)));
 		}
 
 		private async Task InstallCompactionResultsAsync(CompactionState compactionState, AsyncLock.LockScope locker)
@@ -522,7 +522,7 @@ namespace Raven.Storage.Impl.Compactions
 
 						log.Info("Delete type={0} {1}", fileType, number);
 
-						state.FileSystem.DeleteFile(file.Name);
+						state.FileSystem.DeleteFile(file);
 					}
 				}
 			}
