@@ -47,6 +47,14 @@ namespace Raven.Storage.Impl
 
 		public void Dispose()
 		{
+			lock (locker)
+			{
+				foreach (var taskCompletionSource in waiters)
+				{
+					taskCompletionSource.SetResult(null);
+				}
+				waiters.Clear();
+			}
 		}
 
 		public class LockScope : IDisposable
