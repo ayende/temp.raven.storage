@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Impl
+﻿using System.Threading;
+
+namespace Raven.Storage.Impl
 {
 	using Raven.Storage.Memtable;
 
@@ -45,7 +47,6 @@
 			this.state = state;
 		}
 
-
 		public async Task WriteAsync(WriteBatch batch)
 		{
 			var mine = new OutstandingWrite(batch);
@@ -61,6 +62,7 @@
 
 			using (var locker = await state.Lock.LockAsync())
 			{
+				List<OutstandingWrite> list = null;
 				try
 				{
 					if (mine.Done())
@@ -70,7 +72,7 @@
 
 					var lastSequence = state.VersionSet.LastSequence;
 
-					var list = BuildBatchGroup(mine);
+					list = BuildBatchGroup(mine);
 
 					var currentSequence = lastSequence + 1;
 
@@ -90,6 +92,7 @@
 
 						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, state);
 
+
 						foreach (var write in list)
 						{
 							write.Batch.Apply(state.MemTable, currentSequence);
@@ -106,6 +109,15 @@
 				}
 				finally
 				{
+					if (list != null)
+					{
+						foreach (var item in list)
+						{
+							Debug.Assert(pendingWrites.Peek() == item);
+							OutstandingWrite _;
+							pendingWrites.TryDequeue(out _);
+						}
+					}
 					writeCompletedEvent.Pulse();
 				}
 			}
@@ -183,14 +195,13 @@
 
 			var list = new List<OutstandingWrite> { mine };
 
-			OutstandingWrite item;
-			while (maxSize >= 0 && pendingWrites.TryDequeue(out item))
+			foreach (var item in pendingWrites)
 			{
-				if(item == mine)
+				if (maxSize <= 0)
+					break;
+
+				if (item == mine)
 					continue;
-
-				list.Add(item);
-
 				maxSize -= item.Size;
 			}
 
