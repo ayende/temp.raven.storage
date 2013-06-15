@@ -69,7 +69,7 @@
 			savedKey = null;
 			savedValueStream = null;
 
-			savedKey = new InternalKey(target, sequence, ItemType.ValueForSeek).UserKey;
+			savedKey = new InternalKey(target, sequence, ItemType.ValueForSeek).TheInternalKey;
 			iterator.Seek(savedKey);
 
 			if (iterator.IsValid)
@@ -177,8 +177,8 @@
 						return;
 					}
 
-					if (storageContext.InternalKeyComparator.UserComparator.Compare(InternalKey.ExtractUserKey(iterator.Key), savedKey)
-						< 0)
+					var itKey = InternalKey.ExtractUserKey(iterator.Key);
+					if (storageContext.InternalKeyComparator.UserComparator.Compare(itKey, savedKey) < 0)
 						break;
 				}
 
