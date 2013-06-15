@@ -346,7 +346,9 @@ namespace Raven.Storage.Impl
 					else
 					{
 						// Create concatenating iterator for the files from this level
-						list[num++] = new TwoLevelIterator(new LevelFileNumIterator(storageContext.InternalKeyComparator, compaction.Inputs[which]), GetFileIterator, readOptions);
+						list[num++] = new TwoLevelIterator(
+							new LevelFileNumIterator(storageContext.InternalKeyComparator, compaction.Inputs[which]), 
+							GetFileIterator, readOptions);
 					}
 				}
 			}
@@ -356,15 +358,10 @@ namespace Raven.Storage.Impl
 			return NewMergingIterator(storageContext.InternalKeyComparator, list, num);
 		}
 
-		private IIterator GetFileIterator(ReadOptions readOptions, Stream stream)
+		private IIterator GetFileIterator(ReadOptions readOptions, BlockHandle handle)
 		{
-			if (stream.Length != 16)
-			{
-				throw new InvalidOperationException("Invalid value stream size.");
-			}
-
-			var fileNumber = (ulong)stream.Read7BitEncodedLong();
-			var fileSize = stream.Read7BitEncodedLong();
+			var fileNumber = (ulong)handle.Position;
+			var fileSize = handle.Count;
 
 			return storageContext.TableCache.NewIterator(readOptions, fileNumber, fileSize);
 		}

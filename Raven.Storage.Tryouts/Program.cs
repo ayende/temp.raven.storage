@@ -18,7 +18,7 @@
 
 		public static void Main(string[] args)
 		{
-			ConfigureLogging();
+			//ConfigureLogging();
 
 			var storage = new Storage("test", new StorageOptions());
 			var writeBatch = new WriteBatch();

@@ -85,16 +85,9 @@ namespace Raven.Storage.Reading
 		/// </summary>
 		public IIterator CreateIterator(ReadOptions readOptions)
 		{
-			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageState.Options.Comparator), GetIterator, readOptions);
+			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageState.Options.Comparator), CreateBlockIterator, readOptions);
 		}
 
-		private IIterator GetIterator(ReadOptions readOptions, Stream stream)
-		{
-			var handle = new BlockHandle();
-			handle.DecodeFrom(stream);
-
-			return CreateBlockIterator(handle, readOptions);
-		}
 
 		internal Tuple<Slice, Stream> InternalGet(ReadOptions readOptions, InternalKey key)
 		{
@@ -112,7 +105,7 @@ namespace Raven.Storage.Reading
 				{
 					return null; // opptimized not found by filter, no need to read the actual block
 				}
-				using (var blockIterator = CreateBlockIterator(handle, readOptions))
+				using (var blockIterator = CreateBlockIterator(readOptions, handle))
 				{
 					blockIterator.Seek(key.TheInternalKey);
 					if (blockIterator.IsValid == false)
@@ -122,7 +115,7 @@ namespace Raven.Storage.Reading
 			}
 		}
 
-		internal IIterator CreateBlockIterator(BlockHandle handle, ReadOptions readOptions)
+		internal IIterator CreateBlockIterator(ReadOptions readOptions, BlockHandle handle)
 		{
 			var blockCache = _storageState.Options.BlockCache;
 

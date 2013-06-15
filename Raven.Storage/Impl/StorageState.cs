@@ -410,9 +410,9 @@
 				TableCache.Dispose();
 		}
 
-		public async Task<Tuple<IIterator, ulong>> NewInternalIteratorAsync(ReadOptions options, AsyncLock.LockScope locker)
+		public Tuple<IIterator, ulong> NewInternalIterator(ReadOptions options, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			Debug.Assert(locker != null && locker.Locked);
 
 			var latestSnapshot = VersionSet.LastSequence;
 			var iterators = new List<IIterator>

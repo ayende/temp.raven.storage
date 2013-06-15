@@ -11,13 +11,13 @@
 		private readonly IIterator _indexIterator;
 		private IIterator _dataIterator;
 		private readonly ReadOptions _readOptions;
-		private Stream _currentDataHandle;
+		private BlockHandle _currentDataHandle;
 
-		private readonly Func<ReadOptions, Stream, IIterator> getIterator;
+		private readonly Func<ReadOptions, BlockHandle, IIterator> getIterator;
 
 		public TwoLevelIterator(
 			IIterator indexIterator,
-			Func<ReadOptions, Stream, IIterator> getIterator,
+			Func<ReadOptions, BlockHandle, IIterator> getIterator,
 			ReadOptions readOptions
 		)
 		{
@@ -133,9 +133,13 @@
 				return;
 			}
 
-			var handle = _indexIterator.CreateValueStream();
+			var handle = new BlockHandle();
+			using (var stream = _indexIterator.CreateValueStream())
+			{
+				handle.DecodeFrom(stream);
+			}
 
-			if (handle.AreEqual(_currentDataHandle)) // nothing to change
+			if (handle.Equals(_currentDataHandle)) // nothing to change
 				return;
 
 			IIterator blockIterator = null;

@@ -77,6 +77,7 @@ namespace Raven.Storage.Memory
 					break;
 				Marshal.Copy(_scratch, 0, unamagedMemory.Ptr + unamagedMemory.Position, reads);
 				unamagedMemory.Position += reads;
+				unamagedMemory.Remaining -= reads;
 			}
 			return handle;
 		}
@@ -94,7 +95,7 @@ namespace Raven.Storage.Memory
 			var length = (int) stream.Length;
 			for (; memIndex < _memHandles.Length; memIndex++)
 			{
-				if (_memHandles[memIndex].Remaining < length)
+				if (length < _memHandles[memIndex].Remaining)
 					return memIndex;
 			}
 			// couldn't find any space left, need to allocate more

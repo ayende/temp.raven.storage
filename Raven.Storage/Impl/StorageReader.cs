@@ -69,7 +69,7 @@ namespace Raven.Storage.Impl
 		{
 			using (var locker = await state.Lock.LockAsync())
 			{
-				var result = await state.NewInternalIteratorAsync(options, locker);
+				var result = state.NewInternalIterator(options, locker);
 				var internalIterator = result.Item1;
 				var latestSnapshot = result.Item2;
 
