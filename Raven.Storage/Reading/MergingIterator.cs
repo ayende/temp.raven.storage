@@ -33,6 +33,10 @@ namespace Raven.Storage.Reading
 
 		public void Dispose()
 		{
+			foreach (var iterator in children)
+			{
+				iterator.Dispose();
+			}
 			children = null;
 		}
 

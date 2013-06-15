@@ -29,7 +29,8 @@ namespace Raven.Storage.Util
 		[Conditional("RESOURCES")]
 		public static void Pending()
 		{
-			foreach (var usage in queue)
+			Usage usage;
+			while (queue.TryDequeue(out usage))
 			{
 				try
 				{

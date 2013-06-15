@@ -33,6 +33,8 @@
 
 		public void Dispose()
 		{
+			if(savedValueStream != null)
+				savedValueStream.Dispose();
 			if (iterator != null)
 				iterator.Dispose();
 		}
@@ -119,6 +121,10 @@
 			Debug.Assert(iterator.IsValid);
 			Debug.Assert(direction == Direction.Forward);
 
+
+			if (savedValueStream != null)
+				savedValueStream.Dispose();
+
 			do
 			{
 				InternalKey internalKey;
@@ -164,7 +170,7 @@
 				// iter_ is pointing at the current entry.  Scan backwards until
 				// the key changes so we can use the normal reverse scanning code.
 				Debug.Assert(iterator.IsValid); // Otherwise valid_ would have been false
-				savedKey = InternalKey.ExtractUserKey(iterator.Key);
+				savedKey = InternalKey.ExtractUserKey(iterator.Key).Clone(); // we need a cloned copy, because the it.key changes
 
 				while (true)
 				{
@@ -173,6 +179,8 @@
 					{
 						IsValid = false;
 						savedKey = null;
+						if(savedValueStream != null)
+							savedValueStream.Dispose();
 						savedValueStream = null;
 						return;
 					}
@@ -206,6 +214,9 @@
 					}
 
 					itemType = internalKey.Type;
+					if(savedValueStream != null)
+						savedValueStream.Dispose();
+
 					if (itemType == ItemType.Deletion)
 					{
 						savedKey = null;
@@ -213,7 +224,9 @@
 					}
 					else
 					{
-						savedKey = InternalKey.ExtractUserKey(iterator.Key);
+						var userKey = InternalKey.ExtractUserKey(iterator.Key);
+						if (userKey.Equals(savedKey) == false)
+							savedKey = userKey.Clone();
 						savedValueStream = iterator.CreateValueStream();
 					}
 				}

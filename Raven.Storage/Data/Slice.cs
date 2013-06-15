@@ -113,6 +113,13 @@
 		        hashCode = (hashCode*397) ^ _array[i + _offset];
 		    }
             return hashCode;
-		} 
+		}
+
+		public Slice Clone()
+		{
+			var buffer = new byte[_count];
+			Buffer.BlockCopy(_array,_offset, buffer, 0, _count);
+			return new Slice(buffer);
+		}
 	}
 }

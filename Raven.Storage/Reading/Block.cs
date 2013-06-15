@@ -97,6 +97,7 @@ namespace Raven.Storage.Reading
 			private int _restartIndex;
 			private int _offset, _size;
 			private byte[] _keyBuffer;
+			private int _currentRecordStart;
 
 			public BlockIterator(IComparator comparator, Block parent)
 			{
@@ -143,6 +144,7 @@ namespace Raven.Storage.Reading
 
 			private int DecodeNextEntry(int currentOffset)
 			{
+				_currentRecordStart = _offset;
 				var shared = _parent._accessor.Read7BitEncodedInt(ref currentOffset);
 				var nonShared = _parent._accessor.Read7BitEncodedInt(ref currentOffset);
 				_size = _parent._accessor.Read7BitEncodedInt(ref currentOffset);
@@ -193,7 +195,7 @@ namespace Raven.Storage.Reading
 				}
 			}
 
-			private long NextEntryOffset()
+			private int NextEntryOffset()
 			{
 				return _offset + _size;
 			}
@@ -247,7 +249,7 @@ namespace Raven.Storage.Reading
 			{
 				AssertValid();
 				// scan backward to a restart point before the current one.
-				long original = _offset;
+				int original = _currentRecordStart;
 				while (GetRestartPoint(_restartIndex) >= original)
 				{
 					if (_restartIndex == 0)
