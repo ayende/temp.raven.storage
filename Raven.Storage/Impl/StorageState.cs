@@ -435,7 +435,7 @@
 					iterators.Add(new LevelFileNumIterator(InternalKeyComparator, VersionSet.Current.Files[level]));
 			}
 
-			var internalIterator = new MergingIterator(InternalKeyComparator, iterators, iterators.Count);
+			var internalIterator = new MergingIterator(InternalKeyComparator, iterators);
 
 			return new Tuple<IIterator, ulong>(internalIterator, latestSnapshot);
 		}

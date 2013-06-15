@@ -328,9 +328,7 @@ namespace Raven.Storage.Impl
 			// Level-0 files have to be merged together.  For other levels,
 			// we will make a concatenating iterator per level.
 			// TODO(opt): use concatenating iterator for level-0 if there is no overlap
-			var space = compaction.Level == 0 ? compaction.Inputs[0].Count + 1 : 2;
-			var list = new IIterator[space];
-			int num = 0;
+			var list = new List<IIterator>();
 			for (int which = 0; which < 2; which++)
 			{
 				if (compaction.Inputs[which].Count != 0)
@@ -338,24 +336,19 @@ namespace Raven.Storage.Impl
 					if (compaction.Level + which == 0)
 					{
 						var files = new List<FileMetadata>(compaction.Inputs[which]);
-						foreach (var file in files)
-						{
-							list[num++] = storageContext.TableCache.NewIterator(readOptions, file.FileNumber, file.FileSize);
-						}
+						list.AddRange(files.Select(file => storageContext.TableCache.NewIterator(readOptions, file.FileNumber, file.FileSize)));
 					}
 					else
 					{
 						// Create concatenating iterator for the files from this level
-						list[num++] = new TwoLevelIterator(
-							new LevelFileNumIterator(storageContext.InternalKeyComparator, compaction.Inputs[which]), 
-							GetFileIterator, readOptions);
+						list.Add(new TwoLevelIterator(
+							         new LevelFileNumIterator(storageContext.InternalKeyComparator, compaction.Inputs[which]),
+							         GetFileIterator, readOptions));
 					}
 				}
 			}
 
-			Debug.Assert(num <= space);
-
-			return NewMergingIterator(storageContext.InternalKeyComparator, list, num);
+			return NewMergingIterator(storageContext.InternalKeyComparator, list);
 		}
 
 		private IIterator GetFileIterator(ReadOptions readOptions, BlockHandle handle)
@@ -366,13 +359,12 @@ namespace Raven.Storage.Impl
 			return storageContext.TableCache.NewIterator(readOptions, fileNumber, fileSize);
 		}
 
-		private IIterator NewMergingIterator(InternalKeyComparator comparator, IIterator[] list, int n)
+		private IIterator NewMergingIterator(InternalKeyComparator comparator, IList<IIterator> list)
 		{
-			Debug.Assert(n >= 0);
-			if (n == 0)
+			if (list.Count == 0)
 				return new EmptyIterator();
 
-			return n == 1 ? list.First() : new MergingIterator(comparator, list, n);
+			return list.Count == 1 ? list.First() : new MergingIterator(comparator, list);
 		}
 
 		public void Recover()

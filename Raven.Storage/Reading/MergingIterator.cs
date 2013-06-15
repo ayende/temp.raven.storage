@@ -1,11 +1,13 @@
-﻿namespace Raven.Storage.Reading
+﻿using System;
+
+namespace Raven.Storage.Reading
 {
 	using System.Collections.Generic;
 	using System.Diagnostics;
 	using System.IO;
 
-	using Raven.Storage.Comparing;
-	using Raven.Storage.Data;
+	using Comparing;
+	using Data;
 
 	public class MergingIterator : IIterator
 	{
@@ -15,42 +17,46 @@
 
 		private IIterator current;
 
-		private readonly int n;
 
 		private Direction direction;
 
-		public MergingIterator(IComparator comparator, IList<IIterator> children, int n)
+		public MergingIterator(IComparator comparator, IList<IIterator> children)
 		{
+			if (children == null)
+				 throw new ArgumentNullException("children");
+			
 			this.comparator = comparator;
 			this.children = children;
-			this.n = n;
-			this.direction = Direction.Forward;
-			this.current = null;
-
-			for (int i = 0; i < n; i++)
-			{
-				this.children[i] = children[i];
-			}
+			direction = Direction.Forward;
+			current = null;
 		}
 
 		public void Dispose()
 		{
-			this.children = null;
+			children = null;
+		}
+
+		private void AssertNotDisposed()
+		{
+			if (children == null)
+				throw new ObjectDisposedException("MerginIterator");
 		}
 
 		public bool IsValid
 		{
 			get
 			{
+				AssertNotDisposed();
 				return this.current != null;
 			}
 		}
 
 		public void SeekToFirst()
 		{
-			for (int i = 0; i < n; i++)
+			AssertNotDisposed();
+			foreach (var iterator in children)
 			{
-				children[i].SeekToFirst();
+				iterator.SeekToFirst();
 			}
 
 			FindSmallest();
@@ -59,9 +65,10 @@
 
 		public void SeekToLast()
 		{
-			for (int i = 0; i < n; i++)
+			AssertNotDisposed();
+			foreach (var iterator in children)
 			{
-				children[i].SeekToLast();
+				iterator.SeekToLast();
 			}
 
 			FindLargest();
@@ -70,9 +77,10 @@
 
 		public void Seek(Slice target)
 		{
-			for (int i = 0; i < n; i++)
+			AssertNotDisposed();
+			foreach (var iterator in children)
 			{
-				children[i].Seek(target);
+				iterator.Seek(target);
 			}
 
 			FindSmallest();
@@ -81,6 +89,7 @@
 
 		public void Next()
 		{
+			AssertNotDisposed();
 			Debug.Assert(IsValid);
 
 			// Ensure that all children are positioned after key().
@@ -90,16 +99,14 @@
 			// we explicitly position the non-current_ children.
 			if (direction != Direction.Forward)
 			{
-				for (int i = 0; i < n; i++)
+				foreach (var child in children)
 				{
-					var child = children[i];
-					if (child != current)
+					if (child == current)
+						continue;
+					child.Seek(Key);
+					if (child.IsValid && comparator.Compare(Key, child.Key) == 0)
 					{
-						child.Seek(Key);
-						if (child.IsValid && comparator.Compare(Key, child.Key) == 0)
-						{
-							child.Next();
-						}
+						child.Next();
 					}
 				}
 
@@ -112,6 +119,7 @@
 
 		public void Prev()
 		{
+			AssertNotDisposed();
 			Debug.Assert(IsValid);
 
 			// Ensure that all children are positioned before key().
@@ -121,22 +129,20 @@
 			// we explicitly position the non-current_ children.
 			if (direction != Direction.Reverse)
 			{
-				for (int i = 0; i < n; i++)
+				foreach (var child in children)
 				{
-					var child = children[i];
-					if (child != current)
+					if (child == current)
+						continue;
+					child.Seek(Key);
+					if (child.IsValid)
 					{
-						child.Seek(Key);
-						if (child.IsValid)
-						{
-							// Child is at first entry >= key().  Step back one to be < key()
-							child.Prev();
-						}
-						else
-						{
-							// Child has no entries >= key().  Position at last entry.
-							child.SeekToLast();
-						}
+						// Child is at first entry >= key().  Step back one to be < key()
+						child.Prev();
+					}
+					else
+					{
+						// Child has no entries >= key().  Position at last entry.
+						child.SeekToLast();
 					}
 				}
 
@@ -151,6 +157,7 @@
 		{
 			get
 			{
+				AssertNotDisposed();
 				Debug.Assert(IsValid);
 
 				return current.Key;
@@ -159,6 +166,7 @@
 
 		public Stream CreateValueStream()
 		{
+			AssertNotDisposed();
 			Debug.Assert(IsValid);
 
 			return current.CreateValueStream();
@@ -167,19 +175,17 @@
 		private void FindSmallest()
 		{
 			IIterator smallest = null;
-			for (int i = 0; i < n; i++)
+			foreach (var child in children)
 			{
-				var child = children[i];
-				if (child.IsValid)
+				if (!child.IsValid) 
+					continue;
+				if (smallest == null)
 				{
-					if (smallest == null)
-					{
-						smallest = child;
-					}
-					else if (comparator.Compare(child.Key, smallest.Key) < 0)
-					{
-						smallest = child;
-					}
+					smallest = child;
+				}
+				else if (comparator.Compare(child.Key, smallest.Key) < 0)
+				{
+					smallest = child;
 				}
 			}
 
@@ -189,19 +195,17 @@
 		private void FindLargest()
 		{
 			IIterator largest = null;
-			for (int i = 0; i < n; i++)
+			foreach (var child in children)
 			{
-				var child = children[i];
-				if (child.IsValid)
+				if (!child.IsValid) 
+					continue;
+				if (largest == null)
 				{
-					if (largest == null)
-					{
-						largest = child;
-					}
-					else if (comparator.Compare(child.Key, largest.Key) > 0)
-					{
-						largest = child;
-					}
+					largest = child;
+				}
+				else if (comparator.Compare(child.Key, largest.Key) > 0)
+				{
+					largest = child;
 				}
 			}
 
