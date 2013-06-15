@@ -21,6 +21,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Storage.Benchmark", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Temp", "Raven.Temp\Raven.Temp.csproj", "{D84A706B-BB17-4E84-B30F-B8FE73166CFD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Aggregation", "Raven.Aggregation\Raven.Aggregation.csproj", "{ECE24C08-59D5-4227-BF13-F5675DDE6CBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raven.Aggregation.Tests", "Raven.Aggregation.Tests\Raven.Aggregation.Tests.csproj", "{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,14 @@ Global
 		{D84A706B-BB17-4E84-B30F-B8FE73166CFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D84A706B-BB17-4E84-B30F-B8FE73166CFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D84A706B-BB17-4E84-B30F-B8FE73166CFD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECE24C08-59D5-4227-BF13-F5675DDE6CBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECE24C08-59D5-4227-BF13-F5675DDE6CBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECE24C08-59D5-4227-BF13-F5675DDE6CBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECE24C08-59D5-4227-BF13-F5675DDE6CBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

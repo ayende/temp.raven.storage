@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}</ProjectGuid>
+    <ProjectGuid>{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Raven.Storage.Tests</RootNamespace>
-    <AssemblyName>Raven.Storage.Tests</AssemblyName>
+    <RootNamespace>Raven.Aggregation.Tests</RootNamespace>
+    <AssemblyName>Raven.Aggregation.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
@@ -19,7 +19,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;RESOURCES</DefineConstants>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -32,8 +32,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NLog">
-      <HintPath>..\packages\NLog.2.0.1.2\lib\net45\NLog.dll</HintPath>
+    <Reference Include="Raven.Abstractions">
+      <HintPath>..\Raven.Storage.Benchmark\bin\Debug\Raven.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Raven.Database, Version=2.5.0.0, Culture=neutral, PublicKeyToken=37f41c7f99471593, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\RavenDB.Database.2.5.2603-Unstable\lib\net40\Raven.Database.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -42,44 +46,32 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="xunit">
-      <HintPath>..\packages\xunit.1.9.1\lib\net20\xunit.dll</HintPath>
+    <Reference Include="xunit.abstractions">
+      <HintPath>..\packages\xunit.abstractions.2.0.0-alpha-build1654\lib\net35\xunit.abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="xunit2">
+      <HintPath>..\packages\xunit.2.0.0-alpha-build1654\lib\net45\xunit2.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Compactions\CompactionTests.cs" />
-    <Compile Include="Compactions\VersionEditTests.cs" />
-    <Compile Include="Comparators\CaseInsentitiveComparatorTests.cs" />
-    <Compile Include="FileSystemTests.cs" />
-    <Compile Include="Filtering\BloomFilterTest.cs" />
-    <Compile Include="Hashing\CaseInsensitiveHashing.cs" />
-    <Compile Include="Hashing\Hashing.cs" />
-    <Compile Include="Logs\CanReadAndWriteMultipleRecords.cs" />
-    <Compile Include="Logs\CanReadAndWriteOkaySingleRecord.cs" />
-    <Compile Include="Logs\EdgeCases.cs" />
-    <Compile Include="Memtable\CanStoreAndGetValues.cs" />
-    <Compile Include="Memtable\SkipListTests.cs" />
+    <Compile Include="AggregationsCreation.cs" />
+    <Compile Include="DoingAggregation.cs" />
+    <Compile Include="Events.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Reader\StorageReaderTests.cs" />
-    <Compile Include="Recovery\CanIterateBackward.cs" />
-    <Compile Include="Recovery\RecoveryTests.cs" />
-    <Compile Include="Snapshots\SnapshotTests.cs" />
-    <Compile Include="SST\ReadWrite.cs" />
-    <Compile Include="StorageTestBase.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Raven.Aggregation\Raven.Aggregation.csproj">
+      <Project>{ECE24C08-59D5-4227-BF13-F5675DDE6CBF}</Project>
+      <Name>Raven.Aggregation</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">
-      <Project>{21eb6b89-0cdf-4290-8d3f-7b831425606b}</Project>
+      <Project>{21EB6B89-0CDF-4290-8D3F-7B831425606B}</Project>
       <Name>Raven.Storage</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="NLog.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

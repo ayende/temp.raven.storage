@@ -17,7 +17,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;RESOURCES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
+    <Compile Include="Impl\AsyncEvent.cs" />
     <Compile Include="Impl\InMemoryFileSystem.cs" />
     <Compile Include="Impl\Reference.cs" />
     <Compile Include="Reading\DbIterator.cs" />
@@ -136,6 +137,7 @@
     <Compile Include="Util\Info.cs" />
     <Compile Include="Util\IOExtensions.cs" />
     <Compile Include="Util\StreamExtensions.cs" />
+    <Compile Include="Util\TaskExtensions.cs" />
     <Compile Include="Util\TrackResourceUsage.cs" />
     <Compile Include="WriteBatch.cs" />
   </ItemGroup>
