@@ -22,6 +22,8 @@ namespace Raven.Storage
 			Delete
 		}
 
+		public bool DontDisposeStreamsAfterWrite { get; set; }
+
 		private class Operation
 		{
 			public Operations Op;
@@ -73,6 +75,9 @@ namespace Raven.Storage
 			foreach (var operation in _operations)
 			{
 				operation.Handle = memTable.Write(operation.Value);
+				if (DontDisposeStreamsAfterWrite)
+					continue;
+				operation.Value.Dispose();
 			}
 		}
 

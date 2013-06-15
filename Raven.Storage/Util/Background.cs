@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Raven.Storage.Util
 {
@@ -8,6 +9,11 @@ namespace Raven.Storage.Util
 		{
 			// this is here to avoid the 4014 compiler warning when we
 			// explicitly want to start async background work
+		}
+
+		public static void Work(Action t)
+		{
+			Task.Run(t);
 		} 
 	}
 }
