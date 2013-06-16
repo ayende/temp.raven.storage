@@ -6,7 +6,7 @@
 
 	using Raven.Storage.Comparing;
 
-	[DebuggerDisplay("Val: {DebugVal}")]
+	[DebuggerDisplay("{DebugVal}")]
 	public struct Slice
 	{
 		private readonly byte[] _array;
@@ -50,6 +50,14 @@
 						break;
 				}
 				var s = Encoding.UTF8.GetString(Array, Offset, end);
+                if (Count - end == 8)
+                {
+                    var number = BitConverter.ToUInt64(Array, end);
+                    var sequence = number >> 8;
+                    var type = (ItemType)number;
+
+                    return s + ", seq: " + sequence + ", " + type;
+                }
 				return s;
 			}
 		}
