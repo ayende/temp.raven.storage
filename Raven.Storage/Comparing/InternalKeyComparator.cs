@@ -36,13 +36,13 @@ namespace Raven.Storage.Comparing
 			var anum = a.Array.ReadLong(a.Count - 8);
 			var bnum = b.Array.ReadLong(b.Count - 8);
 
-			if (anum > bnum)
-				return -1;
+		    if (anum > bnum)
+		        return -1;
 
-			if (bnum > anum)
-				return 1;
+		    if (anum < bnum)
+		        return 1;
 
-			return 0;
+		    return 0;
 		}
 
 		public int Compare(InternalKey a, InternalKey b)
