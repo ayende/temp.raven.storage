@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using Raven.Storage.Comparing;
 using Raven.Storage.Data;
@@ -53,6 +54,22 @@ namespace Raven.Storage.Memtable
 		{
 			return new MemoryIterator(this, _table.NewIterator());
 		}
+
+	    public IEnumerable<Slice>  AllKeys
+	    {
+	        get
+	        {
+	            using (var it = NewIterator())
+	            {
+	                it.SeekToFirst();
+	                while (it.IsValid)
+	                {
+	                    yield return it.Key;
+                        it.Next();
+	                }
+	            }
+	        }
+	    }
 
 		public void Add(ulong seq, ItemType type, Slice key, UnamangedMemoryAccessor.MemoryHandle memoryHandle)
 		{
