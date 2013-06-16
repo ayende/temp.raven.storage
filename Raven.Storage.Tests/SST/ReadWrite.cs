@@ -31,7 +31,7 @@ namespace Raven.Storage.Tests.SST
 			using (var file = CreateFile())
 			{
 				name = file.Name;
-				using (var tblBuilder = new TableBuilder(state.Options, file, TempStreamGenerator))
+				using (var tblBuilder = new TableBuilder(state, file, TempStreamGenerator))
 				{
 					for (int i = 0; i < 10; i++)
 					{
@@ -78,7 +78,7 @@ namespace Raven.Storage.Tests.SST
 			using (var file = CreateFile())
 			{
 				name = file.Name;
-				using (var tblBuilder = new TableBuilder(state.Options, file, TempStreamGenerator))
+				using (var tblBuilder = new TableBuilder(state, file, TempStreamGenerator))
 				{
 					for (int i = 0; i < count; i++)
 					{

@@ -9,9 +9,10 @@
 	[DebuggerDisplay("{DebugVal}")]
 	public struct Slice
 	{
+		private static readonly byte[] Empty = new byte[0];
 		private readonly byte[] _array;
-		private int _count;
-		private int _offset;
+		private readonly int _count;
+		private readonly int _offset;
 
 		public Slice(byte[] array) : this(array, 0, array.Length)
 		{
@@ -26,7 +27,7 @@
 
 		public byte[] Array
 		{
-			get { return _array; }
+			get { return _array ?? Empty; }
 		}
 
 		public int Count

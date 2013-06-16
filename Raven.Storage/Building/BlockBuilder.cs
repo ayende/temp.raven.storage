@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Raven.Storage.Data;
+using Raven.Storage.Impl;
 using Raven.Storage.Util;
 
 namespace Raven.Storage.Building
@@ -33,18 +34,18 @@ namespace Raven.Storage.Building
     /// </summary>
     public class BlockBuilder
     {
-        private readonly CrcStream _stream;
-        private readonly StorageOptions _storageOptions;
+	    private readonly StorageState _storageState;
+	    private readonly CrcStream _stream;
         readonly List<int> _restarts = new List<int> { 0 };// first restart at offset 0
         private int _counter;
         private Slice _lastKey;
         private int _size;
         private bool _finished;
 
-        public BlockBuilder(Stream stream, StorageOptions storageOptions)
+        public BlockBuilder(Stream stream, StorageState storageState)
         {
-			_storageOptions = storageOptions;
-			if (_storageOptions.BlockRestartInterval < 1)
+	        _storageState = storageState;
+			if (_storageState.Options.BlockRestartInterval < 1)
                 throw new InvalidOperationException("BlockRestartInternal must be >= 1");
             _stream = new CrcStream(stream);
             IsEmpty = true;
@@ -70,7 +71,7 @@ namespace Raven.Storage.Building
             if (_finished)
                 throw new InvalidOperationException("Cannot add to a block after it has been finished");
             if (_size > 0 &&
-                (_storageOptions.Comparator.Compare(key, _lastKey) <= 0))
+				(_storageState.InternalKeyComparator.Compare(key, _lastKey) <= 0))
                 throw new InvalidOperationException("Add must be call on items in sorted order");
 
             var valLen = value.Length - value.Position;
@@ -80,10 +81,11 @@ namespace Raven.Storage.Building
             IsEmpty = false;
 
             int shared = 0;
-            if (_counter < _storageOptions.BlockRestartInterval)
+			if (_counter < _storageState.Options.BlockRestartInterval)
             {
                 // let us see how much we can share with the prev string
-                shared = _storageOptions.Comparator.FindSharedPrefix(_lastKey, key);
+				// intentionally using the user key comparator and not the internal key comparator
+				shared = _storageState.Options.Comparator.FindSharedPrefix(_lastKey, key);
             }
             else
             {

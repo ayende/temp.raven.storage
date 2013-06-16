@@ -325,7 +325,7 @@
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
-					builder = new TableBuilder(Options, tableFile, () => FileSystem.NewWritable(FileSystem.GetTempFileName(fileNumber)));
+					builder = new TableBuilder(this, tableFile, () => FileSystem.NewWritable(FileSystem.GetTempFileName(fileNumber)));
 
 					meta.SmallestKey = new InternalKey(iterator.Key);
 					while (iterator.IsValid)
