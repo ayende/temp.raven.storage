@@ -48,11 +48,11 @@ namespace Raven.Aggregation.Tests
         public async Task WillRememberAfterRestart()
         {
             FileSystem fs;
-            using (var agg = new AggregationEngine())
+			Etag last = null;
+			using (var agg = new AggregationEngine())
             {
-                await agg.InitAsync();
-
-                fs = agg.Storage.StorageState.FileSystem;
+				await agg.InitAsync();
+	            fs = agg.Storage.StorageState.FileSystem;
 
                 await agg.CreateAggregationAsync(new IndexDefinition
                 {
@@ -61,22 +61,24 @@ namespace Raven.Aggregation.Tests
                     Reduce = "from result in results group result by 1 into g select new { Count = g.Sum(x=>x.Count) }"
                 });
 
-                Etag last = null;
+                var aggregation = agg.GetAggregation("test");
                 for (int j = 0; j < 3; j++)
                 {
+	                Etag lastWrite = null;
                     for (int i = 0; i < 15; i++)
                     {
-                        last = await agg.AppendAsync("test", new RavenJObject { { "Item", i } });
+                       lastWrite =  await agg.AppendAsync("test", new RavenJObject { { "Item", i } });
                     }
 
-                    var aggregation = agg.GetAggregation("test");
 
-                    await aggregation.WaitForEtagAsync(last);
+					await aggregation.WaitForEtagAsync(lastWrite);
 
                     var result = aggregation.AggregationResultFor("1");
 
                     Assert.Equal(15 * (j + 1), result.Value<int>("Count"));
                 }
+
+	            last = aggregation.LastAggregatedEtag;
                 await agg.DisposeAsync();
             }
 
@@ -88,7 +90,7 @@ namespace Raven.Aggregation.Tests
                 var aggregation = agg.GetAggregation("test");
                 var result = aggregation.AggregationResultFor("1");
 
-                Assert.Equal(Etag.Empty, aggregation.LastAggregatedEtag);
+				Assert.Equal(last, aggregation.LastAggregatedEtag);
                 Assert.Equal(45, result.Value<int>("Count"));
 
                 await agg.DisposeAsync();
