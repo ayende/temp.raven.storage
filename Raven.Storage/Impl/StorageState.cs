@@ -263,35 +263,31 @@
 		{
 			var logFileName = FileSystem.GetLogFileName(logNumber);
 
-			IList<LogReadResult> writeBatches;
+			MemTable mem = null;
 			using (var logFile = FileSystem.OpenForReading(logFileName))
 			{
-				writeBatches = WriteBatch.ReadFromLog(logFile, Options.BufferPool);
-			}
-
-			MemTable mem = null;
-
-			foreach (var item in writeBatches)
-			{
-				var lastSequence = item.WriteSequence + (ulong)item.WriteBatch.OperationCount - 1;
-
-				if (lastSequence > maxSequence)
+				foreach (var item in WriteBatch.ReadFromLog(logFile, Options.BufferPool))
 				{
-					maxSequence = lastSequence;
-				}
+					var lastSequence = item.WriteSequence + (ulong)item.WriteBatch.OperationCount - 1;
 
-				if (mem == null)
-				{
-					mem = new MemTable(this);
-				}
+					if (lastSequence > maxSequence)
+					{
+						maxSequence = lastSequence;
+					}
 
-				item.WriteBatch.Prepare(mem);
-				item.WriteBatch.Apply(mem, item.WriteSequence);
+					if (mem == null)
+					{
+						mem = new MemTable(this);
+					}
 
-				if (mem.ApproximateMemoryUsage > Options.WriteBatchSize)
-				{
-					Compactor.WriteLevel0Table(mem, null, edit);
-					mem = null;
+					item.WriteBatch.Prepare(mem);
+					item.WriteBatch.Apply(mem, item.WriteSequence);
+
+					if (mem.ApproximateMemoryUsage > Options.WriteBatchSize)
+					{
+						Compactor.WriteLevel0Table(mem, null, edit);
+						mem = null;
+					}
 				}
 			}
 
