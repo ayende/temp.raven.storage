@@ -247,7 +247,7 @@
 
 			foreach (var logNumber in logNumbers)
 			{
-				RecoverLogFile(logNumber, ref edit, ref maxSequence);
+				maxSequence = RecoverLogFile(logNumber, edit, maxSequence);
 				VersionSet.MarkFileNumberUsed(logNumber);
 			}
 
@@ -259,7 +259,7 @@
 			return edit;
 		}
 
-		private void RecoverLogFile(ulong logNumber, ref VersionEdit edit, ref ulong maxSequence)
+		private ulong RecoverLogFile(ulong logNumber, VersionEdit edit, ulong maxSequence)
 		{
 			var logFileName = FileSystem.GetLogFileName(logNumber);
 
@@ -295,6 +295,8 @@
 			{
 				Compactor.WriteLevel0Table(mem, null, edit);
 			}
+
+			return maxSequence;
 		}
 
 		/// <summary>
