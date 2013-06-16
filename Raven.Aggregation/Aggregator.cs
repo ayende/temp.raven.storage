@@ -26,16 +26,30 @@ namespace Raven.Aggregation
 		private Task _aggregationTask;
 		private readonly AsyncEvent _aggregationCompleted = new AsyncEvent();
 		private readonly Reference<int> _appendEventState = new Reference<int>();
-		private readonly TaskCompletionSource<object> disposedCompletionSource = new TaskCompletionSource<object>();
-		private volatile bool disposed;
+		private readonly TaskCompletionSource<object> _disposedCompletionSource = new TaskCompletionSource<object>();
+		private volatile bool _disposed;
+	    private Slice _aggStat;
 
 
-		public Aggregator(AggregationEngine aggregationEngine, string name, AbstractViewGenerator generator)
+	    public Aggregator(AggregationEngine aggregationEngine, string name, AbstractViewGenerator generator)
 		{
 			_aggregationEngine = aggregationEngine;
 			_name = name;
 			_generator = generator;
-			_lastAggregatedEtag = Etag.Empty;
+
+
+		    _aggStat = "aggregations/" + _name + "/status";
+
+	        using (var stream = aggregationEngine.Storage.Reader.Read(_aggStat))
+	        {
+	            if (stream == null)
+	            {
+                    _lastAggregatedEtag = Etag.Empty;
+	                return;
+	            }
+	            var status = RavenJObject.Load(new JsonTextReader(new StreamReader(stream)));
+	            _lastAggregatedEtag = Etag.Parse(status.Value<byte[]>("@etag"));
+	        }
 		}
 
 		public AbstractViewGenerator Generator
@@ -121,10 +135,14 @@ namespace Raven.Aggregation
 							finalResult = new RavenJArray(reduceResults.Select(x => RavenJObject.FromObject(x)));
 							break;
 					}
-
+                    finalResult.EnsureCannotBeChangeAndEnableSnapshotting();
 					_cache.Set(grouping.Key, finalResult);
 					writeBatch.Put(key, AggregationEngine.RavenJTokenToStream(finalResult));
 				}
+			    var status = new RavenJObject {{"@etag", lastAggregatedEtag.ToByteArray()}};
+
+			    writeBatch.Put(_aggStat, AggregationEngine.RavenJTokenToStream(status));
+
 				await _aggregationEngine.Storage.Writer.WriteAsync(writeBatch);
 				lastAggregatedEtag = eventDatas.Last().Etag;
 
@@ -136,7 +154,7 @@ namespace Raven.Aggregation
 
 		public void Dispose()
 		{
-			if (disposed)
+			if (_disposed)
 				return;
 			ThreadPool.QueueUserWorkItem(state => DisposeAsync());
 		}
@@ -146,7 +164,7 @@ namespace Raven.Aggregation
 			var callerState = new Reference<int>();
 			while (true)
 			{
-				var lastAggregatedEtag = (Etag)Thread.VolatileRead(ref _lastAggregatedEtag);
+                var lastAggregatedEtag = LastAggregatedEtag;
 				if (etag.CompareTo(lastAggregatedEtag) <= 0)
 					return;
 				await _aggregationCompleted.WaitAsync(callerState);
@@ -157,25 +175,32 @@ namespace Raven.Aggregation
 		{
 			RavenJToken value;
 			if (_cache.TryGet(item, out value))
-				return value;
+				return value.CreateSnapshot();
 			Slice key = "aggregations/" + _name + "/" + item;
 			using (var stream = _aggregationEngine.Storage.Reader.Read(key))
 			{
 				if (stream != null)
 				{
 					value = RavenJToken.ReadFrom(new JsonTextReader(new StreamReader(stream)));
+                    value.EnsureCannotBeChangeAndEnableSnapshotting();
 					_cache.Set(item, value);
+				    return value.CreateSnapshot();
 				}
-				return value;
+			    return null;
 			}
 		}
 
-		public async Task DisposeAsync()
+	    public Etag LastAggregatedEtag
+	    {
+	        get { return (Etag)Thread.VolatileRead(ref _lastAggregatedEtag); }
+	    }
+
+	    public async Task DisposeAsync()
 		{
-			if (disposed)
+			if (_disposed)
 				return;
-			disposed = true;
-			disposedCompletionSource.SetResult(null);
+			_disposed = true;
+			_disposedCompletionSource.SetResult(null);
 			_aggregationCompleted.Dispose();
 			if (_aggregationTask != null)
 				await _aggregationTask;
