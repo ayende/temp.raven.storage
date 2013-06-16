@@ -17,6 +17,41 @@ namespace Raven.Storage.Tests.Recovery
 	public class RecoveryTests : StorageTestBase
 	{
 		[Fact]
+		public async Task CanOpenAndCloseWithUpdate()
+		{
+			var storage = await NewStorageAsync();
+			var name = storage.Name;
+
+			var str1 = "test1";
+			var str2 = "test2";
+
+			var s1 = new MemoryStream(Encoding.UTF8.GetBytes(str1));
+			var s2 = new MemoryStream(Encoding.UTF8.GetBytes(str2));
+
+			var writeBatch = new WriteBatch();
+			writeBatch.Put("A", s1);
+			await storage.Writer.WriteAsync(writeBatch);
+
+			writeBatch = new WriteBatch();
+			writeBatch.Put("A", s2);
+			await storage.Writer.WriteAsync(writeBatch);
+
+			var fileSystem = storage.StorageState.FileSystem;
+
+			storage.Dispose();
+
+
+			using (var newStorage = new Storage(new StorageState(name, new StorageOptions())
+			{
+				FileSystem = fileSystem
+			}))
+			{
+				await newStorage.InitAsync();
+				AssertEqual(str2, newStorage.Reader.Read("A"));
+			}
+		}
+
+		[Fact]
 		public async Task ShouldRecoverDataFromLogFile()
 		{
 			var storage = await NewStorageAsync();

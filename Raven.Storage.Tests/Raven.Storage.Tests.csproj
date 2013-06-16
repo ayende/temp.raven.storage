@@ -57,7 +57,6 @@
     <Compile Include="Logs\CanReadAndWriteMultipleRecords.cs" />
     <Compile Include="Logs\CanReadAndWriteOkaySingleRecord.cs" />
     <Compile Include="Logs\EdgeCases.cs" />
-    <Compile Include="Memtable\CanProperlySort.cs" />
     <Compile Include="Memtable\CanStoreAndGetValues.cs" />
     <Compile Include="Memtable\SkipListTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

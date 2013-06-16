@@ -12,15 +12,7 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-            LogManager.RegisterTarget<MyConsoleTarget>();
-			using (var x = new DoingAggregation())
-			{
-				var canAdd = x.CanAdd();
-				while (canAdd.IsRunning())
-				{
-					Thread.Sleep(100);
-				}
-			}
+           
 
 		}
 	}
