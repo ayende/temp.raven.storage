@@ -19,7 +19,7 @@ namespace Raven.Storage.Memtable
 		private readonly Comparison<TKey> _comparer;
 		public const int SkipListMaxHeight = 12;
 
-		private Node head = new Node(default(TKey), default(TVal), SkipListMaxHeight);
+		private readonly Node head = new Node(default(TKey), default(TVal), SkipListMaxHeight);
 
 		// Modified only by Insert, allowed to be read racily by readers
 		private int _maxHeight = 1;
@@ -47,8 +47,7 @@ namespace Raven.Storage.Memtable
 
 		public void Insert(TKey key, TVal val)
 		{
-			// TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual() here since Insert() is externally synchronized.
-			Node[] prev = new Node[SkipListMaxHeight];
+			var prev = new Node[SkipListMaxHeight];
 			Node x = FindGreaterOrEqual(key, prev);
 
 			// Our data structure does not allow duplicate insertion
