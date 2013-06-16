@@ -28,7 +28,7 @@ namespace Raven.Aggregation
 		private readonly Reference<int> _appendEventState = new Reference<int>();
 		private readonly TaskCompletionSource<object> _disposedCompletionSource = new TaskCompletionSource<object>();
 		private volatile bool _disposed;
-	    private Slice _aggStat;
+	    private readonly Slice _aggStat;
 
 
 	    public Aggregator(AggregationEngine aggregationEngine, string name, AbstractViewGenerator generator)
@@ -37,8 +37,7 @@ namespace Raven.Aggregation
 			_name = name;
 			_generator = generator;
 
-
-		    _aggStat = "aggregations/" + _name + "/status";
+		    _aggStat = "status/" + _name;
 
 	        using (var stream = aggregationEngine.Storage.Reader.Read(_aggStat))
 	        {
@@ -48,7 +47,7 @@ namespace Raven.Aggregation
 	                return;
 	            }
 	            var status = RavenJObject.Load(new JsonTextReader(new StreamReader(stream)));
-	            _lastAggregatedEtag = Etag.Parse(status.Value<byte[]>("@etag"));
+	            _lastAggregatedEtag = Etag.Parse(status.Value<string>("@etag"));
 	        }
 		}
 
@@ -94,7 +93,7 @@ namespace Raven.Aggregation
 				var writeBatch = new WriteBatch();
 				foreach (var grouping in groupedByReduceKey)
 				{
-					Slice key = "aggregations/" + _name + "/" + grouping.Key;
+					Slice key = "results/" + _name + "/" + grouping.Key;
 					RavenJToken currentStatus;
 					if (_cache.TryGet(grouping.Key, out currentStatus) == false)
 					{
@@ -139,12 +138,12 @@ namespace Raven.Aggregation
 					_cache.Set(grouping.Key, finalResult);
 					writeBatch.Put(key, AggregationEngine.RavenJTokenToStream(finalResult));
 				}
-			    var status = new RavenJObject {{"@etag", lastAggregatedEtag.ToByteArray()}};
 
-			    writeBatch.Put(_aggStat, AggregationEngine.RavenJTokenToStream(status));
-
-				await _aggregationEngine.Storage.Writer.WriteAsync(writeBatch);
 				lastAggregatedEtag = eventDatas.Last().Etag;
+				
+				var status = new RavenJObject { { "@etag", lastAggregatedEtag.ToString() } };
+			    writeBatch.Put(_aggStat, AggregationEngine.RavenJTokenToStream(status));
+				await _aggregationEngine.Storage.Writer.WriteAsync(writeBatch);
 
 				Thread.VolatileWrite(ref _lastAggregatedEtag, lastAggregatedEtag);
 
@@ -161,6 +160,8 @@ namespace Raven.Aggregation
 
 		public async Task WaitForEtagAsync(Etag etag)
 		{
+			if (etag == null)
+				return;
 			var callerState = new Reference<int>();
 			while (true)
 			{
@@ -176,7 +177,7 @@ namespace Raven.Aggregation
 			RavenJToken value;
 			if (_cache.TryGet(item, out value))
 				return value.CreateSnapshot();
-			Slice key = "aggregations/" + _name + "/" + item;
+			Slice key = "results/" + _name + "/" + item;
 			using (var stream = _aggregationEngine.Storage.Reader.Read(key))
 			{
 				if (stream != null)

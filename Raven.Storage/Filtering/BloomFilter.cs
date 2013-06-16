@@ -36,7 +36,7 @@ namespace Raven.Storage.Filtering
 			var start = _accessor.ReadInt32(_offset + index*sizeof (int));
 			var limit = _accessor.ReadInt32(_offset + index * sizeof(int) + sizeof(int));
 
-			if (start > limit || limit > _accessor.Capacity - _offset)
+			if (start > limit || limit > _accessor.Capacity)
 				return false; // empty filters do no match any keys
 
 			return KeyMayMatch(key, start, limit);

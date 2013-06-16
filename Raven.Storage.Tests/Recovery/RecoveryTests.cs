@@ -52,6 +52,42 @@ namespace Raven.Storage.Tests.Recovery
 		}
 
 		[Fact]
+		public async Task CanGetLatestVersion()
+		{
+			var storage = await NewStorageAsync();
+			var name = storage.Name;
+
+			for (int j = 0; j < 3; j++)
+			{
+				for (int i = 0; i < 65; i++)
+				{
+					for (int k = 0; k < 4; k++)
+					{
+						var writeBatch = new WriteBatch();
+						writeBatch.Put("A" + j, new MemoryStream(new[] { (byte)i, (byte)k }));
+						await storage.Writer.WriteAsync(writeBatch);
+					}
+				}
+			}
+
+			var fileSystem = storage.StorageState.FileSystem;
+
+			storage.Dispose();
+
+
+			using (var newStorage = new Storage(new StorageState(name, new StorageOptions())
+			{
+				FileSystem = fileSystem
+			}))
+			{
+				await newStorage.InitAsync();
+				var stream = newStorage.Reader.Read("A2");
+				Assert.Equal(64, stream.ReadByte());
+			}
+		}
+
+
+		[Fact]
 		public async Task ShouldRecoverDataFromLogFile()
 		{
 			var storage = await NewStorageAsync();

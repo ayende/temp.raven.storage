@@ -12,7 +12,7 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-           
+			new DoingAggregation().WillRememberAfterRestart().Wait();
 
 		}
 	}

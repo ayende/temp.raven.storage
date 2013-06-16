@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.Caching;
@@ -88,6 +89,35 @@ namespace Raven.Storage.Reading
 			return new TwoLevelIterator(_indexBlock.CreateIterator(_storageState.Options.Comparator), CreateBlockIterator, readOptions);
 		}
 
+		public IEnumerable<Slice> AllKeys
+		{
+			get
+			{
+				using (var iterator = _indexBlock.CreateIterator(_storageState.Options.Comparator))
+				{
+					iterator.SeekToFirst();
+					while (iterator.IsValid)
+					{
+						var handle = new BlockHandle();
+						using (var stream = iterator.CreateValueStream())
+						{
+							handle.DecodeFrom(stream);
+						}
+
+						using (var blockIterator = CreateBlockIterator(new ReadOptions(), handle))
+						{
+							blockIterator.SeekToFirst();
+							while (blockIterator.IsValid)
+							{
+								yield return blockIterator.Key.Clone();
+								blockIterator.Next();
+							}
+						}
+						iterator.Next();
+					}
+				}
+			}
+		}
 
 		internal Tuple<Slice, Stream> InternalGet(ReadOptions readOptions, InternalKey key)
 		{

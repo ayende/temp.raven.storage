@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Raven.Abstractions.Data;
 using Raven.Abstractions.Indexing;
+using Raven.Abstractions.Logging;
 using Raven.Database.Linq;
 using Raven.Database.Util;
 using Raven.Imports.Newtonsoft.Json;
@@ -21,6 +22,7 @@ namespace Raven.Aggregation
 {
 	public class AggregationEngine : IDisposable
 	{
+		private static readonly ILog _log = LogManager.GetCurrentClassLogger();
 		private readonly ConcurrentDictionary<string, Aggregator> _aggregations
 			= new ConcurrentDictionary<string, Aggregator>(StringComparer.InvariantCultureIgnoreCase);
 
@@ -112,7 +114,7 @@ namespace Raven.Aggregation
 
 		private void ReadAllAggregations(DbIterator it)
 		{
-			Slice prefix = "aggregations/";
+			Slice prefix = "aggregators/";
 			it.Seek(prefix);
 			while (it.IsValid)
 			{
@@ -131,8 +133,9 @@ namespace Raven.Aggregation
 						                                                  Path.Combine(_path, "Generators"));
 						generator = dynamicViewCompiler.GenerateInstance();
 					}
-					catch (Exception)
+					catch (Exception e)
 					{
+						_log.WarnException("Could not create instance of aggregator " + indexDefinition.Name, e);
 						// could not create generator, ignoring this and deleting the generator
 						RemoveAggregation(name);
 					}
@@ -171,7 +174,7 @@ namespace Raven.Aggregation
 
 			var writeBatch = new WriteBatch();
 			var memoryStream = SmallObjectToMemoryStream(indexDefinition);
-			writeBatch.Put("aggregations/" + indexDefinition.Name, memoryStream);
+			writeBatch.Put("aggregators/" + indexDefinition.Name, memoryStream);
 			await _storage.Writer.WriteAsync(writeBatch);
 
 			var aggregator = new Aggregator(this, indexDefinition.Name, generator);

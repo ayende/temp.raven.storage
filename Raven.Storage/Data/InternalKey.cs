@@ -125,6 +125,10 @@
 		{
 			if (a.Array.Length == 0)
 				return a;
+				if (a.Count < 8)
+				{
+					
+				}
 			Debug.Assert(a.Count >= 8);
 			return new Slice(a.Array, a.Offset, a.Count - 8);
 		}
