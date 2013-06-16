@@ -8,8 +8,14 @@ namespace Raven.Storage.Util
 	{
 		private readonly ConcurrentDictionary<int, ConcurrentQueue<byte[]>> _bufferPoolBySize = new ConcurrentDictionary<int, ConcurrentQueue<byte[]>>();
 		private long _heldSize;
+	    private long _allocatedSize;
 
-		public long HeldSize
+	    public long AllocatedSize
+	    {
+	        get { return _allocatedSize; }
+	    }
+
+	    public long HeldSize
 		{
 			get { return _heldSize; }
 		}
@@ -19,9 +25,12 @@ namespace Raven.Storage.Util
 			size = Info.GetPowerOfTwo(size);
 			ConcurrentQueue<byte[]> queue;
 			byte[] bytes;
-			if (_bufferPoolBySize.TryGetValue(size, out queue) == false || 
-				queue.TryDequeue(out bytes) == false)
-				return new byte[size];
+			if (_bufferPoolBySize.TryGetValue(size, out queue) == false ||
+			    queue.TryDequeue(out bytes) == false)
+			{
+                Interlocked.Add(ref _allocatedSize, size);
+                return new byte[size];
+			}
 
 			Interlocked.Add(ref _heldSize, -size);
 			return bytes;
@@ -41,6 +50,7 @@ namespace Raven.Storage.Util
 		{
 			_bufferPoolBySize.Clear();
 			Volatile.Write(ref _heldSize, 0);
+            Volatile.Write(ref _allocatedSize, 0);
 		}
 
 		private ConcurrentQueue<byte[]> CreateNewQueue(int _)
