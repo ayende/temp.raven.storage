@@ -57,7 +57,7 @@ namespace Raven.Aggregation
 					.ToArray();
 				if (eventDatas.Length == 0)
 				{
-					_aggregationEngine.WaitForAppend(_appendEventState);
+					await _aggregationEngine.WaitForAppendAsync(_appendEventState);
 					continue;
 				}
 				var items = eventDatas.Select(x => new DynamicJsonObject(x.Data)).ToArray();
@@ -141,7 +141,7 @@ namespace Raven.Aggregation
 			ThreadPool.QueueUserWorkItem(state => DisposeAsync());
 		}
 
-		public void WaitForEtag(Etag etag)
+		public async Task WaitForEtagAsync(Etag etag)
 		{
 			var callerState = new Reference<int>();
 			while (true)
@@ -149,7 +149,7 @@ namespace Raven.Aggregation
 				var lastAggregatedEtag = (Etag)Thread.VolatileRead(ref _lastAggregatedEtag);
 				if (etag.CompareTo(lastAggregatedEtag) <= 0)
 					return;
-				_aggregationCompleted.Wait(callerState);
+				await _aggregationCompleted.WaitAsync(callerState);
 			}
 		}
 

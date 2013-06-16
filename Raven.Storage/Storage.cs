@@ -8,49 +8,49 @@ namespace Raven.Storage
 
 	public class Storage : IDisposable
 	{
-		private readonly StorageState storageState;
+		private readonly StorageState _storageState;
 
-		private bool wasDisposed = false;
+		private bool _wasDisposed = false;
 
 		public string Name
 		{
 			get
 			{
-				return storageState.DatabaseName;
+				return _storageState.DatabaseName;
 			}
 		}
 
 		public Storage(string name, StorageOptions options)
 		{
-			storageState = new StorageState(name, options);
+			_storageState = new StorageState(name, options);
 		}
 
 		public Storage(StorageState storageState)
 		{
-			this.storageState = storageState;
+			_storageState = storageState;
 		}
 
 		public StorageState StorageState
 		{
-			get { return storageState; }
+			get { return _storageState; }
 		}
 
 		public async Task InitAsync()
 		{
-			var edit = await storageState.RecoverAsync();
+			var edit = await _storageState.RecoverAsync();
 			
-			storageState.CreateNewLog();
-			edit.SetComparatorName(storageState.Options.Comparator.Name);
-			edit.SetLogNumber(storageState.LogFileNumber);
+			_storageState.CreateNewLog();
+			edit.SetComparatorName(_storageState.Options.Comparator.Name);
+			edit.SetLogNumber(_storageState.LogFileNumber);
 
-			Writer = new StorageWriter(storageState);
-			Reader = new StorageReader(storageState);
-			Commands = new StorageCommands(storageState);
-			using (var locker = await storageState.Lock.LockAsync())
+			Writer = new StorageWriter(_storageState);
+			Reader = new StorageReader(_storageState);
+			Commands = new StorageCommands(_storageState);
+			using (var locker = await _storageState.Lock.LockAsync())
 			{
-				await storageState.LogAndApplyAsync(edit, locker);
-				storageState.Compactor.DeleteObsoleteFiles();
-				storageState.Compactor.MaybeScheduleCompaction(locker);
+				await _storageState.LogAndApplyAsync(edit, locker);
+				_storageState.Compactor.DeleteObsoleteFiles();
+				_storageState.Compactor.MaybeScheduleCompaction(locker);
 			}
 		}
 
@@ -62,11 +62,11 @@ namespace Raven.Storage
 
 		public void Dispose()
 		{
-			if (wasDisposed)
+			if (_wasDisposed)
 				return;
 
-			storageState.Dispose();
-			wasDisposed = true;
+			_storageState.Dispose();
+			_wasDisposed = true;
 		}
 	}
 }

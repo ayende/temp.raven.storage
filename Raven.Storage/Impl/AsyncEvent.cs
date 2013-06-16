@@ -1,54 +1,66 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Raven.Storage.Impl
 {
-	public class AsyncEvent : IDisposable
-	{
-		private int state;
-		private volatile bool disposed;
-		private readonly object locker = new object();
+    public class AsyncEvent : IDisposable
+    {
+        private int _state;
+        private volatile bool _disposed;
+        private readonly object _locker = new object();
+        private LinkedList<TaskCompletionSource<object>> _pending = new LinkedList<TaskCompletionSource<object>>();
 
-		public bool Wait(Reference<int> callerState)
-		{
-			if (disposed)
-				return false;
-			var localState = state;
-			if (callerState.Value != localState)
-			{
-				callerState.Value = localState;
-				return false;
-			}
-			lock (locker)
-			{
-				if (callerState.Value != state)
-				{
-					callerState.Value = state;
-					return false;
-				}
+        public async Task<bool> WaitAsync(Reference<int> callerState)
+        {
+            if (_disposed)
+                return false;
+            var localState = _state;
+            if (callerState.Value != localState)
+            {
+                callerState.Value = localState;
+                return false;
+            }
 
-				Monitor.Wait(locker);
-				callerState.Value = state;
-				return true;
-			}
-		}
+            TaskCompletionSource<object> taskCompletionSource;
+            lock (_locker)
+            {
+                if (callerState.Value != _state)
+                {
+                    callerState.Value = _state;
+                    return false;
+                }
 
-		public void Dispose()
-		{
-			disposed = true;
-			PulseAll();
-		}
+                taskCompletionSource = new TaskCompletionSource<object>();
+                _pending.AddLast(taskCompletionSource);
 
-		public void PulseAll()
-		{
-			lock (locker)
-			{
-				state++;
-				Monitor.PulseAll(locker);
-			}
-		}
-	}
+                callerState.Value = _state;
+            }
+            await taskCompletionSource.Task;
+            return true;
+
+        }
+
+        public void Dispose()
+        {
+            _disposed = true;
+            PulseAll();
+        }
+
+        public void PulseAll()
+        {
+            LinkedList<TaskCompletionSource<object>> current;
+            lock (_locker)
+            {
+                _state++;
+                current = _pending;
+                _pending = new LinkedList<TaskCompletionSource<object>>();
+            }
+
+            foreach (var source in current)
+            {
+                source.TrySetResult(null);
+            }
+        }
+    }
 }

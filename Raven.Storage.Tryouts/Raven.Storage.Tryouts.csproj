@@ -70,6 +70,10 @@
       <Project>{21EB6B89-0CDF-4290-8D3F-7B831425606B}</Project>
       <Name>Raven.Storage</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Raven.Temp\Raven.Temp.csproj">
+      <Project>{D84A706B-BB17-4E84-B30F-B8FE73166CFD}</Project>
+      <Name>Raven.Temp</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

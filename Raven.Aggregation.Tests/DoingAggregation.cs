@@ -35,7 +35,7 @@ namespace Raven.Aggregation.Tests
 
 					var aggregation = _agg.GetAggregation("test");
 					
-					aggregation.WaitForEtag(last);
+					await aggregation.WaitForEtagAsync(last);
 					
 					var result = aggregation.AggregationResultFor("1");
 
@@ -47,7 +47,7 @@ namespace Raven.Aggregation.Tests
 
 		public void Dispose()
 		{
-			throw new NotImplementedException();
+			_agg.Dispose();
 		}
 	}
 }

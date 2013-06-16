@@ -69,7 +69,6 @@
     <Compile Include="Data\Snapshot.cs" />
     <Compile Include="Exceptions\ManifestFileException.cs" />
     <Compile Include="Impl\AsyncLock.cs" />
-    <Compile Include="Impl\AsyncManualResetEvent.cs" />
     <Compile Include="Impl\Caching\TableCache.cs" />
     <Compile Include="Impl\Compactions\Compaction.cs" />
     <Compile Include="Impl\Compactions\CompactionState.cs" />

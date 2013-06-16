@@ -285,9 +285,9 @@ namespace Raven.Aggregation
 			return Etag.Parse(str);
 		}
 
-		public bool WaitForAppend(Reference<int> callerState)
+		public Task<bool> WaitForAppendAsync(Reference<int> callerState)
 		{
-			return _appendEvent.Wait(callerState);
+			return _appendEvent.WaitAsync(callerState);
 		}
 
 		public async Task DisposeAsync()

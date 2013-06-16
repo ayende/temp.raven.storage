@@ -1,6 +1,10 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
+using NLog.Targets;
+using Raven.Abstractions.Logging;
 using Raven.Aggregation.Tests;
 using Raven.Storage.Util;
+using Target = Raven.Abstractions.Logging.Target;
 
 namespace Raven.Storage.Tryouts
 {
@@ -8,6 +12,7 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
+            LogManager.RegisterTarget<MyConsoleTarget>();
 			using (var x = new DoingAggregation())
 			{
 				var canAdd = x.CanAdd();
@@ -19,4 +24,12 @@ namespace Raven.Storage.Tryouts
 
 		}
 	}
+
+    public class MyConsoleTarget : Target
+    {
+        public override void Write(LogEventInfo logEvent)
+        {
+            Console.WriteLine(logEvent.FormattedMessage);
+        }
+    }
 }

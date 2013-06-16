@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using Raven.Abstractions.Logging;
 using Raven.Storage.Data;
 using System.Linq;
 using Raven.Storage.Impl;
@@ -15,6 +17,9 @@ namespace Raven.Storage
 {
 	public class WriteBatch
 	{
+	    private static readonly ILog log = LogManager.GetCurrentClassLogger();
+	    private static int _counter;
+
 		private readonly List<Operation>  _operations = new List<Operation>();
 		private enum Operations
 		{
@@ -32,7 +37,14 @@ namespace Raven.Storage
 			public UnamangedMemoryAccessor.MemoryHandle Handle;
 		}
 
-		public long Size
+	    public WriteBatch()
+	    {
+	        BatchId = Interlocked.Increment(ref _counter);
+	    }
+
+	    public int BatchId { get; private set; }
+
+	    public long Size
 		{
 			get { return _operations.Sum(x => x.Key.Count + x.Op == Operations.Put ? x.Value.Length : 0); }
 		}
@@ -83,9 +95,11 @@ namespace Raven.Storage
 
 		internal static async Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state)
 		{
-			state.LogWriter.RecordStarted();
+            var opCount = writes.Sum(x => x._operations.Count);
 
-			var opCount = writes.Sum(x => x._operations.Count);
+            log.Debug("Writing {0} operations in seq {1}", opCount, seq);
+
+            state.LogWriter.RecordStarted();
 
 			var buffer = BitConverter.GetBytes(seq);
 			await state.LogWriter.WriteAsync(buffer, 0, buffer.Length);
@@ -109,6 +123,8 @@ namespace Raven.Storage
 			}
 
 			await state.LogWriter.RecordCompletedAsync();
+
+            log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
 		}
 
 		internal static IList<LogReadResult> ReadFromLog(Stream logFile, BufferPool bufferPool)
