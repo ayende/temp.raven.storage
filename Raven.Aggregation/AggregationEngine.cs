@@ -66,8 +66,8 @@ namespace Raven.Aggregation
 			await _storage.InitAsync();
 			using (var it = await _storage.Reader.NewIteratorAsync(new ReadOptions()))
 			{
-				ReadAllAggregations(it);
-				ReadLastEtagGenerated(it);
+                ReadLastEtagGenerated(it);
+                ReadAllAggregations(it);
 			}
 			await ReadAndUpdateSystemConfig();
 
