@@ -139,7 +139,8 @@
 				handle.DecodeFrom(stream);
 			}
 
-			if (handle.Equals(_currentDataHandle)) // nothing to change
+			if (handle.Equals(_currentDataHandle) &&  // nothing to change
+				_dataIterator != null)  // but we have no iterator?
 				return;
 
 			IIterator blockIterator = null;
