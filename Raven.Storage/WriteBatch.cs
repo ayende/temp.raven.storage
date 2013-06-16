@@ -127,12 +127,10 @@ namespace Raven.Storage
             log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
 		}
 
-		internal static IList<LogReadResult> ReadFromLog(Stream logFile, BufferPool bufferPool)
+		internal static IEnumerable<LogReadResult> ReadFromLog(Stream logFile, BufferPool bufferPool)
 		{
 			var logReader = new LogReader(logFile, true, 0, bufferPool);
 			Stream logRecordStream;
-
-			var readResults = new List<LogReadResult>();
 
 			while (logReader.TryReadRecord(out logRecordStream))
 			{
@@ -174,14 +172,12 @@ namespace Raven.Storage
 					}
 				}
 
-				readResults.Add(new LogReadResult
+				yield return new LogReadResult
 					{
 						WriteSequence = seq,
 						WriteBatch = batch
-					});
+					};
 			}
-
-			return readResults;
 		}
 	}
 }
