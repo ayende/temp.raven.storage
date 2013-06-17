@@ -50,7 +50,7 @@
       <HintPath>..\packages\WindowsAzure.Storage.2.0.5.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
     </Reference>
     <Reference Include="Raven.Abstractions">
-      <HintPath>..\Raven.Storage.Benchmark\bin\Debug\Raven.Abstractions.dll</HintPath>
+      <HintPath>..\packages\RavenDB.Database.2.5.2603-Unstable\lib\net40\Raven.Abstractions.dll</HintPath>
     </Reference>
     <Reference Include="Raven.Client.Embedded-4.5">
       <HintPath>..\packages\RavenDB.Embedded.2.5.2603-Unstable\lib\net45\Raven.Client.Embedded-4.5.dll</HintPath>
