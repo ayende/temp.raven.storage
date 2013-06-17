@@ -24,9 +24,8 @@ namespace Raven.Storage.Comparing
 		/// Clients are urged to default to the implementation in ByteWiseComparator.
 		/// 
 		/// If start is smaller than the limit, try to return a short value that is bigger than start and smaller then limit.
-		/// Will try to use the scratch buffer as a way to avoid memory allocations if needed
 		/// </summary>
-        Slice FindShortestSeparator(Slice start, Slice limit, ref byte[] scratch);
+        void FindShortestSeparator(ref Slice start, Slice limit);
 
 
 		/// <summary>

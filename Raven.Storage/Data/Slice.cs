@@ -25,6 +25,18 @@
 			_offset = offset;
 		}
 
+		public Slice(ref byte[] externalBuffer, Slice other)
+		{
+			if (externalBuffer.Length < other.Count)
+			{
+				externalBuffer = new byte[other.Count];
+			}
+			_array = externalBuffer;
+			_count = other._count;
+			_offset = 0;
+			Buffer.BlockCopy(other.Array, other.Offset, externalBuffer, 0, other.Count);
+		}
+
 		public byte[] Array
 		{
 			get { return _array ?? Empty; }
@@ -124,11 +136,11 @@
             return hashCode;
 		}
 
-		public Slice Clone()
+		public Slice Clone(int padWith = 0)
 		{
-			var buffer = new byte[_count];
+			var buffer = new byte[_count + padWith];
 			Buffer.BlockCopy(_array,_offset, buffer, 0, _count);
-			return new Slice(buffer);
+			return new Slice(buffer, 0, _count);
 		}
 	}
 }

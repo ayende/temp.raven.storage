@@ -45,9 +45,9 @@ namespace Raven.Storage.Comparing
 			return ByteWiseComparator.Default.FindSharedPrefix(a, b);
 		}
 
-		public Slice FindShortestSeparator(Slice a, Slice b, ref byte[] scratch)
+		public void FindShortestSeparator(ref Slice start, Slice limit)
 		{
-			return ByteWiseComparator.Default.FindShortestSeparator(a, b, ref scratch);
+			ByteWiseComparator.Default.FindShortestSeparator(ref start, limit);
 		}
 
 		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
