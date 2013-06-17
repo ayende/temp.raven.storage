@@ -469,7 +469,10 @@
 					result.FinishOperation();
 				}
 
-				await storage.Writer.WriteAsync(batch);
+				await storage.Writer.WriteAsync(batch, new WriteOptions
+					                                       {
+						                                       FlushToDisk = parameters.Sync
+					                                       });
 			}
 
 			result.AddBytes(bytes);
@@ -494,10 +497,7 @@
 										 FilterPolicy = filterPolicy
 									 };
 
-			storage = new Storage(new StorageState(options.DatabaseName, storageOptions)
-						{
-							FileSystem = new InMemoryFileSystem(options.DatabaseName)
-						});
+			storage = new Storage(options.DatabaseName, storageOptions);
 			await storage.InitAsync();
 		}
 
