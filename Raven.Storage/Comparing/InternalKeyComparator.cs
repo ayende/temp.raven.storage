@@ -48,7 +48,7 @@ namespace Raven.Storage.Comparing
 
 		public int Compare(InternalKey a, InternalKey b)
 		{
-			return Compare(a.Encode(), b.Encode());
+			return Compare(a.TheInternalKey, b.TheInternalKey);
 		}
 
 		public int FindSharedPrefix(Slice a, Slice b)

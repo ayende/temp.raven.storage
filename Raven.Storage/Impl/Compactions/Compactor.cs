@@ -308,10 +308,10 @@ namespace Raven.Storage.Impl.Compactions
 
 						if (compactionState.Builder.NumEntries == 0)
 						{
-							//compact->current_output()->smallest.DecodeFrom(key);
+							compactionState.CurrentOutput.SmallestKey = new InternalKey(key);
 						}
 
-						//compact->current_output()->largest.DecodeFrom(key);
+						compactionState.CurrentOutput.LargestKey = new InternalKey(key);
 						compactionState.Builder.Add(key, input.CreateValueStream());
 
 						// Close output file if it is big enoug

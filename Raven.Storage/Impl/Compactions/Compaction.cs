@@ -175,7 +175,7 @@
 		public bool ShouldStopBefore(Slice internalKey)
 		{
 			while (grandparentIndex < Grandparents.Count
-				   && storageContext.InternalKeyComparator.Compare(internalKey, Grandparents[grandparentIndex].LargestKey.Encode()) > 0)
+				   && storageContext.InternalKeyComparator.Compare(internalKey, Grandparents[grandparentIndex].LargestKey.TheInternalKey) > 0)
 			{
 				if (seenKey)
 				{

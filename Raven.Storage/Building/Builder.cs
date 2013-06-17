@@ -57,7 +57,7 @@
 				}
 
 				var last = edit.CompactionPointers[level].Last();
-				versionSet.CompactionPointers[level] = last.Encode();
+				versionSet.CompactionPointers[level] = last.TheInternalKey;
 			}
 
 			var deletedFiles = new Dictionary<int, IList<ulong>>(edit.DeletedFiles);

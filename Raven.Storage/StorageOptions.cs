@@ -7,6 +7,8 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage
 {
+	using System.Globalization;
+
 	public class StorageOptions : IDisposable
 	{
 		private ObjectCache _blockCache;
@@ -82,6 +84,11 @@ namespace Raven.Storage
 		public bool ErrorIfExists { get; set; }
 
 		/// <summary>
+		/// Default: 256
+		/// </summary>
+		public int CacheSizeInMegabytes { get; set; }
+
+		/// <summary>
 		/// If true, the database iwll do aggressive checking of the data it is process and will 
 		/// fail early if it detects any errors.
 		/// This may cause a corruption of a single entry to cause the etnire database become inoperable.
@@ -99,7 +106,7 @@ namespace Raven.Storage
 						{
 							{"physicalMemoryLimitPercentage", "10"},
 							{"pollingInterval", "00:05:00"},
-							{"cacheMemoryLimitMegabytes", "256"}
+							{"cacheMemoryLimitMegabytes", CacheSizeInMegabytes.ToString(CultureInfo.InvariantCulture)}
 						});
 					tableCacheSet = true;
 				}
@@ -133,7 +140,7 @@ namespace Raven.Storage
 						{
 							{"physicalMemoryLimitPercentage", "10"},
 							{"pollingInterval", "00:05:00"},
-							{"cacheMemoryLimitMegabytes", "256"}
+							{"cacheMemoryLimitMegabytes", CacheSizeInMegabytes.ToString(CultureInfo.InvariantCulture)}
 						});
 					_blockCacheSet = true;
 				}
@@ -164,6 +171,7 @@ namespace Raven.Storage
 			FilterPolicy = new BloomFilterPolicy();
 			MaximumExpectedKeySize = 2048;
 			WriteBatchSize = 1024 * 1024 * 4;
+			CacheSizeInMegabytes = 256;
 			BufferPool = new BufferPool();
 		}
 

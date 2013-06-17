@@ -9,7 +9,9 @@ using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Impl
 {
-    public class StorageWriter
+	using Raven.Storage.Data;
+
+	public class StorageWriter
     {
         private static readonly ILog Log = LogManager.GetCurrentClassLogger();
         private readonly ConcurrentQueue<OutstandingWrite> _pendingWrites = new ConcurrentQueue<OutstandingWrite>();
@@ -21,8 +23,11 @@ namespace Raven.Storage.Impl
             _state = state;
         }
 
-        public async Task WriteAsync(WriteBatch batch)
+        public async Task WriteAsync(WriteBatch batch, WriteOptions writeOptions = null)
         {
+			if(writeOptions == null)
+				writeOptions = new WriteOptions();
+
             Log.Debug("Enqueued write batch #{0}.", batch.BatchId);
             var mine = new OutstandingWrite(batch);
             _pendingWrites.Enqueue(mine);
@@ -81,7 +86,7 @@ namespace Raven.Storage.Impl
                             write.Batch.Prepare(_state.MemTable);
                         }
 
-                        await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state);
+                        await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, writeOptions);
 
 
                         foreach (var write in list)
@@ -188,6 +193,9 @@ namespace Raven.Storage.Impl
 
                 if (item == mine)
                     continue;
+
+				list.Add(item);
+
                 maxSize -= item.Size;
             }
 

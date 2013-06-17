@@ -275,7 +275,7 @@
 				{
 					// Binary search to find earliest index whose largest key >= ikey.
 					int index;
-					if (Files[level].TryFindFile(internalKey.Encode(), storageContext.InternalKeyComparator, out index) == false)
+					if (Files[level].TryFindFile(internalKey.TheInternalKey, storageContext.InternalKeyComparator, out index) == false)
 					{
 						files = new List<FileMetadata>();
 					}

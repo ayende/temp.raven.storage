@@ -8,9 +8,8 @@ using Xunit;
 
 namespace Raven.Aggregation.Tests
 {
-	public class DoingAggregation 
+	public class DoingAggregation : IDisposable
 	{
-
 		[Fact]
 		public async Task CanAdd()
 		{
@@ -98,5 +97,8 @@ namespace Raven.Aggregation.Tests
 
         }
 
+		public void Dispose()
+		{
+		}
 	}
 }

@@ -76,7 +76,7 @@
 		{
 			get
 			{
-				return files[index].LargestKey.Encode();
+				return files[index].LargestKey.TheInternalKey;
 			}
 		}
 

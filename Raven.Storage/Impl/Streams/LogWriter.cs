@@ -29,6 +29,8 @@ namespace Raven.Storage.Impl.Streams
 
 		private LogRecordType currentRecordType = LogRecordType.ZeroType;
 
+		private bool _flushToDisk;
+
 		public LogWriter(Stream stream, BufferPool bufferPool)
 		{
 			this.stream = stream;
@@ -36,10 +38,12 @@ namespace Raven.Storage.Impl.Streams
 			_buffer = bufferPool.Take(BlockSize);
 			_binaryWriter = new AsyncBinaryWriter(stream);
 			_bufferPos = HeaderSize;
+			_flushToDisk = true;
 		}
 
-		public void RecordStarted()
+		public void RecordStarted(bool flushToDisk = true)
 		{
+			_flushToDisk = flushToDisk;
 			currentRecordType = LogRecordType.FullType;
 		}
 
@@ -47,6 +51,7 @@ namespace Raven.Storage.Impl.Streams
 		{
 			await FlushBuffer(recordCompleted: true);
 			currentRecordType = LogRecordType.ZeroType;
+			_flushToDisk = true;
 		}
 
 		public async Task WriteAsync(byte[] buffer, int offset, int count)
@@ -121,7 +126,10 @@ namespace Raven.Storage.Impl.Streams
 			await _binaryWriter.WriteAsync((ushort)count);
 			await _binaryWriter.WriteAsync((byte)type);
 			await _binaryWriter.WriteAsync(buffer, offset, count);
-			await _binaryWriter.FlushAsync();
+
+			if (_flushToDisk)
+				await _binaryWriter.FlushAsync();
+
 			_bufferPos += HeaderSize;
 		}
 
