@@ -93,13 +93,13 @@ namespace Raven.Storage
 			}
 		}
 
-		internal static async Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state)
+		internal static async Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state, WriteOptions writeOptions)
 		{
             var opCount = writes.Sum(x => x._operations.Count);
 
             log.Debug("Writing {0} operations in seq {1}", opCount, seq);
 
-            state.LogWriter.RecordStarted();
+            state.LogWriter.RecordStarted(writeOptions.FlushToDisk);
 
 			var buffer = BitConverter.GetBytes(seq);
 			await state.LogWriter.WriteAsync(buffer, 0, buffer.Length);
