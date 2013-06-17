@@ -60,7 +60,7 @@
 			_userKey = new Slice(key.Array, key.Offset, key.Count - 8);
 		}
 
-		public Slice Encode()
+		private Slice Encode()
 		{
 			var buffer = new byte[UserKey.Count + 8];
 			Buffer.BlockCopy(UserKey.Array, UserKey.Offset, buffer, 0, UserKey.Count);

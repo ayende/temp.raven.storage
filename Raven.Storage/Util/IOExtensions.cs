@@ -127,12 +127,12 @@ namespace Raven.Storage.Util
 
 		public static int WriteLengthPrefixedInternalKey(this Stream stream, InternalKey internalKey)
 		{
-			return WriteLengthPrefixedSlice(stream, internalKey.Encode());
+			return WriteLengthPrefixedSlice(stream, internalKey.TheInternalKey);
 		}
 
 		public static async Task<int> WriteLengthPrefixedInternalKeyAsync(this LogWriter stream, InternalKey internalKey)
 		{
-			return await WriteLengthPrefixedSliceAsync(stream, internalKey.Encode());
+			return await WriteLengthPrefixedSliceAsync(stream, internalKey.TheInternalKey);
 		}
 
 		public static Slice ReadLengthPrefixedSlice(this Stream stream)

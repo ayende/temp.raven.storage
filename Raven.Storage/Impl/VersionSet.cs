@@ -153,7 +153,7 @@ namespace Raven.Storage.Impl
 				{
 					var file = Current.Files[level][i];
 					if (CompactionPointers[level].IsEmpty()
-						|| storageContext.InternalKeyComparator.Compare(file.LargestKey.Encode(), CompactionPointers[level]) > 0)
+						|| storageContext.InternalKeyComparator.Compare(file.LargestKey.TheInternalKey, CompactionPointers[level]) > 0)
 					{
 						compaction.Inputs[0].Add(file);
 						break;
@@ -258,7 +258,7 @@ namespace Raven.Storage.Impl
 			// We update this immediately instead of waiting for the VersionEdit
 			// to be applied so that if the compaction fails, we will try a different
 			// key range next time.
-			CompactionPointers[level] = largestKey.Encode();
+			CompactionPointers[level] = largestKey.TheInternalKey;
 			compaction.Edit.SetCompactionPointer(level, largestKey);
 		}
 
