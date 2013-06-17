@@ -37,8 +37,6 @@
 					             "readreverse",
 					             "fill100K",
 					             "crc32c",
-					             "snappycomp",
-					             "snappyuncomp",
 					             "acquireload"
 				             };
 		}

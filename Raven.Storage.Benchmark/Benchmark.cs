@@ -188,12 +188,6 @@
 				case "acquireload":
 					//parameters.Method = AcquireLoad;
 					break;
-				case "snappycomp":
-					//parameters.Method = SnappyCompress;
-					break;
-				case "snappyuncomp":
-					//parameters.Method = SnappyUncompress;
-					break;
 				//case "heapprofile":
 				//	HeapProfile();
 				//	break;
@@ -208,16 +202,6 @@
 			}
 
 			return parameters;
-		}
-
-		private Task<BenchmarkResult> SnappyUncompress(BenchmarkParameters parameters)
-		{
-			throw new NotImplementedException();
-		}
-
-		private Task<BenchmarkResult> SnappyCompress(BenchmarkParameters parameters)
-		{
-			throw new NotImplementedException();
 		}
 
 		private Task<BenchmarkResult> AcquireLoad(BenchmarkParameters parameters)
@@ -523,8 +507,6 @@
 #if DEBUG
 			Output("WARNING: Debug is enabled; benchmarks unnecessarily slow");
 #endif
-
-			Output("WARNING: Snappy compression is not enabled");
 		}
 
 		private void PrintEnvironment()
