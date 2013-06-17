@@ -10,7 +10,10 @@
 	using Raven.Storage.Benchmark.Generators;
 	using Raven.Storage.Data;
 	using Raven.Storage.Filtering;
+	using Raven.Storage.Impl;
 	using Raven.Storage.Util;
+
+	using Constants = Raven.Storage.Benchmark.Env.Constants;
 
 	internal class Benchmark : IDisposable
 	{
@@ -491,7 +494,10 @@
 										 FilterPolicy = filterPolicy
 									 };
 
-			storage = new Storage(options.DatabaseName, storageOptions);
+			storage = new Storage(new StorageState(options.DatabaseName, storageOptions)
+						{
+							FileSystem = new InMemoryFileSystem(options.DatabaseName)
+						});
 			await storage.InitAsync();
 		}
 
