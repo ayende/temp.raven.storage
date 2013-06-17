@@ -193,6 +193,9 @@ namespace Raven.Storage.Impl
 
                 if (item == mine)
                     continue;
+
+				list.Add(item);
+
                 maxSize -= item.Size;
             }
 
