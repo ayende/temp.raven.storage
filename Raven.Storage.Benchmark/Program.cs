@@ -1,8 +1,7 @@
-﻿using System.Threading.Tasks;
-
-namespace Raven.Storage.Benchmark
+﻿namespace Raven.Storage.Benchmark
 {
 	using System;
+	using System.Threading.Tasks;
 	using System.Xml;
 
 	using NDesk.Options;
@@ -48,11 +47,6 @@ namespace Raven.Storage.Benchmark
 									+ Environment.NewLine + "- heapprofile - Dump a heap profile (if supported by this port)",
 						            s => options.Benchmarks = s.Split(',')
 					            },
-					            {
-						            "compression-ratio:",
-						            "Arrange to generate values that shrink to this fraction of their original size after compression"
-						            , s => options.CompressionRatio = double.Parse(s)
-					            },
 					            { "histogram:", "Print histogram of operation timings", s => options.Histogram = bool.Parse(s) },
 					            { "use-existing-db:", "If true, do not destroy the existing database. If you set this flag and also specify a benchmark that wants a fresh database, that benchmark will fail.", s => options.UseExistingDatabase = bool.Parse(s) },
 					            { "num:", "Number of key/values to place in database", s => options.Num = int.Parse(s) },
@@ -60,9 +54,8 @@ namespace Raven.Storage.Benchmark
 					            { "threads:", "Number of concurrent threads to run.", s => options.Threads = int.Parse(s) },
 					            { "value-size:", "Size of each value", s => options.ValueSize = int.Parse(s) },
 					            { "write-batch-size:", "Number of bytes to buffer in memtable before compacting", s => options.WriteBatchSize = int.Parse(s) },
-					            { "cache-size:", "Number of bytes to use as a cache of uncompressed data. Negative means use default settings.", s => options.CacheSize = int.Parse(s) },
+					            { "cache-size:", "Number of megabytes to use as a cache of uncompressed data. Negative means use default settings.", s => options.CacheSize = int.Parse(s) },
 					            { "bloom-bits:", "Bloom filter bits per key. Negative means use default settings.", s => options.BloomBits = int.Parse(s) },
-					            { "open-files:", "Maximum number of files to keep open at the same time (use default if == 0)", s => options.OpenFiles = int.Parse(s) },
 					            { "db:", "Use the db with the following name.", s => options.DatabaseName = s },
 					            { "h|?|help", v => PrintUsageAndExit(0) },
 				            };

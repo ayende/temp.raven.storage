@@ -12,11 +12,9 @@
 			Reads = -1;
 			Threads = 1;
 			ValueSize = 100;
-			CompressionRatio = 0.5;
 			Histogram = false;
 			WriteBatchSize = options.WriteBatchSize;
 			CacheSize = -1;
-			OpenFiles = 1000; // not needed?
 			BloomBits = -1;
 			UseExistingDatabase = false;
 			DatabaseName = null;
@@ -88,12 +86,6 @@
 		public int ValueSize { get; set; }
 
 		/// <summary>
-		/// Arrange to generate values that shrink to this fraction of
-		/// their original size after compression
-		/// </summary>
-		public double CompressionRatio { get; set; }
-
-		/// <summary>
 		/// Print histogram of operation timings
 		/// </summary>
 		public bool Histogram { get; set; }
@@ -104,15 +96,10 @@
 		public int WriteBatchSize { get; set; }
 
 		/// <summary>
-		/// Number of bytes to use as a cache of uncompressed data.
+		/// Number of megabytes to use as a cache of uncompressed data.
 		/// Negative means use default settings.
 		/// </summary>
 		public int CacheSize { get; set; }
-
-		/// <summary>
-		/// Maximum number of files to keep open at the same time (use default if == 0)
-		/// </summary>
-		public int OpenFiles { get; set; }
 
 		/// <summary>
 		/// Bloom filter bits per key.

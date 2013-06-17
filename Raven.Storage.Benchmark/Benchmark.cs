@@ -6,11 +6,11 @@
 	using System.Threading.Tasks;
 
 	using Raven.Abstractions.Util;
+
 	using Raven.Storage.Benchmark.Env;
 	using Raven.Storage.Benchmark.Generators;
 	using Raven.Storage.Data;
 	using Raven.Storage.Filtering;
-	using Raven.Storage.Impl;
 	using Raven.Storage.Util;
 
 	using Constants = Raven.Storage.Benchmark.Env.Constants;
@@ -454,9 +454,9 @@
 				}
 
 				await storage.Writer.WriteAsync(batch, new WriteOptions
-					                                       {
-						                                       FlushToDisk = parameters.Sync
-					                                       });
+														   {
+															   FlushToDisk = parameters.Sync
+														   });
 			}
 
 			result.AddBytes(bytes);
@@ -481,6 +481,11 @@
 										 FilterPolicy = filterPolicy
 									 };
 
+			if (options.CacheSize > 0)
+			{
+				storageOptions.CacheSizeInMegabytes = options.CacheSize;
+			}
+
 			storage = new Storage(options.DatabaseName, storageOptions);
 			await storage.InitAsync();
 		}
@@ -492,10 +497,9 @@
 
 			const int KeySize = 16;
 			Output("Keys:				{0} bytes each", KeySize);
-			Output("Values:				{0} bytes each ({1} bytes after compression)", options.ValueSize, options.ValueSize * options.CompressionRatio + 0.5);
+			Output("Values:				{0} bytes each", options.ValueSize);
 			Output("Entries:			{0}", options.Num);
-			Output("Raw Size:			{0:0} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
-			Output("File Size:			{0:0} MB (estimated)", ((KeySize + options.ValueSize * options.CompressionRatio) * options.Num) / 1048576.0);
+			Output("File Size:			{0:0} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
 			Output(Constants.Separator);
 
 			PrintWarnings();
