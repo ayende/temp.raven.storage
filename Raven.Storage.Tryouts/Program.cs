@@ -3,6 +3,7 @@ using System.Threading;
 using NLog.Targets;
 using Raven.Abstractions.Logging;
 using Raven.Aggregation.Tests;
+using Raven.Storage.Tests.Recovery;
 using Raven.Storage.Util;
 using Target = Raven.Abstractions.Logging.Target;
 
@@ -12,7 +13,7 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-			new DoingAggregation().WillRememberAfterRestart().Wait();
+			new RecoveryTests().CanGetLatestVersion().Wait();
 
 		}
 	}

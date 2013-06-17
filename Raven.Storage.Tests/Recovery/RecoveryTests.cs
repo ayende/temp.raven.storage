@@ -64,7 +64,7 @@ namespace Raven.Storage.Tests.Recovery
 					for (int k = 0; k < 4; k++)
 					{
 						var writeBatch = new WriteBatch();
-						writeBatch.Put("A" + j, new MemoryStream(new[] { (byte)i, (byte)k }));
+						writeBatch.Put("A" + k, new MemoryStream(new[] { (byte)i, (byte)k }));
 						await storage.Writer.WriteAsync(writeBatch);
 					}
 				}
@@ -73,7 +73,6 @@ namespace Raven.Storage.Tests.Recovery
 			var fileSystem = storage.StorageState.FileSystem;
 
 			storage.Dispose();
-
 
 			using (var newStorage = new Storage(new StorageState(name, new StorageOptions())
 			{

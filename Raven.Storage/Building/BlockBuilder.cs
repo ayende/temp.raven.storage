@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Impl;
 using Raven.Storage.Util;
@@ -39,10 +40,12 @@ namespace Raven.Storage.Building
         readonly List<int> _restarts = new List<int> { 0 };// first restart at offset 0
         private int _counter;
         private Slice _lastKey;
+	    private byte[] _lastKeyBuffer;
         private int _size;
         private bool _finished;
+	    private readonly IComparator _comparator;
 
-        public BlockBuilder(Stream stream, StorageState storageState)
+		public BlockBuilder(Stream stream, StorageState storageState, IComparator comparator)
         {
 	        _storageState = storageState;
 			if (_storageState.Options.BlockRestartInterval < 1)
@@ -50,6 +53,8 @@ namespace Raven.Storage.Building
             _stream = new CrcStream(stream);
             IsEmpty = true;
             OriginalPosition = stream.Position;
+	        _comparator = comparator;
+			_lastKeyBuffer = new byte[storageState.Options.MaximumExpectedKeySize];
         }
 
         public long OriginalPosition { get; private set; }
@@ -70,8 +75,7 @@ namespace Raven.Storage.Building
         {
             if (_finished)
                 throw new InvalidOperationException("Cannot add to a block after it has been finished");
-            if (_size > 0 &&
-				(_storageState.InternalKeyComparator.Compare(key, _lastKey) <= 0))
+            if (_size > 0 && (_comparator.Compare(key, _lastKey) <= 0))
                 throw new InvalidOperationException("Add must be call on items in sorted order");
 
             var valLen = value.Length - value.Position;
@@ -103,7 +107,7 @@ namespace Raven.Storage.Building
             value.CopyTo(_stream);
             _size += (int)valLen;
 
-            _lastKey = key;
+	        _lastKey = new Slice(ref _lastKeyBuffer, key);
 
             _counter++;
         }

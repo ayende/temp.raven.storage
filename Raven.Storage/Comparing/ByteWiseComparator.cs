@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Raven.Storage.Data;
 
 namespace Raven.Storage.Comparing
@@ -32,24 +33,21 @@ namespace Raven.Storage.Comparing
 			return pos;
 		}
 
-		public Slice FindShortestSeparator(Slice a, Slice b, ref byte[] scratch)
+		public void FindShortestSeparator(ref Slice start, Slice limit)
 		{
-			var minLen = Math.Min(a.Count, b.Count);
-			var shared = FindSharedPrefix(a, b);
+			var minLen = Math.Min(start.Count, limit.Count);
+			var shared = FindSharedPrefix(start, limit);
 			if (minLen == shared) // one is a prefix of other
-				return a;
+				return;
 
 			var diff = shared + 1;
-			var diffByte = a.Array[a.Offset + diff];
-			if (diffByte < byte.MaxValue && diffByte < b.Array[b.Offset + diff])
+			var diffByte = start.Array[start.Offset + diff];
+			if (diffByte < byte.MaxValue && diffByte < limit.Array[limit.Offset + diff])
 			{
-				scratch  = diff + 1 < scratch.Length ? scratch : new byte[diff + 1];
-				if(diff > 0)
-					Buffer.BlockCopy(a.Array, a.Offset, scratch, 0, diff - 1);
-				scratch[diff] = diffByte;
-				return new Slice(scratch, a.Offset, diff + 1);
+				start.Array[diff] ++;
+				start = new Slice(start.Array, start.Offset, diff + 1);
+				Debug.Assert(Compare(start, limit) < 0);
 			}
-			return a;
 		}
 
 		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)

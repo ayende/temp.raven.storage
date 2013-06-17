@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Raven.Storage.Data;
 using Raven.Storage.Util;
 
@@ -68,13 +69,22 @@ namespace Raven.Storage.Comparing
 			return pos;
 		}
 
-		public Slice FindShortestSeparator(Slice start, Slice limit, ref byte[] scratch)
+		public void FindShortestSeparator(ref Slice start, Slice limit)
 		{
 			var userStart = InternalKey.ExtractUserKey(start);
 			var userLimit = InternalKey.ExtractUserKey(limit);
-			var r = _comparator.FindShortestSeparator(userStart, userLimit, ref scratch);
+			var tmp = userStart.Clone(padWith: 8);
+			_comparator.FindShortestSeparator(ref tmp, userLimit);
 
-			return EnsureSortOrder(r, userStart, ref scratch);
+			if (tmp.Count >= userStart.Count || _comparator.Compare(userStart, tmp) >= 0)
+				return;
+
+			tmp.Array.WriteLong(tmp.Count, Format.PackSequenceAndType(Format.MaxSequenceNumber, ItemType.ValueForSeek));
+
+			Debug.Assert(Compare(start, tmp) < 0);
+			Debug.Assert(Compare(tmp, limit) < 0);
+
+			start = tmp;
 		}
 
 		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
@@ -83,12 +93,7 @@ namespace Raven.Storage.Comparing
 
 			var r = _comparator.FindShortestSuccessor(userKey, ref scratch);
 
-			return EnsureSortOrder(r, userKey, ref scratch);
-		}
-
-		private Slice EnsureSortOrder(Slice r, Slice origin, ref byte[] scratch)
-		{
-			if (r.Count >= origin.Count || _comparator.Compare(origin, r) >= 0)
+			if (r.Count >= userKey.Count || _comparator.Compare(userKey, r) >= 0)
 				return r;
 
 			// user key has become shorter physically, but larger logically.

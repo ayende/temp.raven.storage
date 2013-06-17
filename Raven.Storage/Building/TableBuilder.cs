@@ -11,7 +11,7 @@ namespace Raven.Storage.Building
 	{
 		private readonly StorageState _storageState;
 		private byte[] _scratchBuffer;
-		private readonly byte[] _lastKeyBuffer;
+		private byte[] _lastKeyBuffer;
 		private readonly Stream _dataStream;
 		private readonly Stream _indexStream;
 		private bool _closed;
@@ -58,8 +58,8 @@ namespace Raven.Storage.Building
 					_filterBuilder.StartBlock(0);
 				}
 
-				_indexBlock = new BlockBuilder(_indexStream, storageState);
-				_dataBlock = new BlockBuilder(_dataStream, storageState);
+				_indexBlock = new BlockBuilder(_indexStream, storageState, _storageState.InternalKeyComparator);
+				_dataBlock = new BlockBuilder(_dataStream, storageState, _storageState.InternalKeyComparator);
 			}
 			catch (Exception)
 			{
@@ -94,9 +94,9 @@ namespace Raven.Storage.Building
 				if (_dataBlock.IsEmpty == false)
 					throw new InvalidOperationException("Cannot have pending index entry with a non empty data block");
 
-				var seperator = _storageState.InternalKeyComparator.FindShortestSeparator(_lastKey, key, ref _scratchBuffer);
+				_storageState.InternalKeyComparator.FindShortestSeparator(ref _lastKey, key);
 
-				_indexBlock.Add(seperator, _pendingHandle.AsStream());
+				_indexBlock.Add(_lastKey, _pendingHandle.AsStream());
 
 				_pendingIndexEntry = false;
 			}
@@ -105,8 +105,8 @@ namespace Raven.Storage.Building
 				_filterBuilder.Add(key);
 
 			_numEntries++;
-			_lastKey = new Slice(_lastKeyBuffer, 0, key.Count);
-			Buffer.BlockCopy(key.Array, key.Offset, _lastKeyBuffer, 0, key.Count);
+			_lastKey = new Slice(ref _lastKeyBuffer, key);
+			
 			_dataBlock.Add(key, value);
 
 			if (_dataBlock.EstimatedSize >= _storageState.Options.BlockSize)
@@ -127,7 +127,7 @@ namespace Raven.Storage.Building
 				throw new InvalidOperationException("Cannot call Flush when pending for an index entry");
 
 			_pendingHandle = WriteBlock(_dataBlock);
-			_dataBlock = new BlockBuilder(_dataStream, _storageState);
+			_dataBlock = new BlockBuilder(_dataStream, _storageState, _storageState.InternalKeyComparator);
 
 			_pendingIndexEntry = true;
 			_dataStream.Flush();
@@ -149,7 +149,7 @@ namespace Raven.Storage.Building
 
 			// write metadata block
 
-			var metaIndexBlock = new BlockBuilder(_dataStream, _storageState);
+			var metaIndexBlock = new BlockBuilder(_dataStream, _storageState, _storageState.InternalKeyComparator);
 			if (filterBlockHandle != null)
 			{
 				metaIndexBlock.Add(("filter." + _storageState.Options.FilterPolicy.Name), filterBlockHandle.AsStream());
