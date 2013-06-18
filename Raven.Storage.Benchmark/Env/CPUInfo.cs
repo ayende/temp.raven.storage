@@ -33,6 +33,17 @@
 			return Environment.ProcessorCount;
 		}
 
+		public static string GetProcessorName()
+		{
+			string processorName = "";
+			var searcher = new ManagementObjectSearcher("root\\CIMV2", "SELECT * FROM Win32_Processor");
+
+			foreach (ManagementObject mo in searcher.Get())
+				processorName = mo["Name"].ToString();
+
+			return processorName;
+		}
+
 		public static long GetCacheSize(CacheLevel level)
 		{
 			return GetCacheSizes(level).Sum(x => x);

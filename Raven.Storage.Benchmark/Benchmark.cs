@@ -57,10 +57,10 @@
 			Output("Rate:				{0}", result.Rate);
 			Output("Operations:			{0}", result.TotalOperations);
 			Output("Operations per second:		{0:0} op/s", result.TotalOperations / result.ElapsedSeconds);
+			Output("Milliseconds per op:		{0:0.000} ms/op", result.ElapsedMilliseconds / (double)result.TotalOperations);
 
 			if (parameters.Histogram)
 			{
-				Output("Milliseconds per op: ");
 				Output(result.Histogram.ToString());
 			}
 
@@ -521,6 +521,7 @@
 			Output("Raven Storage:			{0}", version);
 			Output(Constants.Separator);
 
+			Output("CPU:				{0}", CPUInfo.GetProcessorName());
 			Output("CPU Cores:			{0}", CPUInfo.GetNumberOfProcessors());
 			Output("CPU Cache:			{0}", CPUInfo.GetCacheSize(CacheLevel.Level1) + CPUInfo.GetCacheSize(CacheLevel.Level2) + CPUInfo.GetCacheSize(CacheLevel.Level3));
 		}
