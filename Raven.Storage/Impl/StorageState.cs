@@ -344,8 +344,20 @@ namespace Raven.Storage.Impl
 						var stream = iterator.CreateValueStream();
 
 						meta.LargestKey = new InternalKey(key);
+                        
+                        if (Log.IsDebugEnabled)
+                        {
+                            var readToEnd = new StreamReader(stream).ReadToEnd();
+                            if (readToEnd.Contains("45"))
+                            {
+                                
+                            }
+                            Log.Debug("Writing item with key {0} = val {1}", meta.LargestKey.DebugVal, readToEnd);
 
-					    Log.Debug("Writing item with key {0}", meta.LargestKey.DebugVal);
+                            stream.Dispose();
+
+                            stream = iterator.CreateValueStream();
+                        }
 
 						builder.Add(key, stream);
 
