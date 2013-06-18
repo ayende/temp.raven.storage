@@ -39,6 +39,8 @@ namespace Raven.Aggregation.Tests
 				Assert.NotNull(agg.GetAggregation("Test"));
 
 				fileSystem = agg.Storage.StorageState.FileSystem;
+
+			    await agg.DisposeAsync();
 			}
 
 			using (var agg = new AggregationEngine())
