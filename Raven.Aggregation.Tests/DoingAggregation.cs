@@ -47,7 +47,7 @@ namespace Raven.Aggregation.Tests
         public async Task WillRememberAfterRestart()
         {
             FileSystem fs;
-			Etag last = null;
+			Etag last;
 			using (var agg = new AggregationEngine())
             {
 				await agg.InitAsync();
