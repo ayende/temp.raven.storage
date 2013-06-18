@@ -57,7 +57,7 @@
 			Output("Rate:				{0}", result.Rate);
 			Output("Operations:			{0}", result.TotalOperations);
 			Output("Operations per second:		{0:0} op/s", result.TotalOperations / result.ElapsedSeconds);
-			Output("Milliseconds per op:		{0:0.000} ms/op", result.ElapsedMilliseconds / (double)result.TotalOperations);
+			Output("Milliseconds per op:		{0:0.00000} ms/op", result.ElapsedMilliseconds / (double)result.TotalOperations);
 
 			if (parameters.Histogram)
 			{
