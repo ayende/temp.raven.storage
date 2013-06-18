@@ -382,6 +382,8 @@ namespace Raven.Storage.Impl
 				throw new FormatException("CURRENT file should not be empty.");
 			}
 
+            log.Info("Current manifect is: {0}", currentManifest);
+
 			using (var manifestFile = storageContext.FileSystem.OpenForReading(currentManifest))
 			{
 				var logReader = new LogReader(manifestFile, true, 0, storageContext.Options.BufferPool);
@@ -400,6 +402,11 @@ namespace Raven.Storage.Impl
 					{
 						edit = VersionEdit.DecodeFrom(recordStream);
 					}
+
+                    if (log.IsDebugEnabled)
+                    {
+                        log.Debug("Read version edit with the following information:\r\n{0}", edit.DebugInfo);
+                    }
 
 					if (edit.Comparator != storageContext.Options.Comparator.Name)
 					{

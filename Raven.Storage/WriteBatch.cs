@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Raven.Abstractions.Logging;
@@ -179,5 +180,17 @@ namespace Raven.Storage
 					};
 			}
 		}
+
+	    public string DebugVal
+	    {
+	        get { 
+                var sb = new StringBuilder("Batch: #").Append(BatchId).Append(" with ").Append(_operations.Count).Append(" operations.").AppendLine();
+	            foreach (var operation in _operations)
+	            {
+	                sb.Append("\t").Append(operation.Op).Append(" ").Append(operation.Key).AppendLine();
+	            }
+	            return sb.ToString();
+	        }
+	    }
 	}
 }
