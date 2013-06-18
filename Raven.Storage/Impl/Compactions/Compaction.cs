@@ -70,7 +70,11 @@
 			MaxOutputFileSize = Config.TargetFileSize;
 			this.inputVersion = inputVersion;
 			Edit = new VersionEdit();
-			Inputs = new List<FileMetadata>[2];
+			Inputs = new[]
+			    {
+			        new List<FileMetadata>(), 
+                    new List<FileMetadata>()
+			    };
 			Grandparents = new List<FileMetadata>();
 			grandparentIndex = 0;
 			seenKey = false;
