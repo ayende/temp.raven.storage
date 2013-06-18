@@ -80,6 +80,7 @@ namespace Raven.Storage.Comparing
 				return;
 
 			tmp.Array.WriteLong(tmp.Count, Format.PackSequenceAndType(Format.MaxSequenceNumber, ItemType.ValueForSeek));
+		    tmp = new Slice(tmp.Array, tmp.Offset, tmp.Count + 8);
 
 			Debug.Assert(Compare(start, tmp) < 0);
 			Debug.Assert(Compare(tmp, limit) < 0);
