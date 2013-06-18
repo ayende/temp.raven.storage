@@ -187,17 +187,30 @@
 			return SomeFileOverlapsRange(level > 0, Files[level], smallestKey, largestKey);
 		}
 
-		private bool SomeFileOverlapsRange(bool disjointSortedFiles, IEnumerable<FileMetadata> files, Slice smallestKey, Slice largestKey)
+		private bool SomeFileOverlapsRange(bool disjointSortedFiles, IList<FileMetadata> files, Slice smallestKey, Slice largestKey)
 		{
+			var userComparator = storageContext.InternalKeyComparator.UserComparator;
+
 			if (!disjointSortedFiles)
 			{
-				var userComparator = storageContext.InternalKeyComparator.UserComparator;
-
 				// Need to check against all files
 				return files.Any(file => !AfterFile(userComparator, smallestKey, file) && !BeforeFile(userComparator, largestKey, file));
 			}
 
-			return false;
+			var index = 0;
+			if (smallestKey.IsEmpty() == false)
+			{
+				var smallInternalKey = new InternalKey(smallestKey, Format.MaxSequenceNumber, ItemType.ValueForSeek);
+				files.TryFindFile(smallInternalKey.TheInternalKey, storageContext.InternalKeyComparator, out index);
+			}
+
+			if (index >= files.Count)
+			{
+				// beginning of range is after all files, so no overlap.
+				return false;
+			}
+
+			return !BeforeFile(userComparator, largestKey, files[index]);
 		}
 
 		private bool BeforeFile(IComparator comparator, Slice key, FileMetadata file)
