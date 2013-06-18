@@ -120,13 +120,13 @@ namespace Raven.Aggregation
 			{
 				if (it.Key.StartsWith(prefix) == false)
 					break;
-
 				string name = Encoding.UTF8.GetString(it.Key.Array, it.Key.Offset, it.Key.Count);
 				using (var stream = it.CreateValueStream())
 				{
 					var indexDefinition =
 						new JsonSerializer().Deserialize<IndexDefinition>(new JsonTextReader(new StreamReader(stream)));
-					AbstractViewGenerator generator = null;
+                    _log.Info("Reading aggregator {0}", indexDefinition.Name);
+                    AbstractViewGenerator generator = null;
 					try
 					{
 						var dynamicViewCompiler = new DynamicViewCompiler(indexDefinition.Name, indexDefinition,

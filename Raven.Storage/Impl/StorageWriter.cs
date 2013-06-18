@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Raven.Abstractions.Logging;
 using Raven.Storage.Memtable;
@@ -28,7 +29,10 @@ namespace Raven.Storage.Impl
 			if(writeOptions == null)
 				writeOptions = new WriteOptions();
 
-            Log.Debug("Enqueued write batch #{0}.", batch.BatchId);
+            if (Log.IsDebugEnabled)
+            {
+                Log.Debug(batch.DebugVal);
+            }
             var mine = new OutstandingWrite(batch);
             _pendingWrites.Enqueue(mine);
 

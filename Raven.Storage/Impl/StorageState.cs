@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Impl
+﻿using Raven.Abstractions.Logging;
+
+namespace Raven.Storage.Impl
 {
 	using System.Collections.Generic;
 	using System.IO;
@@ -21,6 +23,8 @@
 
 	public class StorageState : IDisposable, IStorageContext
 	{
+	    private static readonly ILog Log = LogManager.GetCurrentClassLogger();
+
 		public MemTable MemTable;
 		public volatile MemTable ImmutableMemTable;
 		public volatile bool BackgroundCompactionScheduled;
@@ -201,6 +205,7 @@
 				{
 					throw new InvalidDataException(DatabaseName + " does not exist. Storage option CreateIfMissing is set to false.");
 				}
+                Log.Info("Creating db {0} from scratch", DatabaseName);
 			}
 			else
 			{
@@ -208,6 +213,7 @@
 				{
 					throw new InvalidDataException(DatabaseName + " exists, while the ErrorIfExists option is set to true.");
 				}
+                Log.Info("Loading db {0} from existing source", DatabaseName);
 			}
 
 			VersionSet.Recover();
@@ -262,8 +268,10 @@
 		private ulong RecoverLogFile(ulong logNumber, VersionEdit edit, ulong maxSequence)
 		{
 			var logFileName = FileSystem.GetLogFileName(logNumber);
-
-			MemTable mem = null;
+		    
+            Log.Info("Starting to recover from log: {0}", logFileName);
+			
+            MemTable mem = null;
 			using (var logFile = FileSystem.OpenForReading(logFileName))
 			{
 				foreach (var item in WriteBatch.ReadFromLog(logFile, Options.BufferPool))
@@ -290,7 +298,7 @@
 					}
 				}
 			}
-
+		    
 			if (mem != null)
 			{
 				Compactor.WriteLevel0Table(mem, null, edit);
@@ -323,7 +331,7 @@
 			{
 				var iterator = memTable.NewIterator();
 				iterator.SeekToFirst();
-
+			    Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
@@ -336,6 +344,9 @@
 						var stream = iterator.CreateValueStream();
 
 						meta.LargestKey = new InternalKey(key);
+
+					    Log.Debug("Writing item with key {0}", meta.LargestKey.DebugVal);
+
 						builder.Add(key, stream);
 
 						iterator.Next();
