@@ -365,7 +365,7 @@ namespace Raven.Storage.Impl.Compactions
 		private async Task OpenCompactionOutputFileAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			Debug.Assert(compactionState != null);
-			Debug.Assert(compactionState.Builder != null);
+			Debug.Assert(compactionState.Builder == null);
 
 			await locker.LockAsync();
 
