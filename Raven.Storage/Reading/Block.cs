@@ -206,6 +206,17 @@ namespace Raven.Storage.Reading
 					throw new InvalidOperationException("Cannot call this method when the state of the iterator is not valid");
 			}
 
+            public IEnumerable<Slice> KeysAtRestartPoint(int p)
+            {
+                SeekToRestartPoint(p);
+                while (true)
+                {
+                    if (!ParseNextKey())
+                        break;
+                    yield return Key.Clone();
+                }
+            }
+
 			public void Seek(Slice target)
 			{
 				// Binary search in restart array to find the last restart point 
@@ -222,6 +233,7 @@ namespace Raven.Storage.Reading
 						// key at mid is smaller than target, therefor all blocks before mid are uninteresting
 						left = mid;
 					}
+                    else
 					{
 						// key at mid is >= target, therefor all blocks at or after mid are uninteresting
 						right = mid - 1;
