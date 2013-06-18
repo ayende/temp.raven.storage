@@ -193,7 +193,7 @@ namespace Raven.Storage.Impl
 			TrackResourceUsage.Track(() => lockFile.SafeFileHandle);
 		}
 
-		public bool Exists(string name)
+		public virtual bool Exists(string name)
 		{
 			return File.Exists(Path.Combine(databaseName, name));
 		}

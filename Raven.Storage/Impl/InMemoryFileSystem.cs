@@ -43,6 +43,11 @@ namespace Raven.Storage.Impl
 			return new MemoryStream(value, false);
 		}
 
+        public override bool Exists(string name)
+        {
+            return _files.ContainsKey(name);
+        }
+
 		public override void RenameFile(string source, string destination)
 		{
 			byte[] value;
