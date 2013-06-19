@@ -45,6 +45,7 @@ namespace Raven.Storage.Impl.Compactions
 				return;
 			}
 
+			state.BackgroundCompactionScheduled = true;
 			Background.Work(ScheduleCompactionAsync());
 		}
 

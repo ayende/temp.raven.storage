@@ -48,7 +48,7 @@ namespace Raven.Storage.Impl.Compactions
 			get { return true; }
 		}
 
-		public async Task CompactAsync(int level, Slice begin, Slice end, AsyncLock locker)
+		public async Task CompactAsync(int level, Slice begin, Slice end)
 		{
 			if (InProgress)
 				throw new InvalidOperationException("Manual compaction is already in progess.");
@@ -75,13 +75,14 @@ namespace Raven.Storage.Impl.Compactions
 						continue;
 					}
 
-					using (AsyncLock.LockScope actualLocker = await locker.LockAsync())
+					using (AsyncLock.LockScope locker = await state.Lock.LockAsync())
 					{
-						await EnsureTableFileCreated(actualLocker);
+						await EnsureTableFileCreated(locker);
 
 						while (Done == false)
 						{
-							await RunCompactionAsync(actualLocker);
+							state.BackgroundCompactionScheduled = true;
+							await RunCompactionAsync(locker);
 
 							var manualEnd = new InternalKey();
 
@@ -125,7 +126,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			for (var level = 0; level < maxLevelWithFiles; level++)
 			{
-				await CompactAsync(level, begin, end, state.Lock);
+				await CompactAsync(level, begin, end);
 			}
 		}
 

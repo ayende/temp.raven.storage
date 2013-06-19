@@ -39,21 +39,20 @@ namespace Raven.Storage.Impl.Compactions
 			}
 		}
 
-		protected Task RunCompactionAsync(AsyncLock.LockScope lockScope)
+		protected Task RunCompactionAsync(AsyncLock.LockScope locker)
 		{
-			state.BackgroundCompactionScheduled = true;
 			state.BackgroundTask = Task.Factory.StartNew(async () =>
 				{
-					await lockScope.LockAsync();
+					await locker.LockAsync();
 					using (LogManager.OpenMappedContext("storage", state.DatabaseName))
-					using (lockScope)
+					using (locker)
 					{
 						try
 						{
 							bool needToWait = false;
 							try
 							{
-								await BackgroundCompactionAsync(lockScope);
+								await BackgroundCompactionAsync(locker);
 							}
 							catch (Exception e)
 							{
@@ -69,9 +68,9 @@ namespace Raven.Storage.Impl.Compactions
 							// the problem.
 							if (needToWait)
 							{
-								lockScope.Exit();
+								locker.Exit();
 								await Task.Delay(1000);
-								await lockScope.LockAsync();
+								await locker.LockAsync();
 							}
 						}
 						finally

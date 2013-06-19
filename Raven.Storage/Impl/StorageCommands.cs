@@ -18,7 +18,7 @@
 			Task compactAsync;
 			using (await state.Lock.LockAsync())
 			{
-				compactAsync = state.Compactor.Manual.CompactAsync(level, begin, end, state.Lock);
+				compactAsync = state.Compactor.Manual.CompactAsync(level, begin, end);
 			}
 			await compactAsync; // we do the wait _outside_ the lock
 		}
