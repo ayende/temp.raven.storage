@@ -52,11 +52,11 @@
 		private void Report(BenchmarkResultSet result, BenchmarkParameters parameters)
 		{
 			Output("Report for benchmark:		{0}", result.Benchmark);
-			Output("Bytes:				{0}", result.TotalBytes);
+			Output("Bytes:				{0:#,#;;0} kb", result.TotalBytes / 1024);
 			Output("Time (seconds):			{0:00}", result.ElapsedSeconds);
 			Output("Rate:				{0}", result.Rate);
-			Output("Operations:			{0}", result.TotalOperations);
-			Output("Operations per second:		{0:0} op/s", result.TotalOperations / result.ElapsedSeconds);
+			Output("Operations:			{0:#,#;;0}", result.TotalOperations);
+			Output("Operations per second:		{0:#,#;;0} op/s", result.TotalOperations / result.ElapsedSeconds);
 			Output("Milliseconds per op:		{0:0.00000} ms/op", result.ElapsedMilliseconds / (double)result.TotalOperations);
 
 			if (parameters.Histogram)
@@ -496,10 +496,10 @@
 			Output(Constants.Separator);
 
 			const int KeySize = 16;
-			Output("Keys:				{0} bytes each", KeySize);
-			Output("Values:				{0} bytes each", options.ValueSize);
-			Output("Entries:			{0}", options.Num);
-			Output("File Size:			{0:0} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
+			Output("Keys:				{0:#,#} bytes each", KeySize);
+			Output("Values:				{0:#,#} bytes each", options.ValueSize);
+			Output("Entries:			{0:#,#}", options.Num);
+			Output("File Size:			{0:#,#} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
 			Output(Constants.Separator);
 
 			PrintWarnings();

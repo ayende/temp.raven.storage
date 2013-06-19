@@ -102,7 +102,7 @@
 
 		private void PrintUsageAndExit(Exception e)
 		{
-			Console.WriteLine(e.Message);
+			Console.WriteLine(e);
 			PrintUsageAndExit(-1);
 		}
 
