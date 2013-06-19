@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Raven.Abstractions.Logging;
 using Raven.Storage.Data;
 using System.Linq;
 using Raven.Storage.Impl;
@@ -13,6 +12,7 @@ using Raven.Storage.Memory;
 using Raven.Storage.Memtable;
 using Raven.Storage.Reading;
 using Raven.Storage.Util;
+using Raven.Temp.Logging;
 
 namespace Raven.Storage
 {

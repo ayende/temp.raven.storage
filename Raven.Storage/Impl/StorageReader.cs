@@ -65,16 +65,13 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		public async Task<DbIterator> NewIteratorAsync(ReadOptions options)
+		public DbIterator NewIterator(ReadOptions options)
 		{
-			using (var locker = await state.Lock.LockAsync())
-			{
-				var result = state.NewInternalIterator(options, locker);
-				var internalIterator = result.Item1;
-				var latestSnapshot = result.Item2;
+			var result = state.NewInternalIterator(options);
+			var internalIterator = result.Item1;
+			var latestSnapshot = result.Item2;
 
-				return new DbIterator(state, internalIterator, options.Snapshot != null ? options.Snapshot.Sequence : latestSnapshot);
-			}
+			return new DbIterator(state, internalIterator, options.Snapshot != null ? options.Snapshot.Sequence : latestSnapshot);
 		}
 	}
 }

@@ -1,6 +1,7 @@
 ﻿using Raven.Storage.Building;
 using Raven.Storage.Exceptions;
 using Raven.Storage.Impl.Streams;
+using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
 {
@@ -9,8 +10,6 @@ namespace Raven.Storage.Impl
 	using System.Diagnostics;
 	using System.IO;
 	using System.Linq;
-
-	using Abstractions.Logging;
 	using Comparing;
 	using Data;
 	using Compactions;

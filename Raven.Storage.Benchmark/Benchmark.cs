@@ -317,7 +317,7 @@
 			return result;
 		}
 
-		private async Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var found = 0;
@@ -326,7 +326,7 @@
 
 			for (var i = 0; i < parameters.Reads; i++)
 			{
-				using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+				using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 				{
 					var k = random.Next() % options.Num;
 					var key = string.Format("{0:0000000000000000}", k);
@@ -342,10 +342,10 @@
 
 			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var result = new BenchmarkResult(parameters);
@@ -359,10 +359,10 @@
 				result.FinishOperation();
 			}
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var found = 0;
@@ -382,13 +382,13 @@
 
 			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
 		{
 			var result = new BenchmarkResult(parameters);
-			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+			using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 			{
 				var i = 0;
 				long bytes = 0;
@@ -400,14 +400,14 @@
 				}
 
 				result.AddBytes(bytes);
-				return result;
+				return Task.FromResult(result);
 			}
 		}
 
-		private async Task<BenchmarkResult> ReadSequential(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadSequential(BenchmarkParameters parameters)
 		{
 			var result = new BenchmarkResult(parameters);
-			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+			using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 			{
 				var i = 0;
 				long bytes = 0;
@@ -419,7 +419,7 @@
 				}
 
 				result.AddBytes(bytes);
-				return result;
+				return Task.FromResult(result);
 			}
 		}
 

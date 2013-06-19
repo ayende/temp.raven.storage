@@ -1,14 +1,5 @@
 ﻿using System;
-using System.Threading;
-using NLog.Targets;
-using Raven.Abstractions.Logging;
 using Raven.Aggregation.Tests;
-using Raven.Storage.Data;
-using Raven.Storage.Impl;
-using Raven.Storage.Reading;
-using Raven.Storage.Tests.Recovery;
-using Raven.Storage.Util;
-using Target = Raven.Abstractions.Logging.Target;
 
 namespace Raven.Storage.Tryouts
 {
@@ -16,9 +7,7 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-			//LogManager.RegisterTarget<MyConsoleTarget>();
-
-			new RecoveryTests().CanOpenAndCloseWithUpdate().Wait();
+			new ComplexAggregator().UsingMultiMap().Wait();
 
             //var storage = new Storage(@"D:\Work\Raven.Storage\Raven.Storage.Tryouts\bin\Debug\test", new StorageOptions());
             //storage.InitAsync().Wait();
@@ -27,9 +16,9 @@ namespace Raven.Storage.Tryouts
 		}
 	}
 
-    public class MyConsoleTarget : Target
+	public class MyConsoleTarget : Raven.Abstractions.Logging.Target
     {
-        public override void Write(LogEventInfo logEvent)
+		public override void Write(Raven.Abstractions.Logging.LogEventInfo logEvent)
         {
             Console.WriteLine(logEvent.FormattedMessage);
         }

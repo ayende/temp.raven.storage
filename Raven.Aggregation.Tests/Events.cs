@@ -80,7 +80,7 @@ namespace Raven.Aggregation.Tests
 				}
 
 				int j = 0;
-				foreach (var item in await agg.Events(Etag.Empty))
+				foreach (var item in agg.Events(Etag.Empty))
 				{
 					Assert.Equal(j++, item.Data.Value<int>("Val"));
 					Assert.NotNull(item.Etag);

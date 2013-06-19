@@ -1,4 +1,4 @@
-﻿using Raven.Abstractions.Logging;
+﻿using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
 {
@@ -419,34 +419,37 @@ namespace Raven.Storage.Impl
 				TableCache.Dispose();
 		}
 
-		public Tuple<IIterator, ulong> NewInternalIterator(ReadOptions options, AsyncLock.LockScope locker)
+		public Tuple<IIterator, ulong> NewInternalIterator(ReadOptions options)
 		{
-			Debug.Assert(locker != null && locker.Locked);
+			var mem = MemTable;
+			var imm = ImmutableMemTable;
+			var currentVersion = VersionSet.Current;
 
-			var latestSnapshot = VersionSet.LastSequence;
+			var snapshot = options.Snapshot != null ? options.Snapshot.Sequence : VersionSet.LastSequence;
+
 			var iterators = new List<IIterator>
 				                {
-					                MemTable.NewIterator()
+					                mem.NewIterator()
 				                };
 
-			if (ImmutableMemTable != null)
-				iterators.Add(ImmutableMemTable.NewIterator());
+			if (imm != null)
+				iterators.Add(imm.NewIterator());
 
 			// Merge all level zero files together since they may overlap
-			iterators.AddRange(VersionSet.Current.Files[0].Select(file => TableCache.NewIterator(options, file.FileNumber, file.FileSize)));
+			iterators.AddRange(currentVersion.Files[0].Select(file => TableCache.NewIterator(options, file.FileNumber, file.FileSize)));
 
 			// For levels > 0, we can use a concatenating iterator that sequentially
 			// walks through the non-overlapping files in the level, opening them
 			// lazily.
 			for (var level = 1; level < Config.NumberOfLevels; level++)
 			{
-				if (VersionSet.Current.Files[level].Count > 0)
-					iterators.Add(new LevelFileNumIterator(InternalKeyComparator, VersionSet.Current.Files[level]));
+				if (currentVersion.Files[level].Count > 0)
+					iterators.Add(new LevelFileNumIterator(InternalKeyComparator, currentVersion.Files[level]));
 			}
 
 			var internalIterator = new MergingIterator(InternalKeyComparator, iterators);
 
-			return new Tuple<IIterator, ulong>(internalIterator, latestSnapshot);
+			return new Tuple<IIterator, ulong>(internalIterator, snapshot);
 		}
 	}
 }

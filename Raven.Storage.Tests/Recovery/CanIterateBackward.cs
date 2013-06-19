@@ -33,7 +33,7 @@ namespace Raven.Storage.Tests.Recovery
 			{
 				await newStorage.InitAsync();
 				
-				using(var it = await  newStorage.Reader.NewIteratorAsync(new ReadOptions()))
+				using(var it = newStorage.Reader.NewIterator(new ReadOptions()))
 				{
 					it.Seek("C");
 					Assert.True(it.IsValid);

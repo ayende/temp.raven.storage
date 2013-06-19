@@ -5,8 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Raven.Abstractions.Logging;
 using Raven.Storage.Memtable;
+using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
 {

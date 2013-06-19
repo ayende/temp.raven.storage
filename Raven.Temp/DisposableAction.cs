@@ -3,9 +3,10 @@
 //     Copyright (c) Hibernating Rhinos LTD. All rights reserved.
 // </copyright>
 //-----------------------------------------------------------------------
+
 using System;
 
-namespace Raven.Abstractions.Extensions
+namespace Raven.Temp
 {
 	/// <summary>
 	/// A helper class that translate between Disposable and Action
