@@ -125,11 +125,8 @@
 		{
 			if (a.Array.Length == 0)
 				return a;
-				if (a.Count < 8)
-				{
-					
-				}
-			Debug.Assert(a.Count >= 8);
+			if (a.Count < 8)
+				throw new ArgumentException("Value '" + a + "' is not an internal key");
 			return new Slice(a.Array, a.Offset, a.Count - 8);
 		}
 	}

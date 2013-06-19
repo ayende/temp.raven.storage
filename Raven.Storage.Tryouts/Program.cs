@@ -16,9 +16,9 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-            LogManager.RegisterTarget<MyConsoleTarget>();
+			//LogManager.RegisterTarget<MyConsoleTarget>();
 
-            new DoingAggregation().WillRememberAfterRestart().Wait();
+			new RecoveryTests().CanOpenAndCloseWithUpdate().Wait();
 
             //var storage = new Storage(@"D:\Work\Raven.Storage\Raven.Storage.Tryouts\bin\Debug\test", new StorageOptions());
             //storage.InitAsync().Wait();

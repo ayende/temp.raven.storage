@@ -121,7 +121,7 @@ namespace Raven.Storage.Reading
 
 		internal Tuple<Slice, Stream> InternalGet(ReadOptions readOptions, InternalKey key)
 		{
-			using (var iterator = _indexBlock.CreateIterator(_storageState.Options.Comparator))
+			using (var iterator = _indexBlock.CreateIterator(_storageState.InternalKeyComparator))
 			{
 				iterator.Seek(key.TheInternalKey);
 				if (iterator.IsValid == false)

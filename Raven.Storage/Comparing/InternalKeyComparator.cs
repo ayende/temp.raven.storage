@@ -94,8 +94,9 @@ namespace Raven.Storage.Comparing
 
 			var r = _comparator.FindShortestSuccessor(userKey, ref scratch);
 
-			if (r.Count >= userKey.Count || _comparator.Compare(userKey, r) >= 0)
-				return r;
+
+			if (r.Count >= key.Count || _comparator.Compare(key, r) >= 0)
+				return key;
 
 			// user key has become shorter physically, but larger logically.
 			// Tack on the earliest posible number to the shorted user key
