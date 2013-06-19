@@ -115,9 +115,16 @@ namespace Raven.Storage.Impl.Compactions
 			{
 				using (var compactionState = new CompactionState(compaction))
 				{
-					await DoCompactionWorkAsync(compactionState, locker);
-					CleanupCompaction(compactionState);
+					try
+					{
+						await DoCompactionWorkAsync(compactionState, locker);
+					}
+					finally
+					{
+						CleanupCompaction(compactionState);
+					}
 				}
+
 				compaction.ReleaseInputs();
 				DeleteObsoleteFiles();
 			}
@@ -147,42 +154,33 @@ namespace Raven.Storage.Impl.Compactions
 			// Release mutex while we're actually doing the compaction work
 			locker.Exit();
 
-			IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction);
-			input.SeekToFirst();
-
 			Slice currentUserKey = null;
 			var lastSequenceForKey = Format.MaxSequenceNumber;
-			for (; input.IsValid; )
+
+			using (IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction))
 			{
-				if (state.ImmutableMemTable != null)
+				input.SeekToFirst();
+				while (input.IsValid)
 				{
-					await CompactMemTableAsync(locker);
-					// bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
-				}
+					if (state.ImmutableMemTable != null)
+						await CompactMemTableAsync(locker);
 
-				var key = input.Key;
-				if (compactionState.Compaction.ShouldStopBefore(key) && compactionState.Builder != null)
-				{
-					try
-					{
-						FinishCompactionOutputFile(compactionState, input);
-					}
-					catch (Exception)
-					{
-						break;
-					}
-				}
+					var key = input.Key;
 
-				InternalKey internalKey;
-				if (!InternalKey.TryParse(key, out internalKey))
-				{
-					currentUserKey = null;
-					lastSequenceForKey = Format.MaxSequenceNumber;
-				}
-				else
-				{
-					bool drop = false;
-					if (currentUserKey.IsEmpty() || state.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, currentUserKey) != 0)
+					FinishCompactionOutputFileIfNecessary(compactionState, input);
+
+					InternalKey internalKey;
+					if (!InternalKey.TryParse(key, out internalKey))
+					{
+						currentUserKey = null;
+						lastSequenceForKey = Format.MaxSequenceNumber;
+						input.Next();
+						continue;
+					}
+
+					var drop = false;
+					if (currentUserKey.IsEmpty()
+						|| state.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, currentUserKey) != 0)
 					{
 						// First occurrence of this user key
 						currentUserKey = internalKey.UserKey.Clone();
@@ -212,19 +210,8 @@ namespace Raven.Storage.Impl.Compactions
 
 					if (!drop)
 					{
-						// Open output file if necessary
-						if (compactionState.Builder == null)
-						{
-							try
-							{
-								await OpenCompactionOutputFileAsync(compactionState, locker);
-								Debug.Assert(compactionState.Builder != null);
-							}
-							catch (Exception)
-							{
-								break;
-							}
-						}
+						await this.OpenCompactionOutputFileIfNecessaryAsync(compactionState, locker);
+						Debug.Assert(compactionState.Builder != null);
 
 						if (compactionState.Builder.NumEntries == 0)
 						{
@@ -234,35 +221,24 @@ namespace Raven.Storage.Impl.Compactions
 						compactionState.CurrentOutput.LargestKey = new InternalKey(key.Clone());
 						compactionState.Builder.Add(key, input.CreateValueStream());
 
-						// Close output file if it is big enoug
-						if (compactionState.Builder.FileSize >= compactionState.Compaction.MaxOutputFileSize)
-						{
-							try
-							{
-								FinishCompactionOutputFile(compactionState, input);
-							}
-							catch (Exception)
-							{
-								break;
-							}
-						}
+						FinishCompactionOutputFileIfNecessary(compactionState, input);
+
 					}
+
+					input.Next();
 				}
 
-				input.Next();
+				FinishCompactionOutputFileIfNecessary(compactionState, input, force: true);
 			}
 
-			if (compactionState.Builder != null)
-			{
-				FinishCompactionOutputFile(compactionState, input);
-			}
+			CreateCompactionStats(compactionState, watch);
 
-			input.Dispose();
+			await InstallCompactionResultsAsync(compactionState, locker);
+		}
 
-			var stats = new CompactionStats
-			{
-				Micros = watch.ElapsedMilliseconds
-			};
+		private void CreateCompactionStats(CompactionState compactionState, Stopwatch watch)
+		{
+			var stats = new CompactionStats { Milliseconds = watch.ElapsedMilliseconds };
 
 			for (var which = 0; which < 2; which++)
 			{
@@ -278,14 +254,12 @@ namespace Raven.Storage.Impl.Compactions
 			}
 
 			state.CompactionStats[compactionState.Compaction.Level + 1].Add(stats);
-
-			await InstallCompactionResultsAsync(compactionState, locker);
 		}
 
-		private async Task OpenCompactionOutputFileAsync(CompactionState compactionState, AsyncLock.LockScope locker)
+		private async Task OpenCompactionOutputFileIfNecessaryAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
-			Debug.Assert(compactionState != null);
-			Debug.Assert(compactionState.Builder == null);
+			if (compactionState.Builder != null)
+				return;
 
 			await locker.LockAsync();
 
@@ -319,11 +293,14 @@ namespace Raven.Storage.Impl.Compactions
 			await state.LogAndApplyAsync(compactionState.Compaction.Edit, locker);
 		}
 
-		private void FinishCompactionOutputFile(CompactionState compactionState, IIterator input)
+		private void FinishCompactionOutputFileIfNecessary(CompactionState compactionState, IIterator input, bool force = false)
 		{
-			Debug.Assert(compactionState != null);
-			Debug.Assert(compactionState.OutFile != null);
-			Debug.Assert(compactionState.Builder != null);
+			if (compactionState.Builder == null)
+				return;
+
+			if ((input.IsValid == false || !compactionState.Compaction.ShouldStopBefore(input.Key))
+				&& compactionState.Builder.FileSize < compactionState.Compaction.MaxOutputFileSize && force == false)
+				return;
 
 			var outputNumber = compactionState.CurrentOutput.FileNumber;
 			Debug.Assert(outputNumber != 0);
@@ -345,12 +322,14 @@ namespace Raven.Storage.Impl.Compactions
 			compactionState.OutFile.Dispose();
 			compactionState.OutFile = null;
 
-			if (currentEntries > 0)
+			if (currentEntries <= 0)
 			{
-				// Verify that the table is usable
-				using (var iterator = state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
-				{
-				}
+				return;
+			}
+
+			// Verify that the table is usable
+			using (this.state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
+			{
 			}
 		}
 
@@ -466,7 +445,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			state.CompactionStats[level].Add(new CompactionStats
 			{
-				Micros = stopwatch.ElapsedMilliseconds,
+				Milliseconds = stopwatch.ElapsedMilliseconds,
 				BytesRead = 0,
 				BytesWritten = fileMetadata.FileSize
 			});

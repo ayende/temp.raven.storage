@@ -63,15 +63,11 @@
 			{
 				Builder.Dispose();
 			}
-			//else
-			//{
-			//	Debug.Assert(outFile == null);
-			//}
 
-			//if (outFile != null)
-			//{
-			//	outFile.Dispose();
-			//}
+			if (OutFile != null)
+			{
+				OutFile.Dispose();
+			}
 		}
 	}
 }

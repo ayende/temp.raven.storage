@@ -2,6 +2,7 @@
 
 namespace Raven.Storage.Tests.Compactions
 {
+	using System;
 	using System.IO;
 	using System.Text;
 

@@ -2,7 +2,7 @@
 {
 	public struct CompactionStats
 	{
-		public long Micros { get; set; }
+		public long Milliseconds { get; set; }
 
 		public long BytesRead { get; set; }
 
@@ -10,7 +10,7 @@
 
 		public void Add(CompactionStats compactionStats)
 		{
-			Micros += compactionStats.Micros;
+			Milliseconds += compactionStats.Milliseconds;
 			BytesRead += compactionStats.BytesRead;
 			BytesWritten += compactionStats.BytesWritten;
 		}
