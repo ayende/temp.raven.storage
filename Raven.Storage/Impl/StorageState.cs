@@ -16,14 +16,13 @@ namespace Raven.Storage.Impl
 	using Raven.Storage.Memtable;
 	using System;
 	using System.Diagnostics;
-	using System.Text;
 	using System.Threading.Tasks;
 
 	using Raven.Storage.Reading;
 
 	public class StorageState : IDisposable, IStorageContext
 	{
-	    private static readonly ILog Log = LogManager.GetCurrentClassLogger();
+		private static readonly ILog Log = LogManager.GetCurrentClassLogger();
 
 		public MemTable MemTable;
 		public volatile MemTable ImmutableMemTable;
@@ -205,7 +204,7 @@ namespace Raven.Storage.Impl
 				{
 					throw new InvalidDataException(DatabaseName + " does not exist. Storage option CreateIfMissing is set to false.");
 				}
-                Log.Info("Creating db {0} from scratch", DatabaseName);
+				Log.Info("Creating db {0} from scratch", DatabaseName);
 			}
 			else
 			{
@@ -213,7 +212,7 @@ namespace Raven.Storage.Impl
 				{
 					throw new InvalidDataException(DatabaseName + " exists, while the ErrorIfExists option is set to true.");
 				}
-                Log.Info("Loading db {0} from existing source", DatabaseName);
+				Log.Info("Loading db {0} from existing source", DatabaseName);
 			}
 
 			VersionSet.Recover();
@@ -268,10 +267,10 @@ namespace Raven.Storage.Impl
 		private ulong RecoverLogFile(ulong logNumber, VersionEdit edit, ulong maxSequence)
 		{
 			var logFileName = FileSystem.GetLogFileName(logNumber);
-		    
-            Log.Info("Starting to recover from log: {0}", logFileName);
-			
-            MemTable mem = null;
+
+			Log.Info("Starting to recover from log: {0}", logFileName);
+
+			MemTable mem = null;
 			using (var logFile = FileSystem.OpenForReading(logFileName))
 			{
 				foreach (var item in WriteBatch.ReadFromLog(logFile, Options.BufferPool))
@@ -298,7 +297,7 @@ namespace Raven.Storage.Impl
 					}
 				}
 			}
-		    
+
 			if (mem != null)
 			{
 				Compactor.WriteLevel0Table(mem, null, edit);
@@ -331,7 +330,7 @@ namespace Raven.Storage.Impl
 			{
 				var iterator = memTable.NewIterator();
 				iterator.SeekToFirst();
-			    Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
+				Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
@@ -344,20 +343,20 @@ namespace Raven.Storage.Impl
 						var stream = iterator.CreateValueStream();
 
 						meta.LargestKey = new InternalKey(key);
-                        
-                        if (Log.IsDebugEnabled)
-                        {
-                            var readToEnd = new StreamReader(stream).ReadToEnd();
-                            if (readToEnd.Contains("45"))
-                            {
-                                
-                            }
-                            Log.Debug("Writing item with key {0} = val {1}", meta.LargestKey.DebugVal, readToEnd);
 
-                            stream.Dispose();
+						if (Log.IsDebugEnabled)
+						{
+							var readToEnd = new StreamReader(stream).ReadToEnd();
+							if (readToEnd.Contains("45"))
+							{
 
-                            stream = iterator.CreateValueStream();
-                        }
+							}
+							Log.Debug("Writing item with key {0} = val {1}", meta.LargestKey.DebugVal, readToEnd);
+
+							stream.Dispose();
+
+							stream = iterator.CreateValueStream();
+						}
 
 						builder.Add(key, stream);
 
@@ -493,12 +492,16 @@ namespace Raven.Storage.Impl
 				}
 				else if (ImmutableMemTable != null)
 				{
+					lockScope.Exit();
+
 					// We have filled up the current memtable, but the previous
 					// one is still being compacted, so we wait.
 					await BackgroundTask;
 				}
 				else if (VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
 				{
+					lockScope.Exit();
+
 					// There are too many level-0 files.
 					await BackgroundTask;
 				}
@@ -517,6 +520,22 @@ namespace Raven.Storage.Impl
 				}
 
 				lockScope.Exit();
+			}
+		}
+
+		public async Task<StorageStatistics> GetStorageStatisticsAsync()
+		{
+			using (await Lock.LockAsync())
+			{
+				var files = new List<FileMetadata>[Config.NumberOfLevels];
+				for (var level = 0; level < Config.NumberOfLevels; level++)
+				{
+					files[level] = VersionSet.Current.Files[level]
+						.Select(x => new FileMetadata(x))
+						.ToList();
+				}
+
+				return new StorageStatistics(files);
 			}
 		}
 	}

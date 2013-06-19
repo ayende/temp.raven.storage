@@ -10,6 +10,10 @@
 
 		Task CompactRangeAsync(Slice begin, Slice end);
 
+		Task CompactMemTableAsync();
+
+		Task<StorageStatistics> GetStatisticsAsync();
+
 		Task<Snapshot> CreateSnapshotAsync();
 
 		Task ReleaseSnapshotAsync(Snapshot snapshot);

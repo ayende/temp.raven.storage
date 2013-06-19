@@ -10,7 +10,7 @@ namespace Raven.Storage.Tests.Compactions
 	public class CompactionTests : StorageTestBase
 	{
 		[Fact]
-		public async Task T1()
+		public async Task CompactMemTableShouldCreateFilesAtDifferentLevels()
 		{
 			using (var storage = await NewStorageAsync())
 			{
@@ -24,8 +24,20 @@ namespace Raven.Storage.Tests.Compactions
 					writeBatch.Put("q", new MemoryStream(Encoding.UTF8.GetBytes("end")));
 					await storage.Writer.WriteAsync(writeBatch);
 
-					await storage.Commands.CompactAsync(0, "p", "q");
+					await storage.Commands.CompactMemTableAsync();
 				}
+
+				var statistics = await storage.Commands.GetStatisticsAsync();
+
+				AssertNumberOfFilesPerLevel(statistics, 1, 1, 1, 0, 0, 0, 0);
+			}
+		}
+
+		private void AssertNumberOfFilesPerLevel(StorageStatistics statistics, params int[] numberOfFilesPerLevel)
+		{
+			for (var level = 0; level < numberOfFilesPerLevel.Length; level++)
+			{
+				Assert.Equal(numberOfFilesPerLevel[level], statistics.Files[level].Count);
 			}
 		}
 	}

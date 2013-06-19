@@ -12,6 +12,8 @@ using Raven.Storage.Reading;
 
 namespace Raven.Storage.Impl.Compactions
 {
+	using Raven.Storage.Util;
+
 	public abstract class Compactor
 	{
 		protected readonly ILog log = LogManager.GetCurrentClassLogger();
@@ -28,6 +30,14 @@ namespace Raven.Storage.Impl.Compactions
 		protected abstract Compaction CompactionToProcess();
 
 		protected abstract bool IsManual { get; }
+
+		protected async Task ScheduleCompactionAsync()
+		{
+			using (var locker = await state.Lock.LockAsync())
+			{
+				Background.Work(RunCompactionAsync(locker));
+			}
+		}
 
 		protected Task RunCompactionAsync(AsyncLock.LockScope lockScope)
 		{
@@ -90,7 +100,7 @@ namespace Raven.Storage.Impl.Compactions
 			{
 				return;
 			}
-				
+
 			if (IsManual == false && compaction.IsTrivialMove())
 			{
 				Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
@@ -176,7 +186,7 @@ namespace Raven.Storage.Impl.Compactions
 					if (currentUserKey.IsEmpty() || state.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, currentUserKey) != 0)
 					{
 						// First occurrence of this user key
-						currentUserKey = internalKey.UserKey;
+						currentUserKey = internalKey.UserKey.Clone();
 						lastSequenceForKey = Format.MaxSequenceNumber;
 					}
 
@@ -320,19 +330,8 @@ namespace Raven.Storage.Impl.Compactions
 			Debug.Assert(outputNumber != 0);
 
 			var currentEntries = compactionState.Builder.NumEntries;
-			//if (s.ok())
-			//{
-			//	s = compact->builder->Finish();
-			//}
-			//else
-			//{
-			//	compact->builder->Abandon();
-			//}
 
-			if (input.IsValid)
-			{
-				compactionState.Builder.Finish();
-			}
+			compactionState.Builder.Finish();
 
 			var currentBytes = compactionState.Builder.FileSize;
 			compactionState.CurrentOutput.FileSize = currentBytes;
@@ -350,7 +349,7 @@ namespace Raven.Storage.Impl.Compactions
 			if (currentEntries > 0)
 			{
 				// Verify that the table is usable
-				using (state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
+				using (var iterator = state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
 				{
 				}
 			}

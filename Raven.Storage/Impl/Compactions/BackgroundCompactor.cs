@@ -2,6 +2,8 @@
 
 namespace Raven.Storage.Impl.Compactions
 {
+	using Raven.Storage.Util;
+
 	public class BackgroundCompactor : Compactor
 	{
 		private ManualCompactor manualCompactor;
@@ -43,8 +45,7 @@ namespace Raven.Storage.Impl.Compactions
 				return;
 			}
 
-			RunCompactionAsync(locker);
-			MaybeScheduleCompaction(locker);
+			Background.Work(ScheduleCompactionAsync());
 		}
 
 		protected override Compaction CompactionToProcess()

@@ -28,6 +28,16 @@
 			return state.Compactor.Manual.CompactRangeAsync(begin, end);
 		}
 
+		public Task CompactMemTableAsync()
+		{
+			return state.Compactor.Manual.CompactMemTableAsync();
+		}
+
+		public Task<StorageStatistics> GetStatisticsAsync()
+		{
+			return state.GetStorageStatisticsAsync();
+		}
+
 		public async Task<Snapshot> CreateSnapshotAsync()
 		{
 			using (var locker = await state.Lock.LockAsync())

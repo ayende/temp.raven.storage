@@ -13,7 +13,8 @@ namespace Raven.Storage.Impl.Compactions
 		private Compaction compaction;
 		private bool initialized = false;
 
-		public ManualCompactor(StorageState state) : base(state)
+		public ManualCompactor(StorageState state)
+			: base(state)
 		{
 		}
 
@@ -36,8 +37,8 @@ namespace Raven.Storage.Impl.Compactions
 		protected override Compaction CompactionToProcess()
 		{
 			compaction = state.VersionSet.CompactRange(Level, Begin, End);
-			
-			Done = (compaction == null); 
+
+			Done = (compaction == null);
 
 			return compaction;
 		}
@@ -112,8 +113,6 @@ namespace Raven.Storage.Impl.Compactions
 			int maxLevelWithFiles = 1;
 			using (var locker = await state.Lock.LockAsync())
 			{
-				await EnsureTableFileCreated(locker);
-
 				var @base = state.VersionSet.Current;
 				for (var level = 1; level < Config.NumberOfLevels; level++)
 				{
@@ -132,11 +131,17 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task EnsureTableFileCreated(AsyncLock.LockScope lockScope)
 		{
-			if (initialized)
-				return;
-
 			await state.MakeRoomForWriteAsync(force: true, lockScope: lockScope); // force to create an ImmutableMemtable
-			initialized = true;
+		}
+
+		public async Task CompactMemTableAsync()
+		{
+			using (var locker = await state.Lock.LockAsync())
+			{
+				await EnsureTableFileCreated(locker);
+			}
+
+			await state.BackgroundTask;
 		}
 	}
 }
