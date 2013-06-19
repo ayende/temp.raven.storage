@@ -12,194 +12,105 @@ using Raven.Storage.Reading;
 
 namespace Raven.Storage.Impl.Compactions
 {
-	public class Compactor
+	public abstract class Compactor
 	{
-		private readonly ILog log = LogManager.GetCurrentClassLogger();
+		protected readonly ILog log = LogManager.GetCurrentClassLogger();
 
-		private readonly StorageState state;
+		protected readonly StorageState state;
 
 		private readonly IList<ulong> pendingOutputs = new List<ulong>();
 
-		private ManualCompaction manualCompaction;
-
-		public Compactor(StorageState state)
+		protected Compactor(StorageState state)
 		{
 			this.state = state;
 		}
 
-		internal Task CompactAsync(int level, Slice begin, Slice end, AsyncLock locker)
+		protected abstract Compaction CompactionToProcess();
+
+		protected abstract bool IsManual { get; }
+
+		protected Task RunCompactionAsync(AsyncLock.LockScope lockScope)
 		{
-			if (manualCompaction != null)
-				throw new InvalidOperationException("Manual compaction is already in progess.");
-
-			manualCompaction = new ManualCompaction(level,
-				new InternalKey(begin, Format.MaxSequenceNumber, ItemType.ValueForSeek),
-				new InternalKey(end, Format.MaxSequenceNumber, ItemType.ValueForSeek));
-
-			return Task.Factory.StartNew(async () =>
-				{
-					Task task = null;
-
-					while (task == null)
-					{
-						if (state.ShuttingDown)
-							throw new InvalidOperationException("Database is shutting down.");
-
-						if (state.BackgroundCompactionScheduled)
-						{
-							await Task.Delay(100);
-							continue;
-						}
-
-						using (var actualLocker = await locker.LockAsync())
-						{
-							MaybeScheduleCompaction(actualLocker);
-							task = state.BackgroundTask;
-						}
-					}
-
-					await task;
-					return 1;// make R# happy
-				}).Unwrap();
-		}
-
-		internal void MaybeScheduleCompaction(AsyncLock.LockScope locker)
-		{
-			Debug.Assert(locker != null && locker.Locked);
-
-			if (state.BackgroundCompactionScheduled)
-			{
-				return; // already scheduled, nothing to do
-			}
-			if (state.ShuttingDown)
-			{
-				return;    // DB is being disposed; no more background compactions
-			}
-			if (state.ImmutableMemTable == null &&
-				manualCompaction == null &&
-				state.VersionSet.NeedsCompaction == false)
-			{
-				// No work to be done
-				return;
-			}
-
 			state.BackgroundCompactionScheduled = true;
-			state.BackgroundTask = Task.Factory.StartNew(async () => await RunCompactionAsync()).Unwrap();
+			state.BackgroundTask = Task.Factory.StartNew(async () =>
+				{
+					await lockScope.LockAsync();
+					using (LogManager.OpenMappedContext("storage", state.DatabaseName))
+					using (lockScope)
+					{
+						try
+						{
+							bool needToWait = false;
+							try
+							{
+								await BackgroundCompactionAsync(lockScope);
+							}
+							catch (Exception e)
+							{
+								log.ErrorException(string.Format("Compaction error: {0}", e.Message), e);
+
+								state.BackgroundCompactionScheduled = false;
+								needToWait = true;
+							}
+
+							// Wait a little bit before retrying background compaction in
+							// case this is an environmental problem and we do not want to
+							// chew up resources for failed compactions for the duration of
+							// the problem.
+							if (needToWait)
+							{
+								lockScope.Exit();
+								await Task.Delay(1000);
+								await lockScope.LockAsync();
+							}
+						}
+						finally
+						{
+							state.BackgroundCompactionScheduled = false;
+						}
+					}
+
+					return 1; // make R# happy
+				}, TaskCreationOptions.LongRunning).Unwrap();
+
+			return state.BackgroundTask;
 		}
 
-		private async Task RunCompactionAsync()
-		{
-			using (LogManager.OpenMappedContext("storage", state.DatabaseName))
-			using (var locker = await state.Lock.LockAsync())
-			{
-				try
-				{
-					bool needToWait = false;
-					try
-					{
-						await BackgroundCompactionAsync(locker);
-					}
-					catch (Exception e)
-					{
-						log.ErrorException(string.Format("Compaction error: {0}", e.Message), e);
-
-						state.BackgroundCompactionScheduled = false;
-						needToWait = true;
-					}
-
-					// Wait a little bit before retrying background compaction in
-					// case this is an environmental problem and we do not want to
-					// chew up resources for failed compactions for the duration of
-					// the problem.
-					if (needToWait)
-					{
-						locker.Exit();
-						await Task.Delay(1000);
-						await locker.LockAsync();
-					}
-				}
-				finally
-				{
-					state.BackgroundCompactionScheduled = false;
-				}
-
-				MaybeScheduleCompaction(locker);
-			}
-		}
 
 		private async Task BackgroundCompactionAsync(AsyncLock.LockScope locker)
 		{
 			if (state.ImmutableMemTable != null)
 			{
 				await CompactMemTableAsync(locker);
+			}
+
+			var compaction = CompactionToProcess();
+
+			if (compaction == null)
+			{
 				return;
 			}
-
-			var isManual = manualCompaction != null;
-			try
+				
+			if (IsManual == false && compaction.IsTrivialMove())
 			{
-				Compaction compaction;
-				var manualEnd = new InternalKey();
-				if (isManual)
-				{
-					compaction = state.VersionSet.CompactRange(manualCompaction.Level, manualCompaction.Begin, manualCompaction.End);
-					manualCompaction.Done = compaction == null;
-					if (compaction != null)
-					{
-						manualEnd = compaction.GetInput(0, compaction.GetNumberOfInputFiles(0) - 1).LargestKey;
-					}
-				}
-				else
-				{
-					compaction = state.VersionSet.PickCompaction();
-				}
+				Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
+				var file = compaction.GetInput(0, 0);
+				compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
+				compaction.Edit.AddFile(compaction.Level + 1, file);
 
-				if (compaction == null)
-				{
-					// Nothing to do
-				}
-				else if (isManual == false && compaction.IsTrivialMove())
-				{
-					Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
-					var file = compaction.GetInput(0, 0);
-					compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
-					compaction.Edit.AddFile(compaction.Level + 1, file);
+				await state.LogAndApplyAsync(compaction.Edit, locker);
 
-					await state.LogAndApplyAsync(compaction.Edit, locker);
-
-					log.Info("Moved {0} to level-{1} {2} bytes", file.FileNumber, compaction.Level + 1, file.FileSize);
-				}
-				else
-				{
-					using (var compactionState = new CompactionState(compaction))
-					{
-						await DoCompactionWorkAsync(compactionState, locker);
-						CleanupCompaction(compactionState);
-					}
-					compaction.ReleaseInputs();
-					DeleteObsoleteFiles();
-				}
-
-				if (isManual == false)
-					return;
-
-				if (manualCompaction.Done == false)
-				{
-					// We only compacted part of the requested range.  Update *m
-					// to the range that is left to be compacted.
-					manualCompaction.Begin = manualEnd;
-				}
-				manualCompaction = null;
+				log.Info("Moved {0} to level-{1} {2} bytes", file.FileNumber, compaction.Level + 1, file.FileSize);
 			}
-			catch (Exception)
+			else
 			{
-				if (isManual)
+				using (var compactionState = new CompactionState(compaction))
 				{
-					Debug.Assert(manualCompaction != null);
-					manualCompaction.Done = true;
+					await DoCompactionWorkAsync(compactionState, locker);
+					CleanupCompaction(compactionState);
 				}
-
-				throw;
+				compaction.ReleaseInputs();
+				DeleteObsoleteFiles();
 			}
 		}
 
@@ -561,28 +472,6 @@ namespace Raven.Storage.Impl.Compactions
 				BytesRead = 0,
 				BytesWritten = fileMetadata.FileSize
 			});
-		}
-
-		public async Task CompactRangeAsync(Slice begin, Slice end)
-		{
-			int maxLevelWithFiles = 1;
-			using (await state.Lock.LockAsync())
-			{
-
-				var @base = state.VersionSet.Current;
-				for (var level = 1; level < Config.NumberOfLevels; level++)
-				{
-					if (@base.OverlapInLevel(level, begin, end))
-					{
-						maxLevelWithFiles = level;
-					}
-				}
-			}
-
-			for (var level = 0; level < maxLevelWithFiles; level++)
-			{
-				await CompactAsync(level, begin, end, state.Lock);
-			}
 		}
 	}
 }

@@ -62,7 +62,7 @@ namespace Raven.Storage.Impl
                         return;
                     }
 
-                    await MakeRoomForWriteAsync(force: false, lockScope: locker);
+                    await _state.MakeRoomForWriteAsync(force: false, lockScope: locker);
 
                     ulong lastSequence = _state.VersionSet.LastSequence;
 
@@ -118,66 +118,6 @@ namespace Raven.Storage.Impl
                 _writeCompletedEvent.PulseAll();
             }
         }
-
-        private async Task MakeRoomForWriteAsync(bool force, AsyncLock.LockScope lockScope)
-        {
-            bool allowDelay = force == false;
-            while (true)
-            {
-                await lockScope.LockAsync();
-                if (_state.BackgroundTask.IsCanceled || _state.BackgroundTask.IsFaulted)
-                {
-                    await _state.BackgroundTask; // throws
-                }
-                else if (allowDelay && _state.VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
-                {
-                    // We are getting close to hitting a hard limit on the number of
-                    // L0 files.  Rather than delaying a single write by several
-                    // seconds when we hit the hard limit, start delaying each
-                    // individual write by 1ms to reduce latency variance.  Also,
-                    // this delay hands over some CPU to the compaction thread in
-                    // case it is sharing the same core as the writer.
-                    lockScope.Exit();
-                    {
-                        await Task.Delay(TimeSpan.FromMilliseconds(1));
-                    }
-                    await lockScope.LockAsync();
-                    allowDelay = false; // Do not delay a single write more than once
-                }
-                else if (force == false && _state.MemTable.ApproximateMemoryUsage <= _state.Options.WriteBatchSize)
-                {
-                    // There is room in current memtable
-                    break;
-                }
-                else if (_state.ImmutableMemTable != null)
-                {
-                    // We have filled up the current memtable, but the previous
-                    // one is still being compacted, so we wait.
-                    await _state.BackgroundTask;
-                }
-                else if (_state.VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
-                {
-                    // There are too many level-0 files.
-                    await _state.BackgroundTask;
-                }
-                else
-                {
-                    // Attempt to switch to a new memtable and trigger compaction of old
-                    Debug.Assert(_state.VersionSet.PrevLogNumber == 0);
-
-                    _state.LogWriter.Dispose();
-
-                    _state.CreateNewLog();
-                    _state.ImmutableMemTable = _state.MemTable;
-                    _state.MemTable = new MemTable(_state);
-                    force = false;
-                    _state.Compactor.MaybeScheduleCompaction(lockScope);
-                }
-
-                lockScope.Exit();
-            }
-        }
-
 
         private List<OutstandingWrite> BuildBatchGroup(OutstandingWrite mine)
         {

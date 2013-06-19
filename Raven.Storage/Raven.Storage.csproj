@@ -49,6 +49,7 @@
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
     <Compile Include="Impl\AsyncEvent.cs" />
+    <Compile Include="Impl\Compactions\BackgroundCompactor.cs" />
     <Compile Include="Impl\InMemoryFileSystem.cs" />
     <Compile Include="Impl\Reference.cs" />
     <Compile Include="Reading\DbIterator.cs" />
@@ -88,7 +89,7 @@
     <Compile Include="Impl\Streams\LogReaderStream.cs" />
     <Compile Include="Impl\Streams\LogWriter.cs" />
     <Compile Include="Impl\FileType.cs" />
-    <Compile Include="Impl\Compactions\ManualCompaction.cs" />
+    <Compile Include="Impl\Compactions\ManualCompactor.cs" />
     <Compile Include="Impl\StatusCode.cs" />
     <Compile Include="Impl\Streams\LogRecordType.cs" />
     <Compile Include="Impl\StorageState.cs" />

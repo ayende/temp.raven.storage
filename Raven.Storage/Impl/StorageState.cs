@@ -46,7 +46,7 @@ namespace Raven.Storage.Impl
 
 		public TableCache TableCache { get; private set; }
 
-		public Compactor Compactor { get; private set; }
+		public BackgroundCompactor Compactor { get; private set; }
 
 		public InternalKeyComparator InternalKeyComparator { get; private set; }
 
@@ -62,7 +62,7 @@ namespace Raven.Storage.Impl
 			MemTable = new MemTable(this);
 			TableCache = new TableCache(this);
 			VersionSet = new VersionSet(this);
-			Compactor = new Compactor(this);
+			Compactor = new BackgroundCompactor(this);
 			Snapshooter = new Snapshooter(this);
 		}
 
@@ -459,6 +459,65 @@ namespace Raven.Storage.Impl
 			var internalIterator = new MergingIterator(InternalKeyComparator, iterators);
 
 			return new Tuple<IIterator, ulong>(internalIterator, latestSnapshot);
+		}
+
+		internal async Task MakeRoomForWriteAsync(bool force, AsyncLock.LockScope lockScope)
+		{
+			bool allowDelay = force == false;
+			while (true)
+			{
+				await lockScope.LockAsync();
+				if (BackgroundTask.IsCanceled || BackgroundTask.IsFaulted)
+				{
+					await BackgroundTask; // throws
+				}
+				else if (allowDelay && VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
+				{
+					// We are getting close to hitting a hard limit on the number of
+					// L0 files.  Rather than delaying a single write by several
+					// seconds when we hit the hard limit, start delaying each
+					// individual write by 1ms to reduce latency variance.  Also,
+					// this delay hands over some CPU to the compaction thread in
+					// case it is sharing the same core as the writer.
+					lockScope.Exit();
+					{
+						await Task.Delay(TimeSpan.FromMilliseconds(1));
+					}
+					await lockScope.LockAsync();
+					allowDelay = false; // Do not delay a single write more than once
+				}
+				else if (force == false && MemTable.ApproximateMemoryUsage <= Options.WriteBatchSize)
+				{
+					// There is room in current memtable
+					break;
+				}
+				else if (ImmutableMemTable != null)
+				{
+					// We have filled up the current memtable, but the previous
+					// one is still being compacted, so we wait.
+					await BackgroundTask;
+				}
+				else if (VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
+				{
+					// There are too many level-0 files.
+					await BackgroundTask;
+				}
+				else
+				{
+					// Attempt to switch to a new memtable and trigger compaction of old
+					Debug.Assert(VersionSet.PrevLogNumber == 0);
+
+					LogWriter.Dispose();
+
+					CreateNewLog();
+					ImmutableMemTable = MemTable;
+					MemTable = new MemTable(this);
+					force = false;
+					Compactor.MaybeScheduleCompaction(lockScope);
+				}
+
+				lockScope.Exit();
+			}
 		}
 	}
 }
