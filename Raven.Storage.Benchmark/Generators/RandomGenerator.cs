@@ -1,39 +1,95 @@
 ﻿namespace Raven.Storage.Benchmark.Generators
 {
 	using System;
-	using System.Diagnostics;
 	using System.IO;
 
 	internal class RandomGenerator
 	{
 		private readonly Random random;
-
-		private readonly Stream stream;
+		private readonly byte[] _buffer;
 
 		public RandomGenerator()
 		{
 			random = new Random(301);
-			stream = new MemoryStream();
 
-			var buffer = new byte[1048576];
-			random.NextBytes(buffer);
-
-			stream.Write(buffer, 0, buffer.Length);
-			stream.Position = 0;
+			_buffer = new byte[1048576];
+			random.NextBytes(_buffer);
 		}
 
 		public Stream Generate(int size)
 		{
-			if (stream.Position + size > stream.Length)
+			int next = random.Next(0, _buffer.Length);
+			return new RepeatingStream(_buffer, next, size);
+		}
+
+		public class RepeatingStream : Stream
+		{
+			private byte[] _buffer;
+			private int _offset;
+			private long _length;
+
+			public RepeatingStream(byte[] buffer, int offset, long length)
 			{
-				stream.Position = 0;
-				Debug.Assert(size < stream.Length);
+				_buffer = buffer;
+				_offset = offset;
+				_length = length;
 			}
 
-			var buffer = new byte[size];
-			stream.Read(buffer, 0, size);
+			public override void Flush()
+			{
+				throw new NotImplementedException();
+			}
 
-			return new MemoryStream(buffer);
+			public override long Seek(long offset, SeekOrigin origin)
+			{
+				throw new NotImplementedException();
+			}
+
+			public override void SetLength(long value)
+			{
+				throw new NotImplementedException();
+			}
+
+			public override int Read(byte[] buffer, int offset, int count)
+			{
+				if (Position >= Length)
+					return 0;
+
+				int countToRead = Math.Min(count, _buffer.Length - _offset);
+
+				Buffer.BlockCopy(_buffer, _offset, buffer, offset, countToRead);
+
+				_offset += countToRead;
+				if (_offset == _buffer.Length)
+					_offset = 0;
+				Position += countToRead;
+
+				return countToRead;
+			}
+
+			public override void Write(byte[] buffer, int offset, int count)
+			{
+				throw new NotImplementedException();
+			}
+
+			public override bool CanRead
+			{
+				get { throw new NotImplementedException(); }
+			}
+
+			public override bool CanSeek
+			{
+				get { throw new NotImplementedException(); }
+			}
+
+			public override bool CanWrite
+			{
+				get { throw new NotImplementedException(); }
+			}
+
+			public override long Length { get { return _length; } }
+
+			public override long Position { get; set; }
 		}
 	}
 }
