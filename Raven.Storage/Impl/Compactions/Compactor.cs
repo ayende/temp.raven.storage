@@ -146,7 +146,6 @@ namespace Raven.Storage.Impl.Compactions
 
 			Debug.Assert(state.VersionSet.GetNumberOfFilesAtLevel(compactionState.Compaction.Level) > 0);
 			Debug.Assert(compactionState.Builder == null);
-			Debug.Assert(compactionState.OutFile == null);
 
 			compactionState.SmallestSnapshot = state.Snapshooter.Snapshots.Count == 0 ? state.VersionSet.LastSequence : state.Snapshooter.Snapshots.First().Sequence;
 
@@ -213,15 +212,12 @@ namespace Raven.Storage.Impl.Compactions
 						Debug.Assert(compactionState.Builder != null);
 
 						if (compactionState.Builder.NumEntries == 0)
-						{
 							compactionState.CurrentOutput.SmallestKey = new InternalKey(key.Clone());
-						}
 
 						compactionState.CurrentOutput.LargestKey = new InternalKey(key.Clone());
 						compactionState.Builder.Add(key, input.CreateValueStream());
 
 						FinishCompactionOutputFileIfNecessary(compactionState, input);
-
 					}
 
 					input.Next();
@@ -272,7 +268,6 @@ namespace Raven.Storage.Impl.Compactions
 			var fileName = state.FileSystem.GetTableFileName(fileNumber);
 			var file = state.FileSystem.NewWritable(fileName);
 
-			compactionState.OutFile = file;
 			compactionState.Builder = new TableBuilder(state, file, () => state.FileSystem.NewWritable(state.FileSystem.GetTempFileName(fileNumber)));
 		}
 
@@ -297,8 +292,13 @@ namespace Raven.Storage.Impl.Compactions
 			if (compactionState.Builder == null)
 				return;
 
-			if ((input.IsValid == false || !compactionState.Compaction.ShouldStopBefore(input.Key))
-				&& compactionState.Builder.FileSize < compactionState.Compaction.MaxOutputFileSize && force == false)
+			// Finish when:
+			// 1. When close output file is big enough
+			// 2. When we should stop before input key
+			// 3. When forced
+			if (compactionState.Builder.FileSize < compactionState.Compaction.MaxOutputFileSize
+				&& (input.IsValid == false || !compactionState.Compaction.ShouldStopBefore(input.Key))
+				&& force == false)
 				return;
 
 			var outputNumber = compactionState.CurrentOutput.FileNumber;
@@ -315,16 +315,8 @@ namespace Raven.Storage.Impl.Compactions
 			compactionState.Builder.Dispose();
 			compactionState.Builder = null;
 
-			compactionState.OutFile.Flush();
-			compactionState.OutFile.Close();
-
-			compactionState.OutFile.Dispose();
-			compactionState.OutFile = null;
-
 			if (currentEntries <= 0)
-			{
 				return;
-			}
 
 			// Verify that the table is usable
 			using (this.state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))

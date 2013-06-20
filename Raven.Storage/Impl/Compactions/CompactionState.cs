@@ -34,8 +34,6 @@
 
 		public decimal SmallestSnapshot { get; set; }
 
-		public Stream OutFile { get; set; }
-
 		public long TotalBytes { get; set; }
 
 		public CompactionState(Compaction compaction)
@@ -60,14 +58,7 @@
 		public void Dispose()
 		{
 			if (Builder != null)
-			{
 				Builder.Dispose();
-			}
-
-			if (OutFile != null)
-			{
-				OutFile.Dispose();
-			}
 		}
 	}
 }
