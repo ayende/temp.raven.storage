@@ -47,10 +47,7 @@ namespace Raven.Storage.Tests.Snapshots
 		[Fact]
 		public async Task SnapshotWithCompactionTest()
 		{
-			using (var storage = await NewStorageAsync(new StorageOptions
-				                                {
-					                                WriteBatchSize = 1
-				                                }))
+			using (var storage = await NewStorageAsync(new StorageOptions()))
 			{
 				var str1 = "test1";
 				var str2 = "test2";
@@ -76,7 +73,7 @@ namespace Raven.Storage.Tests.Snapshots
 					Snapshot = snapshot
 				}));
 
-				await storage.Commands.CompactAsync(0, "key1", "key1");
+				await storage.Commands.CompactMemTableAsync();
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions
