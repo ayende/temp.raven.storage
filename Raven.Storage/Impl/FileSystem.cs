@@ -230,7 +230,7 @@ namespace Raven.Storage.Impl
 		{
 			var file = MemoryMappedFile.CreateFromFile(name, FileMode.Open);
 			TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
-			return new MemoryMappedFileAccessor(file);
+			return new MemoryMappedFileAccessor(name ,file);
 		}
 	}
 }

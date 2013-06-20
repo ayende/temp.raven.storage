@@ -4,11 +4,18 @@ namespace Raven.Storage.Memory
 {
 	public class MemoryMappedFileArrayAccessor : IArrayAccessor
 	{
+		private readonly string _name;
 		private readonly MemoryMappedViewAccessor _accessor;
 
-		public MemoryMappedFileArrayAccessor(MemoryMappedViewAccessor accessor)
+		public MemoryMappedFileArrayAccessor(string name, MemoryMappedViewAccessor accessor)
 		{
+			_name = name;
 			_accessor = accessor;
+		}
+
+		public override string ToString()
+		{
+			return string.Format("Name: {0}", _name);
 		}
 
 		public byte this[long i]

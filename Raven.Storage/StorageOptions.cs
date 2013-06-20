@@ -1,22 +1,12 @@
 ﻿using System;
-using System.Collections.Specialized;
-using System.Runtime.Caching;
 using Raven.Storage.Comparing;
 using Raven.Storage.Filtering;
 using Raven.Storage.Util;
 
 namespace Raven.Storage
 {
-	using System.Globalization;
-
 	public class StorageOptions : IDisposable
 	{
-		private ObjectCache _blockCache;
-		private bool _blockCacheSet;
-
-		private ObjectCache _tableCache;
-		private bool tableCacheSet;
-
 		/// <summary>
 		/// The maximum size of key size (in bytes) that we expect
 		/// Using keys bigger than this value is going to consume a lot more memory
@@ -47,6 +37,17 @@ namespace Raven.Storage
 		/// </summary>
 		public int BlockSize { get; set; }
 
+		/// <summary>
+		/// Max size of the number of blocks cached per table
+		/// Default: 2048
+		/// </summary>
+		public int MaxBlockCacheSizePerTableFile { get; set; }
+
+		/// <summary>
+		/// Max size of the number of tables cached 
+		/// Default: 2048
+		/// </summary>
+		public int MaxTablesCacheSize{ get; set; }
 
 		/// <summary>
 		///  Amount of data to build up in memory (backed by an unsorted log
@@ -96,66 +97,7 @@ namespace Raven.Storage
 		/// </summary>
 		public bool ParanoidChecks { get; set; }
 
-		public ObjectCache TableCache
-		{
-			get
-			{
-				if (_tableCache == null && tableCacheSet == false)
-				{
-					_tableCache = new MemoryCache("Raven.Storage.TableCache.Default", new NameValueCollection
-						{
-							{"physicalMemoryLimitPercentage", "10"},
-							{"pollingInterval", "00:05:00"},
-							{"cacheMemoryLimitMegabytes", CacheSizeInMegabytes.ToString(CultureInfo.InvariantCulture)}
-						});
-					tableCacheSet = true;
-				}
-				return _tableCache;
-			}
-			set
-			{
-				var disposable = _tableCache as IDisposable;
-				if (disposable != null)
-				{
-					disposable.Dispose();
-				}
-				_tableCache = value;
-			}
-		}
-
-		/// <summary>
-		/// Control over blocks (user data is stored in a set of blocks, and
-		/// a block is the unit of reading from disk).
-		/// 
-		/// If set, use the specified cache for blocks, or not use any, if set to null
-		/// If not set, will use a default cache
-		/// </summary>
-		public ObjectCache BlockCache
-		{
-			get
-			{
-				if (_blockCache == null && _blockCacheSet == false)
-				{
-					_blockCache = new MemoryCache("Raven.Storage.BlockCache.Default", new NameValueCollection
-						{
-							{"physicalMemoryLimitPercentage", "10"},
-							{"pollingInterval", "00:05:00"},
-							{"cacheMemoryLimitMegabytes", CacheSizeInMegabytes.ToString(CultureInfo.InvariantCulture)}
-						});
-					_blockCacheSet = true;
-				}
-				return _blockCache;
-			}
-			set
-			{
-				var disposable = _blockCache as IDisposable;
-				if (disposable != null)
-				{
-					disposable.Dispose();
-				}
-				_blockCache = value;
-			}
-		}
+		
 
 		/// <summary>
 		/// The buffer pool to use
@@ -166,6 +108,8 @@ namespace Raven.Storage
 		{
 			CreateIfMissing = true;
 			BlockSize = 1024 * 4;
+			MaxBlockCacheSizePerTableFile = 2048;
+			MaxTablesCacheSize = 2048;
 			BlockRestartInterval = 16;
 			Comparator = new CaseInsensitiveComparator();
 			FilterPolicy = new BloomFilterPolicy();
@@ -177,11 +121,7 @@ namespace Raven.Storage
 
 		public void Dispose()
 		{
-			using (_blockCache as IDisposable)
-			using (_tableCache as IDisposable)
-			{
-
-			}
+			
 		}
 	}
 }
