@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Data
+﻿using Raven.Storage.Util;
+
+namespace Raven.Storage.Data
 {
 	using System;
 	using System.Diagnostics;
@@ -25,11 +27,12 @@
 			_offset = offset;
 		}
 
-		public Slice(ref byte[] externalBuffer, Slice other)
+		public Slice(ref byte[] externalBuffer, Slice other, BufferPool bufferPool)
 		{
 			if (externalBuffer.Length < other.Count)
 			{
-				externalBuffer = new byte[other.Count];
+				bufferPool.Return(externalBuffer);
+				externalBuffer = bufferPool.Take(other.Count);
 			}
 			_array = externalBuffer;
 			_count = other._count;
@@ -77,7 +80,7 @@
 
 		public static implicit operator Slice(string val)
 		{
-			return new Slice(!string.IsNullOrEmpty(val) ? Encoding.UTF8.GetBytes(val) : new byte[0]);
+			return new Slice(!string.IsNullOrEmpty(val) ? Encoding.UTF8.GetBytes(val) : Empty);
 		}
 
 		public int CompareTo(Slice other, IComparator comparator = null)

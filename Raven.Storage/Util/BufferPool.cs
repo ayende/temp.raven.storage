@@ -38,6 +38,9 @@ namespace Raven.Storage.Util
 
 		public void Return(byte[] array)
 		{
+			if (array == null)
+				return;
+
 			var size = Info.GetPowerOfTwo(array.Length);
 			Debug.Assert(size == array.Length);// otherwise, probably not a buffer pool buffer
 

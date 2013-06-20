@@ -33,7 +33,7 @@ namespace Raven.Storage.Building
     ///     num_restarts: uint32
     /// restarts[i] contains the offset within the block of the ith restart point.
     /// </summary>
-    public class BlockBuilder
+    public class BlockBuilder : IDisposable
     {
 	    private readonly StorageState _storageState;
 	    private readonly CrcStream _stream;
@@ -56,7 +56,7 @@ namespace Raven.Storage.Building
             OriginalPosition = stream.Position;
 	        _comparator = comparator;
 			_blockRestartInterval = blockRestartInterval;
-			_lastKeyBuffer = new byte[storageState.Options.MaximumExpectedKeySize];
+		    _lastKeyBuffer = storageState.Options.BufferPool.Take(storageState.Options.MaximumExpectedKeySize);
         }
 
         public long OriginalPosition { get; private set; }
@@ -109,7 +109,7 @@ namespace Raven.Storage.Building
             value.CopyTo(_stream);
             _size += (int)valLen;
 
-	        _lastKey = new Slice(ref _lastKeyBuffer, key);
+	        _lastKey = new Slice(ref _lastKeyBuffer, key, _storageState.Options.BufferPool);
 
             _counter++;
         }
@@ -126,5 +126,11 @@ namespace Raven.Storage.Building
 
             return (int)(_stream.Position - OriginalPosition);
         }
+
+	    public void Dispose()
+	    {
+			_storageState.Options.BufferPool.Return(_lastKeyBuffer);
+		    _lastKeyBuffer = null;
+	    }
     }
 }

@@ -72,6 +72,10 @@
       <Project>{F29215F2-FEFA-456C-9221-3C53E1B2AEF5}</Project>
       <Name>Raven.Aggregation.Tests</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Raven.Storage.Benchmark\Raven.Storage.Benchmark.csproj">
+      <Project>{DE71CA41-1B25-44BB-B12F-A5FF7B3DAFF0}</Project>
+      <Name>Raven.Storage.Benchmark</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Raven.Storage.Tests\Raven.Storage.Tests.csproj">
       <Project>{0CFB07EA-252E-43EA-BE3E-47A34BC3A949}</Project>
       <Name>Raven.Storage.Tests</Name>
