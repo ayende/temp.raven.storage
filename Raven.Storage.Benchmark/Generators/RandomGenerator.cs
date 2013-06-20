@@ -3,7 +3,7 @@
 	using System;
 	using System.IO;
 
-	internal class RandomGenerator
+	public class RandomGenerator
 	{
 		private readonly Random random;
 		private readonly byte[] _buffer;

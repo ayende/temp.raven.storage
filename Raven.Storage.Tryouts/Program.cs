@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using Raven.Aggregation.Tests;
+using Raven.Storage.Benchmark.Generators;
+using Raven.Storage.Data;
 
 namespace Raven.Storage.Tryouts
 {
@@ -7,12 +10,32 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-			new ComplexAggregator().UsingMultiMap().Wait();
+			var generator = new RandomGenerator();
 
-            //var storage = new Storage(@"D:\Work\Raven.Storage\Raven.Storage.Tryouts\bin\Debug\test", new StorageOptions());
-            //storage.InitAsync().Wait();
-            //var it = storage.StorageState.TableCache.NewIterator(new ReadOptions(), 5, 7684);
-            //it.Seek(new InternalKey("raven/Test/1", 78, ItemType.Value).TheInternalKey);
+			var sp = Stopwatch.StartNew();
+			using (var storage = new Storage("test", new StorageOptions()))
+			{
+				storage.InitAsync().Wait();
+				for (var i = 0; i < 100*1000; i += 1)
+				{
+					var batch = new WriteBatch();
+					{
+						var k = i;
+						var key = string.Format("{0:0000000000000000}", k);
+						batch.Put(key, generator.Generate(100));
+					}
+
+					storage.Writer.WriteAsync(batch, new WriteOptions
+						{
+							FlushToDisk = true
+						}).Wait();
+					if (i%1000 == 0)
+					{
+						Console.WriteLine("{0:#,#} {1}", i, sp.Elapsed);
+					}
+				}
+			}
+
 		}
 	}
 
