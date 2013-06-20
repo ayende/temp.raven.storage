@@ -11,6 +11,7 @@ using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl.Compactions
 {
+	using Raven.Storage.Impl.Caching;
 	using Raven.Storage.Util;
 
 	public abstract class Compactor
@@ -398,9 +399,7 @@ namespace Raven.Storage.Impl.Compactions
 					if (!keep)
 					{
 						if (fileType == FileType.TableFile)
-						{
 							state.TableCache.Evict(number);
-						}
 
 						log.Info("Delete type={0} {1}", fileType, number);
 

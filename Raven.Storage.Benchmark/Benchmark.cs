@@ -549,7 +549,7 @@
 			storage = null;
 		}
 
-		private static void ClearDatabaseDirectory(string directory)
+		private void ClearDatabaseDirectory(string directory)
 		{
 			bool isRetry = false;
 
@@ -557,18 +557,26 @@
 			{
 				try
 				{
-					Directory.Delete(directory, true);
-					break;
+					if (Directory.Exists(directory))
+						Directory.Delete(directory, true);
+					return;
 				}
 				catch (IOException)
 				{
 					if (isRetry)
 						throw;
-
-					GC.Collect();
-					GC.WaitForPendingFinalizers();
-					isRetry = true;
 				}
+				catch (UnauthorizedAccessException)
+				{
+					if (isRetry)
+						throw;
+				}
+
+				TrackResourceUsage.Pending();
+
+				GC.Collect();
+				GC.WaitForPendingFinalizers();
+				isRetry = true;
 			}
 		}
 	}

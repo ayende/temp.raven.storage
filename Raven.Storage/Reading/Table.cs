@@ -73,7 +73,7 @@ namespace Raven.Storage.Reading
 								_filter.Dispose();
 							throw;
 						}
-						
+
 					}
 				}
 			}
@@ -174,7 +174,7 @@ namespace Raven.Storage.Reading
 			}
 
 			Block value;
-			if (_blockCache.TryGet(handle,out value))
+			if (_blockCache.TryGet(handle, out value))
 			{
 				return value.CreateIterator(_storageState.InternalKeyComparator);
 			}
@@ -193,6 +193,8 @@ namespace Raven.Storage.Reading
 				_indexBlock.Dispose();
 			if (_filter != null)
 				_filter.Dispose();
+			if (_blockCache != null)
+				_blockCache.Dispose();
 		}
 	}
 }
