@@ -80,7 +80,6 @@
     <Compile Include="AggregationEngine.cs" />
     <Compile Include="Aggregator.cs" />
     <Compile Include="EventData.cs" />
-    <Compile Include="LruCache.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TEMP\RobustEnumerator.cs" />
   </ItemGroup>

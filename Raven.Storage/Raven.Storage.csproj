@@ -138,6 +138,7 @@
     <Compile Include="Util\FileExtensions.cs" />
     <Compile Include="Util\Info.cs" />
     <Compile Include="Util\IOExtensions.cs" />
+    <Compile Include="Util\LruCache.cs" />
     <Compile Include="Util\StreamExtensions.cs" />
     <Compile Include="Util\TaskExtensions.cs" />
     <Compile Include="Util\TrackResourceUsage.cs" />

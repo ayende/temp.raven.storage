@@ -265,38 +265,9 @@
 				}
 
 				// Get the list of files to search in this level
-				IList<FileMetadata> files = Files[level];
-				if (level == 0)
-				{
-					// Level-0 files may overlap each other.  Find all files that
-					// overlap user_key and process them in order from newest to oldest.
-					var tempFiles =
-						files.Where(
-							f =>
-							storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, f.SmallestKey.UserKey) >= 0
-							&& storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, f.LargestKey.UserKey) <= 0)
-							 .OrderByDescending(x => x.FileNumber);
-
-					if (!tempFiles.Any())
-					{
-						continue;
-					}
-
-					files = tempFiles.ToList();
-				}
-				else
-				{
-					// Binary search to find earliest index whose largest key >= ikey.
-					int index;
-					if (Files[level].TryFindFile(internalKey.TheInternalKey, storageContext.InternalKeyComparator, out index) == false)
-					{
-						files = new List<FileMetadata>();
-					}
-					else
-					{
-						files = storageContext.InternalKeyComparator.UserComparator.Compare(internalKey.UserKey, files[index].SmallestKey.UserKey) < 0 ? new List<FileMetadata>() : files.Skip(index).ToList();
-					}
-				}
+				var files = GetRelevantFilesForLevel(level, internalKey);
+				if (files == null || files.Count == 0)
+					continue;
 
 				foreach (var f in files)
 				{
@@ -336,6 +307,33 @@
 
 			stream = null;
 			return false;
+		}
+
+		private List<FileMetadata> GetRelevantFilesForLevel(int level, InternalKey internalKey)
+		{
+			var files = Files[level];
+			var comparator = storageContext.InternalKeyComparator.UserComparator;
+			if (level == 0)
+			{
+				// Level-0 files may overlap each other.  Find all files that
+				// overlap user_key and process them in order from newest to oldest.
+				var tempFiles = files.Where(
+							f => comparator.Compare(internalKey.UserKey, f.SmallestKey.UserKey) >= 0 && 
+								 comparator.Compare(internalKey.UserKey, f.LargestKey.UserKey) <= 0)
+					     .OrderByDescending(x => x.FileNumber)
+						 .ToList();
+
+				return tempFiles.ToList();
+			}
+			// Binary search to find earliest index whose largest key >= ikey.
+			int index;
+			if (Files[level].TryFindFile(internalKey.TheInternalKey, storageContext.InternalKeyComparator, out index) == false)
+			{
+				return null;
+			}
+			int compare = comparator.Compare(internalKey.UserKey,
+			                                 files[index].SmallestKey.UserKey);
+			return compare < 0 ? null : files.Skip(index).ToList();
 		}
 	}
 }

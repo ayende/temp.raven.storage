@@ -47,7 +47,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				using (var table = new Table(state, new FileData(new MemoryMappedFileAccessor(mmf), length)))
+				using (var table = new Table(state, new FileData(new MemoryMappedFileAccessor(name, mmf), length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < 10; i++)
@@ -94,7 +94,7 @@ namespace Raven.Storage.Tests.SST
 			using (var mmf = MemoryMappedFile.CreateFromFile(name, FileMode.Open))
 			{
 				var length = new FileInfo(name).Length;
-				using (var table = new Table(state, new FileData(new MemoryMappedFileAccessor(mmf), length)))
+				using (var table = new Table(state, new FileData(new MemoryMappedFileAccessor(name, mmf), length)))
 				using (var iterator = table.CreateIterator(new ReadOptions()))
 				{
 					for (int i = 0; i < count; i++)

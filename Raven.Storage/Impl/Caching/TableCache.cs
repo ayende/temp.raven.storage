@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.MemoryMappedFiles;
@@ -21,10 +22,12 @@ namespace Raven.Storage.Impl.Caching
 		private readonly ReaderWriterLockSlim slim = new ReaderWriterLockSlim();
 
 		private readonly StorageState state;
+		private LruCache<ulong,TableAndFile> _cache;
 
 		public TableCache(StorageState state)
 		{
 			this.state = state;
+			_cache = new LruCache<ulong, TableAndFile>(state.Options.MaxTablesCacheSize);
 		}
 
 		public IIterator NewIterator(ReadOptions options, ulong fileNumber, long fileSize)
@@ -44,15 +47,13 @@ namespace Raven.Storage.Impl.Caching
 
 		private TableAndFile FindTable(ulong fileNumber, long fileSize)
 		{
-			string key = fileNumber.ToString(CultureInfo.InvariantCulture);
-
 			slim.EnterReadLock();
 			try
 			{
-				var o = state.Options.TableCache.Get(key);
-				if (o != null)
+				TableAndFile file;
+				if (_cache.TryGet(fileNumber, out file))
 				{
-					return (TableAndFile)o;
+					return file;
 				}
 			}
 			finally
@@ -63,10 +64,10 @@ namespace Raven.Storage.Impl.Caching
 			slim.EnterWriteLock();
 			try
 			{
-				var o = state.Options.TableCache.Get(key);
-				if (o != null)
+				TableAndFile value;
+				if (_cache.TryGet(fileNumber, out value))
 				{
-					return (TableAndFile)o;
+					return value;
 				}
 
 				var filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
@@ -77,10 +78,7 @@ namespace Raven.Storage.Impl.Caching
 
 				var tableAndFile = new TableAndFile(fileData, table);
 
-				state.Options.TableCache.Add(key, tableAndFile, new CacheItemPolicy
-				{
-					RemovedCallback = CacheRemovedCallback
-				});
+				_cache.Set(fileNumber, tableAndFile);
 
 				return tableAndFile;
 			}
@@ -91,29 +89,10 @@ namespace Raven.Storage.Impl.Caching
 
 		}
 
-		private static void CacheRemovedCallback(CacheEntryRemovedArguments arguments)
-		{
-			var disposable = arguments.CacheItem.Value as IDisposable;
-			if (disposable == null)
-				return;
-
-			try
-			{
-				disposable.Dispose();
-			}
-			catch (Exception)
-			{
-				// we can't allow exception to escape from here, since this may be happening on the cache thread
-			}
-		}
 
 		public void Evict(ulong fileNumber)
 		{
-			string key = fileNumber.ToString(CultureInfo.InvariantCulture);
-			if (state.Options.TableCache.Contains(key))
-			{
-				state.Options.TableCache.Remove(key);
-			}
+			_cache.Remove(fileNumber);
 		}
 
 		public ItemState Get(InternalKey key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator,
@@ -163,25 +142,7 @@ namespace Raven.Storage.Impl.Caching
 
 		public void Dispose()
 		{
-			foreach (var item in state.Options.BlockCache)
-			{
-				var block = item.Value as Block;
-				if (block != null)
-				{
-					block.Dispose();
-				}
-			}
-			foreach (var item in state.Options.TableCache)
-			{
-				var tableAndFile = item.Value as TableAndFile;
-				if (tableAndFile != null)
-				{
-					if (tableAndFile.FileData != null && tableAndFile.FileData.File != null)
-						tableAndFile.FileData.File.Dispose();
-					if (tableAndFile.Table != null)
-						tableAndFile.Table.Dispose();
-				}
-			}
+			_cache.Dispose();
 		}
 	}
 

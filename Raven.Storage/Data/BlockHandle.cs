@@ -36,11 +36,6 @@ namespace Raven.Storage.Data
         public long Position { get; set; }
         public long Count { get; set; }
 
-	    public string CacheKey
-	    {
-		    get { return "BlockHandle: " + Position + "/" + Count; }
-	    }
-
 	    public Stream AsStream()
         {
             var ms = new MemoryStream();

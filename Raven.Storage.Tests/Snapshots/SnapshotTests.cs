@@ -57,15 +57,13 @@ namespace Raven.Storage.Tests.Snapshots
 
 				var writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s1);
-
-				storage.Writer.WriteAsync(writeBatch).Wait();
+				await storage.Writer.WriteAsync(writeBatch);
 
 				var snapshot = await storage.Commands.CreateSnapshotAsync();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
-
-				storage.Writer.WriteAsync(writeBatch).Wait();
+				await storage.Writer.WriteAsync(writeBatch);
 
 				AssertEqual(str2, storage.Reader.Read("key1"));
 				AssertEqual(str1, storage.Reader.Read("key1", new ReadOptions

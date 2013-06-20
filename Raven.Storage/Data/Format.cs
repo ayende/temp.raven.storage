@@ -3,7 +3,7 @@
 	public static class Format
 	{
 		/// <summary>
-		/// we leave 8 bits empty at the bottom so a type & a sequence
+		/// we leave 8 bits empty at the bottom so a type and a sequence
 		/// can be packed to gether into 64 bits
 		/// </summary>
 		public const ulong MaxSequenceNumber = (0x1ul << 56) - 1;

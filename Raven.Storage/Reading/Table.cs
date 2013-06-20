@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.MemoryMappedFiles;
-using System.Runtime.Caching;
 using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Exceptions;
 using Raven.Storage.Filtering;
 using Raven.Storage.Impl;
+using Raven.Storage.Util;
 
 namespace Raven.Storage.Reading
 {
@@ -17,6 +16,7 @@ namespace Raven.Storage.Reading
 		private readonly FileData _fileData;
 		private readonly Block _indexBlock;
 		private readonly IFilter _filter;
+		private LruCache<BlockHandle, Block> _blockCache;
 
 		public Table(StorageState storageState, FileData fileData)
 		{
@@ -24,6 +24,11 @@ namespace Raven.Storage.Reading
 			try
 			{
 				_fileData = fileData;
+
+				if (_storageState.Options.MaxBlockCacheSizePerTableFile > 0)
+				{
+					_blockCache = new LruCache<BlockHandle, Block>(_storageState.Options.MaxBlockCacheSizePerTableFile);
+				}
 
 				if (fileData.Size < Footer.EncodedLength)
 					throw new CorruptedDataException("File is too short to be an sstable");
@@ -147,9 +152,7 @@ namespace Raven.Storage.Reading
 
 		internal IIterator CreateBlockIterator(ReadOptions readOptions, BlockHandle handle)
 		{
-			var blockCache = _storageState.Options.BlockCache;
-
-			if (blockCache == null)
+			if (_blockCache == null)
 			{
 				Block uncachedBlock = null;
 				IIterator blockIterator = null;
@@ -170,36 +173,17 @@ namespace Raven.Storage.Reading
 				}
 			}
 
-			var cacheKey = handle.CacheKey;
-			var cachedBlock = blockCache.Get(cacheKey) as Block;
-			if (cachedBlock != null)
+			Block value;
+			if (_blockCache.TryGet(handle,out value))
 			{
-				return cachedBlock.CreateIterator(_storageState.InternalKeyComparator);
+				return value.CreateIterator(_storageState.InternalKeyComparator);
 			}
 			var block = new Block(_storageState.Options, readOptions, handle, _fileData);
 			block.IncrementUsage(); // the cache is using this, so avoid having it disposed by the cache while in use
-			blockCache.Set(cacheKey, block, new CacheItemPolicy
-				{
-					RemovedCallback = CacheRemovedCallback
-				});
+			_blockCache.Set(handle, block);
 			return block.CreateIterator(_storageState.InternalKeyComparator);
 		}
 
-		private void CacheRemovedCallback(CacheEntryRemovedArguments arguments)
-		{
-			var disposable = arguments.CacheItem.Value as IDisposable;
-			if (disposable == null)
-				return;
-
-			try
-			{
-				disposable.Dispose();
-			}
-			catch (Exception)
-			{
-				// we can't allow exception to escape from here, since this may be happening on the cache thread
-			}
-		}
 
 		public void Dispose()
 		{

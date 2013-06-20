@@ -16,6 +16,7 @@ using Raven.Storage;
 using Raven.Storage.Data;
 using Raven.Storage.Impl;
 using Raven.Storage.Reading;
+using Raven.Storage.Util;
 
 namespace Raven.Aggregation
 {

@@ -117,7 +117,7 @@ namespace Raven.Storage.Tests.Filtering
 
 			var accessor = memoryMappedFile.CreateViewAccessor(0, stream.Length, MemoryMappedFileAccess.Read);
 			disposables.Add(accessor);
-			return new MemoryMappedFileArrayAccessor(accessor);
+			return new MemoryMappedFileArrayAccessor("test", accessor);
 		}
 
 		public void Dispose()
