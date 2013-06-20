@@ -40,6 +40,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		protected Task RunCompactionAsync(AsyncLock.LockScope locker)
 		{
+			Debug.Assert(state.BackgroundCompactionScheduled);
 			state.BackgroundTask = Task.Factory.StartNew(async () =>
 				{
 					await locker.LockAsync();
@@ -215,7 +216,9 @@ namespace Raven.Storage.Impl.Compactions
 							compactionState.CurrentOutput.SmallestKey = new InternalKey(key.Clone());
 
 						compactionState.CurrentOutput.LargestKey = new InternalKey(key.Clone());
-						compactionState.Builder.Add(key, input.CreateValueStream());
+
+						using (var stream = input.CreateValueStream())
+							compactionState.Builder.Add(key, stream);
 
 						FinishCompactionOutputFileIfNecessary(compactionState, input);
 					}
