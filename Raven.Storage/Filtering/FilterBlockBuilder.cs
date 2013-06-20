@@ -8,7 +8,7 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage.Filtering
 {
-	public class FilterBlockBuilder
+	public class FilterBlockBuilder : IDisposable
 	{
 		const byte FilterBaseLg = 11;
 		// Generate new filter every 2KB of data
@@ -95,6 +95,13 @@ namespace Raven.Storage.Filtering
 				};
 		}
 
-		
+
+		public void Dispose()
+		{
+			foreach (var slice in _slices)
+			{
+				_bufferPool.Return(slice.Array);
+			}
+		}
 	}
 }

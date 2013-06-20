@@ -103,7 +103,7 @@ namespace Raven.Storage.Reading
 			{
 				_comparator = comparator;
 				_parent = parent;
-				_keyBuffer = new byte[_parent._storageOptions.MaximumExpectedKeySize];
+				_keyBuffer = _parent._storageOptions.BufferPool.Take(_parent._storageOptions.MaximumExpectedKeySize);
 			}
 
 			private void SeekToRestartPoint(int index)
@@ -172,10 +172,7 @@ namespace Raven.Storage.Reading
 
 			private void CreateNewBuffer(int shared, int nonShared)
 			{
-				int size = Info.GetPowerOfTwo(shared + nonShared);
-				byte[] keyBuffer = new byte[size];
-				Buffer.BlockCopy(_keyBuffer, 0, keyBuffer, 0, shared);
-				_keyBuffer = keyBuffer;
+				_keyBuffer = _parent._storageOptions.BufferPool.Take(shared + nonShared);
 			}
 
 			public bool IsValid { get; private set; }
@@ -293,6 +290,8 @@ namespace Raven.Storage.Reading
 
 			public void Dispose()
 			{
+				_parent._storageOptions.BufferPool.Return(_keyBuffer);
+				_keyBuffer = null;
 				_parent.Dispose();
 			}
 		}

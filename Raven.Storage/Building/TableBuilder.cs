@@ -47,8 +47,8 @@ namespace Raven.Storage.Building
 				_indexStream = tempStreamGenerator();
 				_originalIndexStreamPosition = _indexStream.Position;
 
-				_lastKeyBuffer = new byte[storageState.Options.MaximumExpectedKeySize];
-				_scratchBuffer = new byte[storageState.Options.MaximumExpectedKeySize];
+				_lastKeyBuffer = _storageState.Options.BufferPool.Take(storageState.Options.MaximumExpectedKeySize);
+				_scratchBuffer = _storageState.Options.BufferPool.Take(storageState.Options.MaximumExpectedKeySize);
 
 				if (storageState.Options.FilterPolicy != null)
 				{
@@ -106,7 +106,7 @@ namespace Raven.Storage.Building
 				_filterBuilder.Add(key);
 
 			_numEntries++;
-			_lastKey = new Slice(ref _lastKeyBuffer, key);
+			_lastKey = new Slice(ref _lastKeyBuffer, key, _storageState.Options.BufferPool);
 			
 			_dataBlock.Add(key, value);
 
@@ -209,11 +209,26 @@ namespace Raven.Storage.Building
 			block.Stream.WriteByte(0); // type - uncompressed
 			_dataStream.WriteInt32(Crc.Mask(block.Stream.WriteCrc));
 
+			
+			block.Dispose();
+
 			return handle;
 		}
 
 		public void Dispose()
 		{
+			_storageState.Options.BufferPool.Return(_lastKeyBuffer);
+			_storageState.Options.BufferPool.Return(_scratchBuffer);
+
+			_lastKeyBuffer = null;
+			_scratchBuffer = null;
+
+			if(_indexBlock != null)
+				_indexBlock.Dispose();
+			if(_dataBlock != null)
+				_dataBlock.Dispose();
+			if (_filterBuilder != null)
+				_filterBuilder.Dispose();
 			if (_indexStream != null)
 				_indexStream.Dispose();
 			if (_filterBlockStream != null)
