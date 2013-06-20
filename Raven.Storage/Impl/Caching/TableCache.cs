@@ -3,12 +3,12 @@ using System.Globalization;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.Caching;
-using Raven.Abstractions.Logging;
 using Raven.Storage.Comparing;
 using Raven.Storage.Data;
 using Raven.Storage.Memory;
 using Raven.Storage.Reading;
 using Raven.Storage.Util;
+using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl.Caching
 {

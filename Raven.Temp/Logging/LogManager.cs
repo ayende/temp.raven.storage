@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Raven.Abstractions.Extensions;
-using Raven.Abstractions.Logging.LogProviders;
+using Raven.Temp.Logging.LogProviders;
 
-namespace Raven.Abstractions.Logging
+namespace Raven.Temp.Logging
 {
 	public static class LogManager
 	{

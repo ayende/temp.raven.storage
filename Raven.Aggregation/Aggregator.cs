@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Raven.Abstractions.Data;
 using Raven.Abstractions.Linq;
+using Raven.Abstractions.Logging;
+using Raven.Aggregation.TEMP;
 using Raven.Database.Linq;
 using System.Linq;
 using Raven.Imports.Newtonsoft.Json;
@@ -13,11 +15,14 @@ using Raven.Json.Linq;
 using Raven.Storage;
 using Raven.Storage.Data;
 using Raven.Storage.Impl;
+using Raven.Storage.Reading;
 
 namespace Raven.Aggregation
 {
 	public class Aggregator : IDisposable
 	{
+		private ILog Log = LogManager.GetCurrentClassLogger();
+
 		private readonly AggregationEngine _aggregationEngine;
 		private readonly string _name;
 		private readonly AbstractViewGenerator _generator;
@@ -29,9 +34,10 @@ namespace Raven.Aggregation
 		private readonly TaskCompletionSource<object> _disposedCompletionSource = new TaskCompletionSource<object>();
 		private volatile bool _disposed;
 	    private readonly Slice _aggStat;
+		private AggregateException _aggregateException;
 
 
-	    public Aggregator(AggregationEngine aggregationEngine, string name, AbstractViewGenerator generator)
+		public Aggregator(AggregationEngine aggregationEngine, string name, AbstractViewGenerator generator)
 		{
 			_aggregationEngine = aggregationEngine;
 			_name = name;
@@ -58,15 +64,22 @@ namespace Raven.Aggregation
 
 		public void StartAggregation()
 		{
-			_aggregationTask = AggregateAsync();
+			_aggregationTask = AggregateAsync()
+				.ContinueWith(task =>
+					{
+						if (!task.IsFaulted) 
+							return;
+						Log.ErrorException("An error occured when running background aggregation for " + _name + ", the aggregation has been DISABLED", task.Exception);
+						_aggregateException = task.Exception;
+					});
 		}
 
 		private async Task AggregateAsync()
 		{
 			var lastAggregatedEtag = (Etag) _lastAggregatedEtag;
-			while (_aggregationEngine.DoWork)
+			while (_aggregationEngine.CancellationToken.IsCancellationRequested == false)
 			{
-				var eventDatas = (await _aggregationEngine.Events(lastAggregatedEtag)).Take(1024)
+				var eventDatas = _aggregationEngine.Events(lastAggregatedEtag).Take(1024)
 					.ToArray();
 				if (eventDatas.Length == 0)
 				{
@@ -74,71 +87,12 @@ namespace Raven.Aggregation
 					continue;
 				}
 				var items = eventDatas.Select(x => new DynamicJsonObject(x.Data)).ToArray();
-				var results = _generator.MapDefinitions
-					.SelectMany(indexingFunc => indexingFunc(items))
-					.ToList();
-
-				var groupedByReduceKey = results.GroupBy(x =>
-					{
-						var reduceKey = _generator.GroupByExtraction(x);
-						if (reduceKey == null)
-							return "@null";
-						var ravenJToken = RavenJToken.FromObject(reduceKey);
-						if (ravenJToken.Type == JTokenType.String)
-							return ravenJToken.Value<string>();
-						return ravenJToken.ToString(Formatting.None);
-					})
-						.ToArray();
 
 				var writeBatch = new WriteBatch();
-				foreach (var grouping in groupedByReduceKey)
-				{
-					Slice key = "results/" + _name + "/" + grouping.Key;
-					RavenJToken currentStatus;
-					if (_cache.TryGet(grouping.Key, out currentStatus) == false)
-					{
-						using (var stream = _aggregationEngine.Storage.Reader.Read(key))
-						{
-							if (stream != null)
-							{
-								currentStatus = RavenJToken.ReadFrom(new JsonTextReader(new StreamReader(stream)));
-							}
-						}
-					}
 
-					IEnumerable<dynamic> groupedResults = grouping;
-					if (currentStatus != null)
-					{
-						switch (currentStatus.Type)
-						{
-							case JTokenType.Array:
-								groupedResults = groupedResults.Concat(((RavenJArray) currentStatus).Select(x => new DynamicJsonObject((RavenJObject)x)));
-								break;
-							case JTokenType.Object:
-								groupedResults = grouping.Concat(new dynamic[] {new DynamicJsonObject((RavenJObject)currentStatus)});
-								break;
-						}
-					}
-
-					var reduceResults = _generator.ReduceDefinition(groupedResults).ToArray();
-
-					RavenJToken finalResult;
-					switch (reduceResults.Length)
-					{
-						case 0:
-							throw new InvalidOperationException("How did this happen? No results were gotten from the reduce!");
-						case 1:
-							finalResult = RavenJObject.FromObject(reduceResults[0]);
-							break;
-						default:
-							finalResult = new RavenJArray(reduceResults.Select(x => RavenJObject.FromObject(x)));
-							break;
-					}
-                    finalResult.EnsureCannotBeChangeAndEnableSnapshotting();
-					_cache.Set(grouping.Key, finalResult);
-					writeBatch.Put(key, AggregationEngine.RavenJTokenToStream(finalResult));
-				}
-
+				var groupedByReduceKey = ExecuteMaps(items);
+				ExecuteReduce(groupedByReduceKey, writeBatch);
+			
 				lastAggregatedEtag = eventDatas.Last().Etag;
 				
 				var status = new RavenJObject { { "@etag", lastAggregatedEtag.ToString() } };
@@ -149,6 +103,106 @@ namespace Raven.Aggregation
 
 				_aggregationCompleted.PulseAll();
 			}
+		}
+
+		private void ExecuteReduce(IEnumerable<IGrouping<dynamic, object>> groupedByReduceKey, WriteBatch writeBatch)
+		{
+			foreach (var grouping in groupedByReduceKey)
+			{
+				string reduceKey = grouping.Key;
+				Slice key = "results/" + _name + "/" + reduceKey;
+				var groupedResults = GetItemsToReduce(reduceKey, key, grouping);
+
+				var robustEnumerator = new RobustEnumerator2(_aggregationEngine.CancellationToken, 50)
+					{
+						OnError = (exception, o) =>
+						          Log.WarnException("Could not process reduce for aggregation " + _name + Environment.NewLine + o,
+						                            exception)
+					};
+
+				var reduceResults =
+					robustEnumerator.RobustEnumeration(groupedResults.GetEnumerator(), _generator.ReduceDefinition).ToArray();
+
+				RavenJToken finalResult;
+				switch (reduceResults.Length)
+				{
+					case 0:
+						Log.Warn("FLYING PIGS!!! Could not find any results for a reduce on key {0} for aggregator {1}. Should not happen", reduceKey, _name);
+						finalResult = new RavenJObject {{"Error", "Invalid reduce result was generated"}};
+						break;
+					case 1:
+						finalResult = RavenJObject.FromObject(reduceResults[0]);
+						break;
+					default:
+						finalResult = new RavenJArray(reduceResults.Select(RavenJObject.FromObject));
+						break;
+				}
+				finalResult.EnsureCannotBeChangeAndEnableSnapshotting();
+				_cache.Set(reduceKey, finalResult);
+				writeBatch.Put(key, AggregationEngine.RavenJTokenToStream(finalResult));
+			}
+		}
+
+		private IEnumerable<dynamic> GetItemsToReduce(dynamic reduceKey, Slice key, IGrouping<dynamic, object> grouping)
+		{
+			RavenJToken currentStatus;
+			if (_cache.TryGet(reduceKey, out currentStatus) == false)
+			{
+				using (var stream = _aggregationEngine.Storage.Reader.Read(key))
+				{
+					if (stream != null)
+					{
+						currentStatus = RavenJToken.ReadFrom(new JsonTextReader(new StreamReader(stream)));
+					}
+				}
+			}
+
+			IEnumerable<dynamic> groupedResults = grouping;
+			if (currentStatus != null)
+			{
+				switch (currentStatus.Type)
+				{
+					case JTokenType.Array:
+						groupedResults =
+							groupedResults.Concat(((RavenJArray) currentStatus).Select(x => new DynamicJsonObject((RavenJObject) x)));
+						break;
+					case JTokenType.Object:
+						groupedResults = grouping.Concat(new dynamic[] {new DynamicJsonObject((RavenJObject) currentStatus)});
+						break;
+				}
+			}
+			return groupedResults;
+		}
+
+		private IGrouping<dynamic, object>[] ExecuteMaps(IEnumerable<object> items)
+		{
+			var robustEnumerator = new RobustEnumerator2(_aggregationEngine.CancellationToken, 50)
+				{
+					OnError = (exception, o) => 
+						Log.WarnException("Could not process maps event for aggregator: " + _name + Environment.NewLine + o, exception)
+				};
+
+			var results = robustEnumerator
+				.RobustEnumeration(items.GetEnumerator(), _generator.MapDefinitions)
+			    .ToList();
+
+			var reduced = robustEnumerator.RobustEnumeration(results.GetEnumerator(), _generator.ReduceDefinition);
+
+			var groupedByReduceKey = reduced.GroupBy(x =>
+				{
+					var reduceKey = _generator.GroupByExtraction(x);
+					if (reduceKey == null)
+						return "@null";
+					var s = reduceKey as string;
+					if (s != null)
+						return s;
+					var ravenJToken = RavenJToken.FromObject(reduceKey);
+					if (ravenJToken.Type == JTokenType.String)
+						return ravenJToken.Value<string>();
+					return ravenJToken.ToString(Formatting.None);
+				})
+			                                .ToArray();
+			return groupedByReduceKey;
 		}
 
 		public void Dispose()
@@ -174,6 +228,9 @@ namespace Raven.Aggregation
 
 		public RavenJToken AggregationResultFor(string item)
 		{
+			if (_aggregateException != null)
+				throw new AggregateException(_aggregateException.InnerExceptions);
+
 			RavenJToken value;
 			if (_cache.TryGet(item, out value))
 				return value.CreateSnapshot();
@@ -205,6 +262,28 @@ namespace Raven.Aggregation
 			_aggregationCompleted.Dispose();
 			if (_aggregationTask != null)
 				await _aggregationTask;
+		}
+
+		public IEnumerable<ReductionData> AggregationResults()
+		{
+			using (var it = _aggregationEngine.Storage.Reader.NewIterator(new ReadOptions()))
+			{
+				Slice prefix = "results/" + _name + "/";
+				it.Seek(prefix);
+				while(it.WithPrefix(prefix))
+				{
+					using (var stream = it.CreateValueStream())
+					{
+						var ravenJToken = RavenJToken.ReadFrom(new JsonTextReader(new StreamReader(stream)));
+						yield return new ReductionData
+							{
+								Data = ravenJToken,
+								ReduceKey = it.Key.ToString()
+							};
+					}
+					it.Next();
+				}
+			}
 		}
 	}
 }

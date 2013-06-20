@@ -101,6 +101,7 @@
     <Compile Include="Memory\MemoryAccessor.cs" />
     <Compile Include="Memtable\MemoryIterator.cs" />
     <Compile Include="Reading\Direction.cs" />
+    <Compile Include="Reading\IteratorExtensions.cs" />
     <Compile Include="Reading\LevelFileNumIterator.cs" />
     <Compile Include="Reading\MergingIterator.cs" />
     <Compile Include="Reading\LogReadResult.cs" />

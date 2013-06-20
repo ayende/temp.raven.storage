@@ -16,6 +16,7 @@ namespace Raven.Storage.Tests.Recovery
 
 	public class RecoveryTests : StorageTestBase
 	{
+
 		[Fact]
 		public async Task CanOpenAndCloseWithUpdate()
 		{

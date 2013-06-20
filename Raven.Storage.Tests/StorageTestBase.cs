@@ -21,7 +21,7 @@ namespace Raven.Storage.Tests
 			storages = new List<Storage>();
 		}
 
-		public async Task<Storage> NewStorageAsync(StorageOptions storageOptions = null)
+		public async Task<Storage> NewStorageAsync(StorageOptions storageOptions = null, FileSystem fileSystem = null)
 		{
 			if (storageOptions == null)
 				storageOptions = new StorageOptions();
@@ -29,7 +29,7 @@ namespace Raven.Storage.Tests
 			string name = string.Format("TestStorage-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid());
 			var storage = new Storage(new StorageState(name, storageOptions)
 				{
-					FileSystem = new InMemoryFileSystem(name)
+					FileSystem = fileSystem ?? new InMemoryFileSystem(name)
 				});
 			await storage.InitAsync();
 			storages.Add(storage);
@@ -62,7 +62,8 @@ namespace Raven.Storage.Tests
 			{
 				try
 				{
-					Directory.Delete(directory, true);
+					if (Directory.Exists(directory))
+						Directory.Delete(directory, true);
 					return;
 				}
 				catch (IOException)

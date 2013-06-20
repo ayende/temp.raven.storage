@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-
-using Raven.Abstractions.Logging;
 using Raven.Storage.Building;
 using Raven.Storage.Data;
 using Raven.Storage.Memtable;
 using Raven.Storage.Reading;
+using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl.Compactions
 {

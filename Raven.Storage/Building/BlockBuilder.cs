@@ -44,16 +44,18 @@ namespace Raven.Storage.Building
         private int _size;
         private bool _finished;
 	    private readonly IComparator _comparator;
+	    private readonly int _blockRestartInterval;
 
-		public BlockBuilder(Stream stream, StorageState storageState, IComparator comparator)
+	    public BlockBuilder(Stream stream, StorageState storageState, IComparator comparator, int blockRestartInterval)
         {
 	        _storageState = storageState;
-			if (_storageState.Options.BlockRestartInterval < 1)
+			if (blockRestartInterval < 1)
                 throw new InvalidOperationException("BlockRestartInternal must be >= 1");
             _stream = new CrcStream(stream);
             IsEmpty = true;
             OriginalPosition = stream.Position;
 	        _comparator = comparator;
+			_blockRestartInterval = blockRestartInterval;
 			_lastKeyBuffer = new byte[storageState.Options.MaximumExpectedKeySize];
         }
 
@@ -85,7 +87,7 @@ namespace Raven.Storage.Building
             IsEmpty = false;
 
             int shared = 0;
-			if (_counter < _storageState.Options.BlockRestartInterval)
+			if (_counter < _blockRestartInterval)
             {
                 // let us see how much we can share with the prev string
 				// intentionally using the user key comparator and not the internal key comparator
@@ -94,7 +96,7 @@ namespace Raven.Storage.Building
             else
             {
                 // restart compression
-                _restarts.Add(_size);
+                 _restarts.Add(_size);
                 _counter = 0;
             }
             int nonShared = key.Count - shared;

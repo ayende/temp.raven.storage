@@ -52,11 +52,11 @@
 		private void Report(BenchmarkResultSet result, BenchmarkParameters parameters)
 		{
 			Output("Report for benchmark:		{0}", result.Benchmark);
-			Output("Bytes:				{0}", result.TotalBytes);
+			Output("Bytes:				{0:#,#;;0} kb", result.TotalBytes / 1024);
 			Output("Time (seconds):			{0:00}", result.ElapsedSeconds);
 			Output("Rate:				{0}", result.Rate);
-			Output("Operations:			{0}", result.TotalOperations);
-			Output("Operations per second:		{0:0} op/s", result.TotalOperations / result.ElapsedSeconds);
+			Output("Operations:			{0:#,#;;0}", result.TotalOperations);
+			Output("Operations per second:		{0:#,#;;0} op/s", result.TotalOperations / result.ElapsedSeconds);
 			Output("Milliseconds per op:		{0:0.00000} ms/op", result.ElapsedMilliseconds / (double)result.TotalOperations);
 
 			if (parameters.Histogram)
@@ -317,7 +317,7 @@
 			return result;
 		}
 
-		private async Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var found = 0;
@@ -326,7 +326,7 @@
 
 			for (var i = 0; i < parameters.Reads; i++)
 			{
-				using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+				using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 				{
 					var k = random.Next() % options.Num;
 					var key = string.Format("{0:0000000000000000}", k);
@@ -342,10 +342,10 @@
 
 			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadMissing(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var result = new BenchmarkResult(parameters);
@@ -359,10 +359,10 @@
 				result.FinishOperation();
 			}
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadRandom(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var found = 0;
@@ -382,13 +382,13 @@
 
 			result.AddMessage(string.Format("({0} of {1} found)", found, parameters.Num));
 
-			return result;
+			return Task.FromResult(result);
 		}
 
-		private async Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadReverse(BenchmarkParameters parameters)
 		{
 			var result = new BenchmarkResult(parameters);
-			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+			using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 			{
 				var i = 0;
 				long bytes = 0;
@@ -400,14 +400,14 @@
 				}
 
 				result.AddBytes(bytes);
-				return result;
+				return Task.FromResult(result);
 			}
 		}
 
-		private async Task<BenchmarkResult> ReadSequential(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadSequential(BenchmarkParameters parameters)
 		{
 			var result = new BenchmarkResult(parameters);
-			using (var iterator = await storage.Reader.NewIteratorAsync(new ReadOptions()))
+			using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 			{
 				var i = 0;
 				long bytes = 0;
@@ -419,7 +419,7 @@
 				}
 
 				result.AddBytes(bytes);
-				return result;
+				return Task.FromResult(result);
 			}
 		}
 
@@ -496,10 +496,10 @@
 			Output(Constants.Separator);
 
 			const int KeySize = 16;
-			Output("Keys:				{0} bytes each", KeySize);
-			Output("Values:				{0} bytes each", options.ValueSize);
-			Output("Entries:			{0}", options.Num);
-			Output("File Size:			{0:0} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
+			Output("Keys:				{0:#,#} bytes each", KeySize);
+			Output("Values:				{0:#,#} bytes each", options.ValueSize);
+			Output("Entries:			{0:#,#}", options.Num);
+			Output("File Size:			{0:#,#} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
 			Output(Constants.Separator);
 
 			PrintWarnings();

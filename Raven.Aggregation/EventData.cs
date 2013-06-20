@@ -8,4 +8,10 @@ namespace Raven.Aggregation
 		public Etag Etag;
 		public RavenJObject Data;
 	}
+
+	public class ReductionData
+	{
+		public RavenJToken Data;
+		public string ReduceKey;
+	}
 }

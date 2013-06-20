@@ -17,6 +17,7 @@ using Raven.Storage.Data;
 using Raven.Storage.Impl;
 using Raven.Storage.Reading;
 using Raven.Storage.Util;
+using System.Linq;
 
 namespace Raven.Aggregation
 {
@@ -26,13 +27,14 @@ namespace Raven.Aggregation
 		private readonly ConcurrentDictionary<string, Aggregator> _aggregations
 			= new ConcurrentDictionary<string, Aggregator>(StringComparer.InvariantCultureIgnoreCase);
 
+
+		private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 		private readonly Storage.Storage _storage;
 		private readonly string _path;
 		private readonly SequentialUuidGenerator _sequentialUuidGenerator;
 
 		private Etag _lastGeneratedEtag;
 		private readonly AsyncEvent _appendEvent = new AsyncEvent();
-		private volatile bool _doWork;
 
 		public AggregationEngine(string path = null)
 		{
@@ -57,16 +59,10 @@ namespace Raven.Aggregation
 			get { return _lastGeneratedEtag; }
 		}
 
-		public bool DoWork
-		{
-			get { return _doWork; }
-		}
-
 		public async Task InitAsync()
 		{
-			_doWork = true;
 			await _storage.InitAsync();
-			using (var it = await _storage.Reader.NewIteratorAsync(new ReadOptions()))
+			using (var it = _storage.Reader.NewIterator(new ReadOptions()))
 			{
                 ReadLastEtagGenerated(it);
                 ReadAllAggregations(it);
@@ -116,21 +112,19 @@ namespace Raven.Aggregation
 		{
 			Slice prefix = "aggregators/";
 			it.Seek(prefix);
-			while (it.IsValid)
+			while(it.WithPrefix(prefix))
 			{
-				if (it.Key.StartsWith(prefix) == false)
-					break;
 				string name = Encoding.UTF8.GetString(it.Key.Array, it.Key.Offset, it.Key.Count);
 				using (var stream = it.CreateValueStream())
 				{
 					var indexDefinition =
 						new JsonSerializer().Deserialize<IndexDefinition>(new JsonTextReader(new StreamReader(stream)));
-                    _log.Info("Reading aggregator {0}", indexDefinition.Name);
-                    AbstractViewGenerator generator = null;
+					_log.Info("Reading aggregator {0}", indexDefinition.Name);
+					AbstractViewGenerator generator = null;
 					try
 					{
 						var dynamicViewCompiler = new DynamicViewCompiler(indexDefinition.Name, indexDefinition,
-						                                                  Path.Combine(_path, "Generators"));
+																		  Path.Combine(_path, "Generators"));
 						generator = dynamicViewCompiler.GenerateInstance();
 					}
 					catch (Exception e)
@@ -147,7 +141,6 @@ namespace Raven.Aggregation
 						Background.Work(aggregator.StartAggregation);
 					}
 				}
-
 				it.Next();
 			}
 		}
@@ -157,12 +150,11 @@ namespace Raven.Aggregation
 			throw new NotImplementedException();
 		}
 
-		private volatile bool _disposed;
 		private static Slice _eventsPrefix = "events/";
 
 		public void Dispose()
 		{
-			if (_disposed)
+			if (_cancellationTokenSource.IsCancellationRequested)
 				return;
 			ThreadPool.QueueUserWorkItem(_ => DisposeAsync());
 		}
@@ -250,16 +242,10 @@ namespace Raven.Aggregation
 			return etag;
 		}
 
-		public async Task<IEnumerable<EventData>> Events(Etag after)
+		public IEnumerable<EventData> Events(Etag after)
 		{
 			Slice key = "events/" + after.IncrementBy(1);
-			var it = await _storage.Reader.NewIteratorAsync(new ReadOptions());
-			return YieldEvents(key, it);
-		}
-
-		private static IEnumerable<EventData> YieldEvents(Slice key, IIterator it)
-		{
-			using (it)
+			using (var it = _storage.Reader.NewIterator(new ReadOptions()))
 			{
 				it.Seek(key);
 				while (it.IsValid)
@@ -293,19 +279,21 @@ namespace Raven.Aggregation
 			return _appendEvent.WaitAsync(callerState);
 		}
 
+		public CancellationToken CancellationToken
+		{
+			get { return _cancellationTokenSource.Token; }
+		}
+
 		public async Task DisposeAsync()
 		{
-			if (_disposed)
+			if (_cancellationTokenSource.IsCancellationRequested)
 				return;
 
-			_doWork = false;
-			_disposed = true;
+			_cancellationTokenSource.Cancel();
+
 			_appendEvent.Dispose();
 
-			foreach (var aggregation in _aggregations.Values)
-			{
-				await aggregation.DisposeAsync();
-			}
+			await Task.WhenAll(_aggregations.Values.Select(aggregator => aggregator.DisposeAsync()));
 
 			_storage.Dispose();
 		}
