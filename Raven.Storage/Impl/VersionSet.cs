@@ -1,20 +1,19 @@
-﻿using Raven.Storage.Building;
-using Raven.Storage.Exceptions;
-using Raven.Storage.Impl.Streams;
-using Raven.Temp.Logging;
-
-namespace Raven.Storage.Impl
+﻿namespace Raven.Storage.Impl
 {
 	using System;
 	using System.Collections.Generic;
 	using System.Diagnostics;
 	using System.IO;
 	using System.Linq;
-	using Comparing;
-	using Data;
-	using Compactions;
-	using Reading;
-	using Util;
+
+	using Raven.Storage.Building;
+	using Raven.Storage.Comparing;
+	using Raven.Storage.Data;
+	using Raven.Storage.Exceptions;
+	using Raven.Storage.Impl.Compactions;
+	using Raven.Storage.Impl.Streams;
+	using Raven.Storage.Reading;
+	using Raven.Temp.Logging;
 
 	public class VersionSet
 	{
@@ -291,7 +290,7 @@ namespace Raven.Storage.Impl
 						smallestKey = file.SmallestKey;
 					}
 
-					if (storageContext.InternalKeyComparator.Compare(file.LargestKey, largestKey) < 0)
+					if (storageContext.InternalKeyComparator.Compare(file.LargestKey, largestKey) > 0)
 					{
 						largestKey = file.LargestKey;
 					}

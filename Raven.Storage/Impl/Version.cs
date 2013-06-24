@@ -8,11 +8,13 @@
 	using Raven.Storage.Comparing;
 	using Raven.Storage.Data;
 	using Raven.Storage.Impl.Caching;
-	using Raven.Storage.Reading;
 	using Raven.Storage.Util;
+	using Raven.Temp.Logging;
 
 	public class Version
 	{
+		private readonly ILog log = LogManager.GetCurrentClassLogger();
+
 		private readonly IStorageContext storageContext;
 
 		private Version(IStorageContext storageContext)
@@ -148,11 +150,11 @@
 				var fileStart = f.SmallestKey.UserKey;
 				var fileLimit = f.LargestKey.UserKey;
 
-				if (userComparator.Compare(fileLimit, userBegin) < 0)
+				if (userBegin.IsEmpty() == false && userComparator.Compare(fileLimit, userBegin) < 0)
 				{
 					// "f" is completely before specified range; skip it
 				}
-				else if (userComparator.Compare(fileStart, userEnd) > 0)
+				else if (userEnd.IsEmpty() == false && userComparator.Compare(fileStart, userEnd) > 0)
 				{
 					// "f" is completely after specified range; skip it
 				}
@@ -163,13 +165,13 @@
 					{
 						// Level-0 files may overlap each other.  So check if the newly
 						// added file has expanded the range.  If so, restart search.
-						if (userComparator.Compare(fileStart, userBegin) < 0)
+						if (userBegin.IsEmpty() == false && userComparator.Compare(fileStart, userBegin) < 0)
 						{
 							userBegin = fileStart;
 							inputs.Clear();
 							i = 0;
 						}
-						else if (userComparator.Compare(fileLimit, userEnd) > 0)
+						else if (userEnd.IsEmpty() == false && userComparator.Compare(fileLimit, userEnd) > 0)
 						{
 							userEnd = fileLimit;
 							inputs.Clear();
