@@ -103,7 +103,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			if (IsManual == false && compaction.IsTrivialMove())
 			{
-				Debug.Assert(compaction.GetNumberOfInputFiles(0) == 0);
+				Debug.Assert(compaction.GetNumberOfInputFiles(0) == 1);
 				var file = compaction.GetInput(0, 0);
 				compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
 				compaction.Edit.AddFile(compaction.Level + 1, file);
