@@ -19,14 +19,21 @@
 		public Stream Generate(int size)
 		{
 			int next = random.Next(0, _buffer.Length);
-			return new RepeatingStream(_buffer, next, size);
+
+			var stream = new MemoryStream();
+			using (var repeatingStream = new RepeatingStream(_buffer, next, size))
+			{
+				repeatingStream.CopyTo(stream);
+			}
+
+			return stream;
 		}
 
 		public class RepeatingStream : Stream
 		{
-			private byte[] _buffer;
+			private readonly byte[] _buffer;
 			private int _offset;
-			private long _length;
+			private readonly long _length;
 
 			public RepeatingStream(byte[] buffer, int offset, long length)
 			{
@@ -60,7 +67,7 @@
 				Buffer.BlockCopy(_buffer, _offset, buffer, offset, countToRead);
 
 				_offset += countToRead;
-				if (_offset == _buffer.Length)
+				if (_offset >= _buffer.Length)
 					_offset = 0;
 				Position += countToRead;
 
@@ -72,10 +79,7 @@
 				throw new NotImplementedException();
 			}
 
-			public override bool CanRead
-			{
-				get { throw new NotImplementedException(); }
-			}
+			public override bool CanRead { get { return true; } }
 
 			public override bool CanSeek
 			{
