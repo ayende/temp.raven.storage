@@ -21,7 +21,7 @@ namespace Raven.Storage.Comparing
 				var cha = (char)a.Array[a.Offset + i];
 				var chb = (char)b.Array[b.Offset + i];
 
-				if (char.IsLetter(cha) && char.IsLetter(chb))
+				if (IsLetter(cha) && IsLetter(chb))
 				{
 					var diff = cha - chb;
 					if (diff == 0 || diff == 32 || diff == -32)
@@ -38,6 +38,11 @@ namespace Raven.Storage.Comparing
 			}
 
 			return a.Count - b.Count;
+		}
+
+		private static bool IsLetter(char c)
+		{
+			return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 		}
 
 		public int FindSharedPrefix(Slice a, Slice b)
