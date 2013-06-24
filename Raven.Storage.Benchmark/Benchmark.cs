@@ -523,7 +523,7 @@
 
 			Output("CPU:				{0}", CPUInfo.GetProcessorName());
 			Output("CPU Cores:			{0}", CPUInfo.GetNumberOfProcessors());
-			Output("CPU Cache:			{0}", CPUInfo.GetCacheSize(CacheLevel.Level1) + CPUInfo.GetCacheSize(CacheLevel.Level2) + CPUInfo.GetCacheSize(CacheLevel.Level3));
+			Output("CPU Cache:			{0} KB", CPUInfo.GetCacheSize(CacheLevel.Level3));
 		}
 
 		private void Output(string format, params object[] args)
