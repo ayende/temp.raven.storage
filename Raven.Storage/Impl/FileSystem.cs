@@ -91,6 +91,12 @@ namespace Raven.Storage.Impl
 			}
 			else
 			{
+				var extension = Path.GetExtension(file);
+				if (extension == Constants.Files.Extensions.TempFile && fileName.Length >= 37)
+				{
+					fileName = fileName.Substring(37, fileName.Length - 37);
+				}
+
 				ulong extractedNumber;
 				var toParse = Regex.Replace(fileName, @"[^\d]", string.Empty);
 
@@ -99,7 +105,7 @@ namespace Raven.Storage.Impl
 					return false;
 				}
 
-				switch (Path.GetExtension(file))
+				switch (extension)
 				{
 					case Constants.Files.Extensions.LogFile:
 						fileType = FileType.LogFile;
@@ -206,7 +212,7 @@ namespace Raven.Storage.Impl
 
 		public string GetTempFileName(ulong fileNumber)
 		{
-			return GetFileName(Guid.NewGuid().ToString(), fileNumber, Constants.Files.Extensions.TempFile);
+			return GetFileName(Guid.NewGuid().ToString() + "-", fileNumber, Constants.Files.Extensions.TempFile);
 		}
 
 		public string GetTableFileName(ulong fileNumber)
