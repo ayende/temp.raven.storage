@@ -84,7 +84,7 @@
 
 			if (string.IsNullOrEmpty(options.DatabaseName))
 			{
-				options.DatabaseName = string.Format("DBBench-{0}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"));
+				options.DatabaseName = string.Format("DBBench-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid());
 			}
 
 			try
