@@ -77,8 +77,6 @@ namespace Raven.Storage.Impl.Compactions
 
 					using (AsyncLock.LockScope locker = await state.Lock.LockAsync())
 					{
-						await EnsureTableFileCreated(locker);
-
 						while (Done == false)
 						{
 							state.BackgroundCompactionScheduled = true;
