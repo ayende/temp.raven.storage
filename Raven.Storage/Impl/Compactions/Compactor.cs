@@ -73,6 +73,8 @@ namespace Raven.Storage.Impl.Compactions
 								await Task.Delay(1000);
 								await locker.LockAsync();
 							}
+
+							await BackgroundCompactionAsync(locker);
 						}
 						finally
 						{

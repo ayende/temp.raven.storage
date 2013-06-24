@@ -483,6 +483,7 @@ namespace Raven.Storage.Impl
 				}
 				else if (ImmutableMemTable != null)
 				{
+					Compactor.MaybeScheduleCompaction(lockScope);
 					lockScope.Exit();
 
 					// We have filled up the current memtable, but the previous
@@ -491,6 +492,7 @@ namespace Raven.Storage.Impl
 				}
 				else if (VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
 				{
+					Compactor.MaybeScheduleCompaction(lockScope);
 					lockScope.Exit();
 
 					// There are too many level-0 files.
