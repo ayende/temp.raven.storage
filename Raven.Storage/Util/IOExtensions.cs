@@ -140,7 +140,7 @@ namespace Raven.Storage.Util
 			var size = stream.Read7BitEncodedInt();
 
 			var buffer = new byte[size];
-			stream.Read(buffer, 0, size);
+			stream.ReadExactly(buffer, size);
 
 			return new Slice(buffer);
 		}

@@ -140,18 +140,18 @@ namespace Raven.Storage
 				using (logRecordStream)
 				{
 					var buffer = new byte[8];
-					logRecordStream.Read(buffer, 0, 8);
+					logRecordStream.ReadExactly(buffer, 8);
 					seq = BitConverter.ToUInt64(buffer, 0);
-					logRecordStream.Read(buffer, 0, 4);
+					logRecordStream.ReadExactly(buffer, 4);
 					var opCount = BitConverter.ToInt32(buffer, 0);
 
 					for (var i = 0; i < opCount; i++)
 					{
-						logRecordStream.Read(buffer, 0, 1);
+						logRecordStream.ReadExactly(buffer, 1);
 						var op = (Operations) buffer[0];
 						var keyCount = logRecordStream.Read7BitEncodedInt();
 						var array = new byte[keyCount];
-						logRecordStream.Read(array, 0, keyCount);
+						logRecordStream.ReadExactly(array, keyCount);
 
 						var key = new Slice(array);
 
@@ -161,7 +161,7 @@ namespace Raven.Storage
 								batch.Delete(key);
 								break;
 							case Operations.Put:
-								logRecordStream.Read(buffer, 0, 4);
+								logRecordStream.ReadExactly(buffer, 4);
 								var size = BitConverter.ToInt64(buffer, 0);
 								var value = new MemoryStream();
 								logRecordStream.CopyTo(value, size, LogWriter.BlockSize);

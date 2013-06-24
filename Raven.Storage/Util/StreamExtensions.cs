@@ -5,6 +5,30 @@
 
 	public static class StreamExtensions
 	{
+		/// <summary>
+		/// Read the requested number of bytes from the stream into the buffer
+		/// </summary>
+		/// <param name="stream">Stream to read from</param>
+		/// <param name="buffer">Buffer to read into</param>
+		/// <param name="toRead">Requested number of bytes</param>
+		public static void ReadExactly(this Stream stream, byte[] buffer, int toRead)
+		{
+			var remainingToRead = toRead;
+
+			int currentRead;
+			do
+			{
+				currentRead = stream.Read(buffer, 0, remainingToRead);
+				remainingToRead -= currentRead;
+
+			} while (remainingToRead != 0 && currentRead != 0);
+
+			if (remainingToRead != 0)
+				throw new InvalidDataException(
+					string.Format("They have read less bytes than requested. They read {0} bytes while the requested number of bytes was {1}.",
+					              (toRead - remainingToRead), toRead));
+		}
+
 		public static bool AreEqual(this Stream stream, Stream other)
 		{
 			if (other == null)
