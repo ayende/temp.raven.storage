@@ -68,7 +68,7 @@
     <Compile Include="Snapshots\SnapshotTests.cs" />
     <Compile Include="SST\ReadWrite.cs" />
     <Compile Include="StorageTestBase.cs" />
-    <Compile Include="Utils\CrcTests_StandardResuts.cs" />
+    <Compile Include="Utils\CrcTests_StandardResults.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">
