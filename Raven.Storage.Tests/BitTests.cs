@@ -9,7 +9,7 @@
 	public class BitTests
 	{
 		[Fact]
-		public void T1()
+		public void SimpleConversion()
 		{
 			var buffer1 = new byte[4];
 			var buffer2 = new byte[8];
