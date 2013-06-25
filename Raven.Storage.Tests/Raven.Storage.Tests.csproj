@@ -47,6 +47,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitTests.cs" />
     <Compile Include="Compactions\CompactionTests.cs" />
     <Compile Include="Compactions\VersionEditTests.cs" />
     <Compile Include="Comparators\CaseInsentitiveComparatorTests.cs" />

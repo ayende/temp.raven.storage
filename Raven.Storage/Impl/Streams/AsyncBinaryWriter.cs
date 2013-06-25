@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 
 namespace Raven.Storage.Impl.Streams
 {
+	using Raven.Storage.Util;
+
 	public class AsyncBinaryWriter : IDisposable
 	{
 		private readonly bool _leaveOpen;
@@ -211,10 +213,7 @@ namespace Raven.Storage.Impl.Streams
 			if (disposed)
 				throw new ObjectDisposedException("BinaryWriter", "Cannot write to a closed BinaryWriter");
 
-			_buffer[0] = (byte)value;
-			_buffer[1] = (byte)(value >> 8);
-			_buffer[2] = (byte)(value >> 16);
-			_buffer[3] = (byte)(value >> 24);
+			Bit.Set(_buffer, 0, value);
 			return stream.WriteAsync(_buffer, 0, 4);
 		}
 
