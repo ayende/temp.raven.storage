@@ -17,6 +17,7 @@ namespace Raven.Storage.Util
 			return ((rot >> 17) | (rot << 15));
 		}
 
+		// This method contains really ugly code repetitions, but it increases the performance significantly
 		public static uint CalculateCrc(uint crc, byte[] data, int offset, int count)
 		{
 			unchecked
@@ -27,6 +28,8 @@ namespace Raven.Storage.Util
 					{
 						byte* dataPtr = ptr + offset;
 						byte* endPtr = dataPtr + count;
+						uint c;
+						uint uint32Value;
 
 						// Point x at first 4-byte aligned byte in string.  This might be
 						// just past the end of the string.
@@ -38,7 +41,8 @@ namespace Raven.Storage.Util
 							// Process bytes until finished or p is 4-byte aligned
 							while (dataPtr != x)
 							{
-								Step1(ref crc, ref dataPtr);
+								c = (crc & 0xff) ^ *dataPtr++;
+								crc = Table_0[c] ^ (crc >> 8);
 							}
 						}
 
@@ -47,20 +51,33 @@ namespace Raven.Storage.Util
 						{
 							for (int i = 0; i < 4; i++)
 							{
-								Step4(ref crc, ref dataPtr);
+								uint32Value = *dataPtr | (uint)*(dataPtr + 1) << 8 | (uint)*(dataPtr + 2) << 16 | (uint)*(dataPtr + 3) << 24;
+								c = crc ^ uint32Value;
+								dataPtr += 4;
+								crc = Table_3[c & 0xff] ^
+									Table_2[(c >> 8) & 0xff] ^
+									Table_1[(c >> 16) & 0xff] ^
+									Table_0[c >> 24];
 							}
 						}
 
 						// Process bytes 4 at a time
 						while ((endPtr - dataPtr) >= 4)
 						{
-							Step4(ref crc, ref dataPtr);
+							uint32Value = *dataPtr | (uint)*(dataPtr + 1) << 8 | (uint)*(dataPtr + 2) << 16 | (uint)*(dataPtr + 3) << 24;
+							c = crc ^ uint32Value;
+							dataPtr += 4;
+							crc = Table_3[c & 0xff] ^
+								Table_2[(c >> 8) & 0xff] ^
+								Table_1[(c >> 16) & 0xff] ^
+								Table_0[c >> 24];
 						}
 
 						// Process the last few bytes
 						while (dataPtr != endPtr)
 						{
-							Step1(ref crc, ref dataPtr);
+							c = (crc & 0xff) ^ *dataPtr++;
+							crc = Table_0[c] ^ (crc >> 8);
 						}
 
 						return crc;
@@ -75,30 +92,6 @@ namespace Raven.Storage.Util
 			{
 				return Table_0[(crc & 0xff) ^ b] ^ (crc >> 8);
 			}
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private unsafe static uint ReadUInt32(ref byte* p)
-		{
-			return *p | (uint)*(p + 1) << 8 | (uint)*(p + 2) << 16 | (uint)*(p + 3) << 24;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private unsafe static void Step1(ref uint crc, ref byte* p)
-		{
-			var c = (crc & 0xff) ^ *p++;
-			crc = Table_0[c] ^ (crc >> 8);
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private unsafe static void Step4(ref uint crc, ref byte* p)
-		{
-			var c = crc ^ ReadUInt32(ref p);
-			p += 4;
-			crc = Table_3[c & 0xff] ^
-				Table_2[(c >> 8) & 0xff] ^
-				Table_1[(c >> 16) & 0xff] ^
-				Table_0[c >> 24];
 		}
 
 		static private uint[] GenerateTable()
