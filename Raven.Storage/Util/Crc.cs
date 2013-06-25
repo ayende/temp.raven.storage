@@ -6,11 +6,13 @@ namespace Raven.Storage.Util
 	{
 		public const uint MaskDelta = 0xa282ead8;
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int Mask(uint crc)
 		{
 			return (int)(((crc >> 15) | (crc << 17)) + MaskDelta);
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Unmask(int crc)
 		{
 			var rot = (uint)crc - MaskDelta;
@@ -18,6 +20,7 @@ namespace Raven.Storage.Util
 		}
 
 		// This method contains really ugly code repetitions, but it increases the performance significantly
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint CalculateCrc(uint crc, byte[] data, int offset, int count)
 		{
 			unchecked
@@ -86,6 +89,7 @@ namespace Raven.Storage.Util
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint CalculateCrc(uint crc, byte b)
 		{
 			unchecked
