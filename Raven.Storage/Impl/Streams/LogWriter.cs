@@ -47,45 +47,53 @@ namespace Raven.Storage.Impl.Streams
 			currentRecordType = LogRecordType.FullType;
 		}
 
-		public async Task RecordCompletedAsync()
+		public Task RecordCompletedAsync()
 		{
-			await FlushBuffer(recordCompleted: true);
-			currentRecordType = LogRecordType.ZeroType;
-			_flushToDisk = true;
-		}
-
-		public async Task WriteAsync(byte[] buffer, int offset, int count)
-		{
-			if (currentRecordType == LogRecordType.ZeroType)
-			{
-				throw new InvalidOperationException("Did you forget to call RecordStarted() ? ");
-			}
-			do
-			{
-				var leftover = _buffer.Length - _bufferPos;
-				if (leftover < HeaderSize)
+			return Task.Run(
+				() =>
 				{
-					// not enough space for a record, fill with nulls & flush
-					for (int i = 0; i < leftover; i++)
-					{
-						_buffer[_bufferPos++] = 0;
-					}
-					await FlushBuffer(recordCompleted: false);
-					_bufferPos = HeaderSize;
-				}
-				var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
-				// Invariant: we never leave < HeaderSize bytes in a block.
-				Debug.Assert(avail >= 0);
-
-				var len = Math.Min(count, avail);
-				Buffer.BlockCopy(buffer, offset, _buffer, _bufferPos, len);
-				_bufferPos += len;
-				offset += len;
-				count -= len;
-			} while (count > 0);
+					FlushBuffer(recordCompleted: true);
+					currentRecordType = LogRecordType.ZeroType;
+					_flushToDisk = true;
+				});
 		}
 
-		private async Task FlushBuffer(bool recordCompleted)
+		public Task WriteAsync(byte[] buffer, int offset, int count)
+		{
+			return Task.Run(
+				() =>
+				{
+					if (currentRecordType == LogRecordType.ZeroType)
+					{
+						throw new InvalidOperationException("Did you forget to call RecordStarted() ? ");
+					}
+					do
+					{
+						var leftover = _buffer.Length - _bufferPos;
+						if (leftover < HeaderSize)
+						{
+							// not enough space for a record, fill with nulls & flush
+							for (int i = 0; i < leftover; i++)
+							{
+								_buffer[_bufferPos++] = 0;
+							}
+							FlushBuffer(recordCompleted: false);
+							_bufferPos = HeaderSize;
+						}
+						var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
+						// Invariant: we never leave < HeaderSize bytes in a block.
+						Debug.Assert(avail >= 0);
+
+						var len = Math.Min(count, avail);
+						Buffer.BlockCopy(buffer, offset, _buffer, _bufferPos, len);
+						_bufferPos += len;
+						offset += len;
+						count -= len;
+					} while (count > 0);
+				});
+		}
+
+		private void FlushBuffer(bool recordCompleted)
 		{
 			switch (currentRecordType)
 			{
@@ -102,7 +110,7 @@ namespace Raven.Storage.Impl.Streams
 					throw new ArgumentOutOfRangeException("Cannot flush when the currentRecordType is: " + currentRecordType);
 			}
 
-			await EmitPhysicalRecord(currentRecordType, _buffer, HeaderSize, _bufferPos - HeaderSize);
+			EmitPhysicalRecord(currentRecordType, _buffer, HeaderSize, _bufferPos - HeaderSize);
 
 			if (recordCompleted)
 			{
@@ -117,23 +125,19 @@ namespace Raven.Storage.Impl.Streams
 			stream.Dispose();
 		}
 
-		private Task EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
+		private void EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
 		{
-			return Task.Run(
-				() =>
-				{
-					// calc crc & write header
-					var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
-					_binaryWriter.Write(Crc.Mask(crc));
-					_binaryWriter.Write((ushort)count);
-					_binaryWriter.Write((byte)type);
-					_binaryWriter.Write(buffer, offset, count);
+			// calc crc & write header
+			var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
+			_binaryWriter.Write(Crc.Mask(crc));
+			_binaryWriter.Write((ushort)count);
+			_binaryWriter.Write((byte)type);
+			_binaryWriter.Write(buffer, offset, count);
 
-					if (_flushToDisk)
-						_binaryWriter.Flush();
+			if (_flushToDisk)
+				_binaryWriter.Flush();
 
-					_bufferPos += HeaderSize;
-				});
+			_bufferPos += HeaderSize;
 		}
 
 		public async Task CopyFromAsync(Stream incoming)
