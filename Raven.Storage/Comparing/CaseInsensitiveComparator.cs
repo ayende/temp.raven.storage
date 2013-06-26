@@ -24,7 +24,7 @@ namespace Raven.Storage.Comparing
 				var cha = (char)a.Array[a.Offset + i];
 				var chb = (char)b.Array[b.Offset + i];
 
-				if ((cha >= 'a' && cha <= 'z') || (cha >= 'A' && cha <= 'Z') && (chb >= 'a' && chb <= 'z') || (chb >= 'A' && chb <= 'Z'))
+				if (((cha >= 'a' && cha <= 'z') || (cha >= 'A' && cha <= 'Z')) && ((chb >= 'a' && chb <= 'z') || (chb >= 'A' && chb <= 'Z')))
 				{
 					var diff = cha - chb;
 					if (diff == 0 || diff == 32 || diff == -32)
