@@ -48,8 +48,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitTests.cs" />
-    <Compile Include="Compactions\CompactionTests.cs" />
-    <Compile Include="Compactions\VersionEditTests.cs" />
+    <Compile Include="Compaction\CompactionTests.cs" />
+    <Compile Include="Compaction\ReadingAfterCompaction.cs" />
+    <Compile Include="Compaction\VersionEditTests.cs" />
     <Compile Include="Comparators\CaseInsentitiveComparatorTests.cs" />
     <Compile Include="Filtering\BloomFilterTest.cs" />
     <Compile Include="Hashing\CaseInsensitiveHashing.cs" />
@@ -62,14 +63,14 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Reader\StorageReaderTests.cs" />
     <Compile Include="Recovery\CanIterateBackward.cs" />
-    <Compile Include="Recovery\DbExt.cs" />
+    <Compile Include="Utils\DbExt.cs" />
     <Compile Include="Recovery\RecoveringFromManyItems.cs" />
     <Compile Include="Recovery\RecoveryTests.cs" />
     <Compile Include="Snapshots\SnapshotTests.cs" />
     <Compile Include="SST\ReadWrite.cs" />
     <Compile Include="StorageTestBase.cs" />
-    <Compile Include="Utils\CrcTests.cs" />
-    <Compile Include="Utils\CrcTests_StandardResults.cs" />
+    <Compile Include="Crc\CrcTests.cs" />
+    <Compile Include="Crc\StandardResults.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Raven.Storage\Raven.Storage.csproj">

@@ -19,10 +19,21 @@ namespace Raven.Storage.Util
 			return ((rot >> 17) | (rot << 15));
 		}
 
-		// This method contains really ugly code repetitions, but it increases the performance significantly
+		/// <summary>
+		// Return the crc32c of concat(A, data[0,n-1]) where crc is the
+		// crc32c of some data A.  Extend() is often used to maintain the
+		// crc32c of a stream of data.
+		/// </summary>
+		/// <param name="crc">CRC seed</param>
+		/// <param name="data">Buffer with data</param>
+		/// <param name="offset">Offset of buffer</param>
+		/// <param name="count">Number of bytes to process from buffer</param>
+		/// <returns>CRC hash</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Extend(uint crc, byte[] data, int offset, int count)
 		{
+			// This method contains really ugly code repetitions, but it increases the performance significantly
+
 			unchecked
 			{
 				unsafe
@@ -91,6 +102,13 @@ namespace Raven.Storage.Util
 			}
 		}
 
+		/// <summary>
+		// Return the crc32c of concat(A, b) where crcSeed is the
+		// crc32c of some data A.
+		/// </summary>
+		/// <param name="crcSeed">CRC seed</param>
+		/// <param name="b">Byte to calculate for</param>
+		/// <returns>CRC hash</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Extend(uint crcSeed, byte b)
 		{
@@ -101,35 +119,17 @@ namespace Raven.Storage.Util
 			}
 		}
 
+		/// <summary>
+		/// Return the crc32c of data
+		/// </summary>
+		/// <param name="data">Buffer with data</param>
+		/// <param name="offset">Offset of buffer</param>
+		/// <param name="count">Number of bytes to process from buffer</param>
+		/// <returns>CRC hash</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Value(byte[] data, int offset, int count)
 		{
 			return Extend(0, data, offset, count);
-		}
-
-		static private uint[] GenerateTable()
-		{
-			unchecked
-			{
-				uint[] theTable = new uint[256];
-
-				const uint poly = 0xEDB88320;
-				for (uint i = 0; i < theTable.Length; i++)
-				{
-					uint crc = i;
-					for (int j = 8; j > 0; j--)
-					{
-						if ((crc & 1) == 1)
-							crc = (crc >> 1) ^ poly;
-						else
-							crc >>= 1;
-					}
-					theTable[i] = crc;
-				}
-
-				return theTable;
-			}
-
 		}
 
 		private readonly static uint[] Table_0 = new uint[256]

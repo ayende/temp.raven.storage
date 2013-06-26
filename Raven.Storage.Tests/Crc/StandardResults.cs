@@ -4,20 +4,19 @@
 //  </copyright>
 // -----------------------------------------------------------------------
 
-using Raven.Storage.Util;
 using Xunit;
 
-namespace Raven.Storage.Tests.Utils
+namespace Raven.Storage.Tests.Crc
 {
 	// From rfc3720 section B.4.
-	public class CrcTests_StandardResults
+	public class StandardResults
 	{
 		[Fact]
 		public void Zeros()
 		{
 			var data = new byte[32];
 
-			var crc = Crc.Value(data, 0, 32);
+			var crc = Util.Crc.Value(data, 0, 32);
 
 			Assert.Equal(0x8a9136aau, crc);
 		}
@@ -32,7 +31,7 @@ namespace Raven.Storage.Tests.Utils
 				data[i] = 0xff;
 			}
 
-			var crc = Crc.Value(data, 0, 32);
+			var crc = Util.Crc.Value(data, 0, 32);
 
 			Assert.Equal(0x62a8ab43u, crc);
 		}
@@ -47,7 +46,7 @@ namespace Raven.Storage.Tests.Utils
 				data[i] = i;
 			}
 
-			var crc = Crc.Value(data, 0, 32);
+			var crc = Util.Crc.Value(data, 0, 32);
 
 			Assert.Equal(0x46dd794eu, crc);
 		}
@@ -62,7 +61,7 @@ namespace Raven.Storage.Tests.Utils
 				data[i] = (byte) (31 - i);
 			}
 
-			var crc = Crc.Value(data, 0, 32);
+			var crc = Util.Crc.Value(data, 0, 32);
 
 			Assert.Equal(0x113fdb5cu, crc);
 		}
@@ -86,7 +85,7 @@ namespace Raven.Storage.Tests.Utils
 					0x00, 0x00, 0x00, 0x00,
 				};
 
-			var crc = Crc.Value(data, 0, 48);
+			var crc = Util.Crc.Value(data, 0, 48);
 
 			Assert.Equal(0xd9963a56, crc);
 		}

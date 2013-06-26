@@ -217,14 +217,14 @@
 
 		private bool BeforeFile(IComparator comparator, Slice key, FileMetadata file)
 		{
-			// NULL 'key' occurs after all keys and is therefore never before 'file'
-			return comparator.Compare(key, file.SmallestKey.UserKey) < 0;
+			// Empty 'key' occurs after all keys and is therefore never before 'file'
+			return (key.IsEmpty() == false && comparator.Compare(key, file.SmallestKey.UserKey) < 0);
 		}
 
 		private bool AfterFile(IComparator comparator, Slice key, FileMetadata file)
 		{
-			// NULL 'key' occurs before all keys and is therefore never after 'file'
-			return comparator.Compare(key, file.LargestKey.UserKey) > 0;
+			// Empty 'key' occurs before all keys and is therefore never after 'file'
+			return (key.IsEmpty() == false && comparator.Compare(key, file.LargestKey.UserKey) > 0);
 		}
 
 		public bool UpdateStats(GetStats stats)
