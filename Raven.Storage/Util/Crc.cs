@@ -98,6 +98,20 @@ namespace Raven.Storage.Util
 			}
 		}
 
+		public static uint Value(byte[] data, int offset, int count)
+		{
+			uint crcSeed = 0;
+
+			unchecked
+			{
+				crcSeed ^= 0xffffffff;
+			}
+			
+			var crc = CalculateCrc(crcSeed, data, offset, count);
+
+			return unchecked (crc ^ 0xffffffff);
+		}
+
 		static private uint[] GenerateTable()
 		{
 			unchecked
