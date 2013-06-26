@@ -5,10 +5,9 @@
 // -----------------------------------------------------------------------
 
 using System.Text;
-using Raven.Storage.Util;
 using Xunit;
 
-namespace Raven.Storage.Tests.Utils
+namespace Raven.Storage.Tests.Crc
 {
 	public class CrcTests
 	{
@@ -19,18 +18,18 @@ namespace Raven.Storage.Tests.Utils
 			var world = Encoding.UTF8.GetBytes("world");
 			var helloWorld = Encoding.UTF8.GetBytes("hello world");
 
-			Assert.Equal(Crc.Value(helloWorld, 0, helloWorld.Length), Crc.Extend(Crc.Value(hello, 0, hello.Length), world, 0, world.Length));
+			Assert.Equal(Util.Crc.Value(helloWorld, 0, helloWorld.Length), Util.Crc.Extend(Util.Crc.Value(hello, 0, hello.Length), world, 0, world.Length));
 		}
 
 		[Fact]
 		public void ShouldCorrectlyMaskAndUnmask()
 		{
 			var foo = Encoding.UTF8.GetBytes("foo");
-			var crc = Crc.Value(foo, 0, foo.Length);
-			Assert.NotEqual((int)crc, Crc.Mask(crc));
-			Assert.NotEqual((int)crc, Crc.Mask((uint)Crc.Mask(crc)));
-			Assert.Equal(crc, Crc.Unmask(Crc.Mask(crc)));
-			Assert.Equal(crc, Crc.Unmask((int)Crc.Unmask(Crc.Mask((uint)Crc.Mask(crc)))));
+			var crc = Util.Crc.Value(foo, 0, foo.Length);
+			Assert.NotEqual((int)crc, Util.Crc.Mask(crc));
+			Assert.NotEqual((int)crc, Util.Crc.Mask((uint)Util.Crc.Mask(crc)));
+			Assert.Equal(crc, Util.Crc.Unmask(Util.Crc.Mask(crc)));
+			Assert.Equal(crc, Util.Crc.Unmask((int)Util.Crc.Unmask(Util.Crc.Mask((uint)Util.Crc.Mask(crc)))));
 		}
 	}
 }

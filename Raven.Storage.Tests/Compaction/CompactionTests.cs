@@ -1,7 +1,9 @@
 ﻿using System.Threading.Tasks;
 using Raven.Storage.Impl;
+using Raven.Storage.Tests.Recovery;
+using Raven.Storage.Tests.Utils;
 
-namespace Raven.Storage.Tests.Compactions
+namespace Raven.Storage.Tests.Compaction
 {
 	using System;
 	using System.IO;
