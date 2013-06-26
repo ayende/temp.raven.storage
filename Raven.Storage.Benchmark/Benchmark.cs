@@ -224,7 +224,7 @@
 			uint crc = 0;
 			while (bytes < 500 * 1048576)
 			{
-				crc = Crc.CalculateCrc(0, buffer, 0, buffer.Length);
+				crc = Crc.Value(buffer, 0, buffer.Length);
 				bytes += Size;
 				result.FinishOperation();
 			}
