@@ -84,7 +84,6 @@
     <Compile Include="Impl\IStorageContext.cs" />
     <Compile Include="Impl\StorageCommands.cs" />
     <Compile Include="Impl\StorageReader.cs" />
-    <Compile Include="Impl\Streams\AsyncBinaryWriter.cs" />
     <Compile Include="Impl\Streams\LogReader.cs" />
     <Compile Include="Impl\Streams\LogReaderStream.cs" />
     <Compile Include="Impl\Streams\LogWriter.cs" />

@@ -17,7 +17,7 @@ namespace Raven.Storage.Impl.Streams
 
 		private readonly Stream stream;
 		private readonly BufferPool _bufferPool;
-		private readonly AsyncBinaryWriter _binaryWriter;
+		private readonly BinaryWriter _binaryWriter;
 
 		public const int BlockSize = 32 * 1024;
 		// Header is checksum (4 bytes), length (2 bytes) + type (1 byte)
@@ -36,7 +36,7 @@ namespace Raven.Storage.Impl.Streams
 			this.stream = stream;
 			_bufferPool = bufferPool;
 			_buffer = bufferPool.Take(BlockSize);
-			_binaryWriter = new AsyncBinaryWriter(stream);
+			_binaryWriter = new BinaryWriter(stream);
 			_bufferPos = HeaderSize;
 			_flushToDisk = true;
 		}
@@ -76,7 +76,6 @@ namespace Raven.Storage.Impl.Streams
 				var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
 				// Invariant: we never leave < HeaderSize bytes in a block.
 				Debug.Assert(avail >= 0);
-
 
 				var len = Math.Min(count, avail);
 				Buffer.BlockCopy(buffer, offset, _buffer, _bufferPos, len);
@@ -118,19 +117,23 @@ namespace Raven.Storage.Impl.Streams
 			stream.Dispose();
 		}
 
-		private async Task EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
+		private Task EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
 		{
-			// calc crc & write header
-			var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
-			await _binaryWriter.WriteAsync(Crc.Mask(crc));
-			await _binaryWriter.WriteAsync((ushort)count);
-			await _binaryWriter.WriteAsync((byte)type);
-			await _binaryWriter.WriteAsync(buffer, offset, count);
+			return Task.Run(
+				() =>
+				{
+					// calc crc & write header
+					var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
+					_binaryWriter.Write(Crc.Mask(crc));
+					_binaryWriter.Write((ushort)count);
+					_binaryWriter.Write((byte)type);
+					_binaryWriter.Write(buffer, offset, count);
 
-			if (_flushToDisk)
-				await _binaryWriter.FlushAsync();
+					if (_flushToDisk)
+						_binaryWriter.Flush();
 
-			_bufferPos += HeaderSize;
+					_bufferPos += HeaderSize;
+				});
 		}
 
 		public async Task CopyFromAsync(Stream incoming)
@@ -140,7 +143,7 @@ namespace Raven.Storage.Impl.Streams
 			{
 				while (true)
 				{
-					var reads = await incoming.ReadAsync(bytes, 0, bytes.Length);
+					var reads = incoming.Read(bytes, 0, bytes.Length);
 					if (reads == 0)
 						break;
 					await WriteAsync(bytes, 0, reads);
