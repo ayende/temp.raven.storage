@@ -19,10 +19,21 @@ namespace Raven.Storage.Util
 			return ((rot >> 17) | (rot << 15));
 		}
 
-		// This method contains really ugly code repetitions, but it increases the performance significantly
+		/// <summary>
+		// Return the crc32c of concat(A, data[0,n-1]) where crc is the
+		// crc32c of some data A.  Extend() is often used to maintain the
+		// crc32c of a stream of data.
+		/// </summary>
+		/// <param name="crc">CRC seed</param>
+		/// <param name="data">Buffer with data</param>
+		/// <param name="offset">Offset of buffer</param>
+		/// <param name="count">Number of bytes to process from buffer</param>
+		/// <returns>CRC hash</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Extend(uint crc, byte[] data, int offset, int count)
 		{
+			// This method contains really ugly code repetitions, but it increases the performance significantly
+
 			unchecked
 			{
 				unsafe
@@ -91,6 +102,13 @@ namespace Raven.Storage.Util
 			}
 		}
 
+		/// <summary>
+		// Return the crc32c of concat(A, b) where crcSeed is the
+		// crc32c of some data A.
+		/// </summary>
+		/// <param name="crcSeed">CRC seed</param>
+		/// <param name="b">Byte to calculate for</param>
+		/// <returns>CRC hash</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Extend(uint crcSeed, byte b)
 		{
@@ -101,6 +119,13 @@ namespace Raven.Storage.Util
 			}
 		}
 
+		/// <summary>
+		/// Return the crc32c of data
+		/// </summary>
+		/// <param name="data">Buffer with data</param>
+		/// <param name="offset">Offset of buffer</param>
+		/// <param name="count">Number of bytes to process from buffer</param>
+		/// <returns>CRC hash</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Value(byte[] data, int offset, int count)
 		{
