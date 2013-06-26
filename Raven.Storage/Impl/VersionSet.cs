@@ -402,9 +402,7 @@
 					}
 
                     if (log.IsDebugEnabled)
-                    {
                         log.Debug("Read version edit with the following information:\r\n{0}", edit.DebugInfo);
-                    }
 
 					if (edit.Comparator != storageContext.Options.Comparator.Name)
 					{
