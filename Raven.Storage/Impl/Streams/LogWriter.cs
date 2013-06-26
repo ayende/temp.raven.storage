@@ -12,7 +12,7 @@ namespace Raven.Storage.Impl.Streams
 	{
 		public static readonly Dictionary<LogRecordType, uint> RecordTypeCrcs =
 			((LogRecordType[])Enum.GetValues(typeof(LogRecordType)))
-				.ToDictionary(x => x, x => Crc.Expand(0, (byte)x));
+				.ToDictionary(x => x, x => Crc.Extend(0, (byte)x));
 
 
 		private readonly Stream stream;

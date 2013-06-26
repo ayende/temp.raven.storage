@@ -92,7 +92,7 @@ namespace Raven.Storage.Util
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static uint Expand(uint crcSeed, byte b)
+		public static uint Extend(uint crcSeed, byte b)
 		{
 			unchecked
 			{

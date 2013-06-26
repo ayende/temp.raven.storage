@@ -63,7 +63,7 @@ namespace Raven.Storage.Reading
 			uint crc = 0;
 			for (int i = 0; i < crcRange; i++)
 			{
-				crc = Crc.Expand(crc, _accessor[i]);
+				crc = Crc.Extend(crc, _accessor[i]);
 			}
 			return crc;
 		}
