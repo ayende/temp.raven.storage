@@ -60,12 +60,12 @@ namespace Raven.Storage.Reading
 
 		private uint CalculateActualCrc(long crcRange)
 		{
-			uint actual = unchecked(0xFFFFFFFF);
+			uint crc = 0;
 			for (int i = 0; i < crcRange; i++)
 			{
-				actual = Crc.CalculateCrc(actual, _accessor[i]);
+				crc = Crc.Expand(crc, _accessor[i]);
 			}
-			return actual ^ 0xFFFFFFFF;
+			return crc;
 		}
 
 		public long RestartsOffset { get; private set; }

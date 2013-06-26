@@ -12,7 +12,7 @@ namespace Raven.Storage.Impl.Streams
 	{
 		public static readonly Dictionary<LogRecordType, uint> RecordTypeCrcs =
 			((LogRecordType[])Enum.GetValues(typeof(LogRecordType)))
-				.ToDictionary(x => x, x => Crc.CalculateCrc(0, (byte)x));
+				.ToDictionary(x => x, x => Crc.Expand(0, (byte)x));
 
 
 		private readonly Stream stream;
@@ -121,7 +121,7 @@ namespace Raven.Storage.Impl.Streams
 		private async Task EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
 		{
 			// calc crc & write header
-			var crc = Crc.CalculateCrc(RecordTypeCrcs[type], buffer, offset, count);
+			var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
 			await _binaryWriter.WriteAsync(Crc.Mask(crc));
 			await _binaryWriter.WriteAsync((ushort)count);
 			await _binaryWriter.WriteAsync((byte)type);

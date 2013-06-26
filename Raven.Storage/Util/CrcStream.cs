@@ -78,7 +78,7 @@ namespace Raven.Storage.Util
         public override int Read(byte[] buffer, int offset, int count)
         {
             count = stream.Read(buffer, offset, count);
-            readCrc = Crc.CalculateCrc(readCrc, buffer, offset, count);
+            readCrc = Crc.Extend(readCrc, buffer, offset, count);
             return count;
         }
 
@@ -86,32 +86,27 @@ namespace Raven.Storage.Util
         {
             stream.Write(buffer, offset, count);
 
-            writeCrc = Crc.CalculateCrc(writeCrc, buffer, offset, count);
+            writeCrc = Crc.Extend(writeCrc, buffer, offset, count);
         }
-
-		public void InitReadCrc(byte b)
-		{
-			readCrc = Crc.CalculateCrc(0, b);
-		}
        
-        uint readCrc = unchecked(0xFFFFFFFF);
+        uint readCrc = 0;
 
         /// <summary>
         /// Gets the CRC checksum of the data that was read by the stream thus far.
         /// </summary>
         public uint ReadCrc
         {
-            get { return unchecked(readCrc ^ 0xFFFFFFFF); }
+            get { return readCrc; }
         }
 
-        uint writeCrc = unchecked(0xFFFFFFFF);
+        uint writeCrc = 0;
 
 	    /// <summary>
         /// Gets the CRC checksum of the data that was written to the stream thus far.
         /// </summary>
         public uint WriteCrc
         {
-            get { return unchecked(writeCrc ^ 0xFFFFFFFF); }
+            get { return writeCrc; }
         }
 
         /// <summary>
@@ -119,8 +114,8 @@ namespace Raven.Storage.Util
         /// </summary>
         public void ResetChecksum()
         {
-            readCrc = unchecked(0xFFFFFFFF);
-            writeCrc = unchecked(0xFFFFFFFF);
+            readCrc = 0;
+            writeCrc = 0;
         }
 
 		public override System.Threading.Tasks.Task CopyToAsync(Stream destination, int bufferSize, System.Threading.CancellationToken cancellationToken)

@@ -21,7 +21,7 @@ namespace Raven.Storage.Util
 
 		// This method contains really ugly code repetitions, but it increases the performance significantly
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static uint CalculateCrc(uint crc, byte[] data, int offset, int count)
+		public static uint Extend(uint crc, byte[] data, int offset, int count)
 		{
 			unchecked
 			{
@@ -33,6 +33,8 @@ namespace Raven.Storage.Util
 						byte* endPtr = dataPtr + count;
 						uint c;
 						uint uint32Value;
+
+						crc ^=  0xFFFFFFFF;
 
 						// Point x at first 4-byte aligned byte in string.  This might be
 						// just past the end of the string.
@@ -83,33 +85,26 @@ namespace Raven.Storage.Util
 							crc = Table_0[c] ^ (crc >> 8);
 						}
 
-						return crc;
+						return crc ^ 0xFFFFFFFF;
 					}
 				}
 			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static uint CalculateCrc(uint crc, byte b)
+		public static uint Expand(uint crcSeed, byte b)
 		{
 			unchecked
 			{
-				return Table_0[(crc & 0xff) ^ b] ^ (crc >> 8);
+				crcSeed ^= 0xFFFFFFFF;
+				return (Table_0[(crcSeed & 0xff) ^ b] ^ (crcSeed >> 8)) ^ 0xFFFFFFFF;
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint Value(byte[] data, int offset, int count)
 		{
-			uint crcSeed = 0;
-
-			unchecked
-			{
-				crcSeed ^= 0xffffffff;
-			}
-			
-			var crc = CalculateCrc(crcSeed, data, offset, count);
-
-			return unchecked (crc ^ 0xffffffff);
+			return Extend(0, data, offset, count);
 		}
 
 		static private uint[] GenerateTable()
