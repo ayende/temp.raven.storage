@@ -132,31 +132,6 @@ namespace Raven.Storage.Util
 			return Extend(0, data, offset, count);
 		}
 
-		static private uint[] GenerateTable()
-		{
-			unchecked
-			{
-				uint[] theTable = new uint[256];
-
-				const uint poly = 0xEDB88320;
-				for (uint i = 0; i < theTable.Length; i++)
-				{
-					uint crc = i;
-					for (int j = 8; j > 0; j--)
-					{
-						if ((crc & 1) == 1)
-							crc = (crc >> 1) ^ poly;
-						else
-							crc >>= 1;
-					}
-					theTable[i] = crc;
-				}
-
-				return theTable;
-			}
-
-		}
-
 		private readonly static uint[] Table_0 = new uint[256]
 			{
 				0x00000000, 0xf26b8303, 0xe13b70f7, 0x1350f3f4,
