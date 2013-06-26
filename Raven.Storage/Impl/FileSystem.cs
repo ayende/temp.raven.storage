@@ -19,14 +19,9 @@ namespace Raven.Storage.Impl
 			this.databaseName = databaseName;
 		}
 
-		public string GetFileName(string name, ulong num, string ext)
+		private string GetFileName(string name, ulong num, string ext)
 		{
 			return string.Format("{0}{1:000000}{2}", name, num, ext);
-		}
-
-		public string GetFullFileName(string name, ulong num, string ext)
-		{
-			return Path.Combine(databaseName, string.Format("{0}{1:000000}{2}", name, num, ext));
 		}
 
 		public virtual string GetFullFileName(ulong num, string ext)
@@ -39,11 +34,6 @@ namespace Raven.Storage.Impl
 			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
 			TrackResourceUsage.Track(() => stream.SafeFileHandle);
 			return stream;
-		}
-		
-		public Stream NewWritable(ulong num, string ext)
-		{
-			return NewWritable(GetFileName(string.Empty, num, ext));
 		}
 
 		public virtual void DeleteFile(string name)
@@ -179,7 +169,7 @@ namespace Raven.Storage.Impl
 			CreateDirectory(databaseName);
 		}
 
-		public void CreateDirectory(string name)
+		private void CreateDirectory(string name)
 		{
 			Directory.CreateDirectory(name);
 		}

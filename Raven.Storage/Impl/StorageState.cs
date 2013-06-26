@@ -70,7 +70,8 @@ namespace Raven.Storage.Impl
 			var newFileNumber = VersionSet.NewFileNumber();
 			try
 			{
-				var file = FileSystem.NewWritable(newFileNumber, Constants.Files.Extensions.LogFile);
+				var name = FileSystem.GetLogFileName(newFileNumber);
+				var file = FileSystem.NewWritable(name);
 				LogWriter = new LogWriter(file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}
