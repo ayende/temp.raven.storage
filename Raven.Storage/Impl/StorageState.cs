@@ -330,7 +330,10 @@ namespace Raven.Storage.Impl
 			{
 				var iterator = memTable.NewIterator();
 				iterator.SeekToFirst();
-				Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
+
+				if (Log.IsDebugEnabled)
+					Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
+
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
@@ -342,8 +345,9 @@ namespace Raven.Storage.Impl
 						var key = iterator.Key;
 
 						meta.LargestKey = new InternalKey(key);
-						
-						Log.Debug("Writing item with key {0}", meta.LargestKey.DebugVal);
+
+						if (Log.IsDebugEnabled)
+							Log.Debug("Writing item with key {0}", meta.LargestKey.DebugVal);
 
 						using (var stream = iterator.CreateValueStream())
 							builder.Add(key, stream);

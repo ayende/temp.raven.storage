@@ -98,7 +98,8 @@ namespace Raven.Storage
 		{
 			var opCount = writes.Sum(x => x._operations.Count);
 
-			log.Debug("Writing {0} operations in seq {1}", opCount, seq);
+			if (log.IsDebugEnabled)
+				log.Debug("Writing {0} operations in seq {1}", opCount, seq);
 
 			state.LogWriter.RecordStarted(writeOptions.FlushToDisk);
 
@@ -127,7 +128,8 @@ namespace Raven.Storage
 
 			await state.LogWriter.RecordCompletedAsync();
 
-			log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
+			if (log.IsDebugEnabled)
+				log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
 		}
 
 		internal static IEnumerable<LogReadResult> ReadFromLog(Stream logFile, BufferPool bufferPool)
