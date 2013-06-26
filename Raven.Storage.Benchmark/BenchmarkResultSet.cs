@@ -45,7 +45,7 @@
 		{
 			get
 			{
-				return string.Format("{0:1} MB/s", (TotalBytes / 1048576.0) / ElapsedSeconds);
+				return string.Format("{0:F} MB/s", (TotalBytes / 1048576.0) / ElapsedSeconds);
 			}
 		}
 
