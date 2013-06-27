@@ -22,21 +22,21 @@ namespace Raven.Storage.Impl.Caching
 		private readonly ReaderWriterLockSlim slim = new ReaderWriterLockSlim();
 
 		private readonly StorageState state;
-		private LruCache<ulong,TableAndFile> _cache;
+		private LruCache<ulong, Table> cache;
 
 		public TableCache(StorageState state)
 		{
 			this.state = state;
-			_cache = new LruCache<ulong, TableAndFile>(state.Options.MaxTablesCacheSize);
+			cache = new LruCache<ulong, Table>(state.Options.MaxTablesCacheSize);
 		}
 
 		public IIterator NewIterator(ReadOptions options, ulong fileNumber, long fileSize)
 		{
 			try
 			{
-				var tableAndFile = FindTable(fileNumber, fileSize);
+				var table = FindTable(fileNumber, fileSize);
 
-				return tableAndFile.Table.CreateIterator(options);
+				return table.CreateIterator(options);
 			}
 			catch (Exception e)
 			{
@@ -45,15 +45,15 @@ namespace Raven.Storage.Impl.Caching
 			}
 		}
 
-		private TableAndFile FindTable(ulong fileNumber, long fileSize)
+		private Table FindTable(ulong fileNumber, long fileSize)
 		{
 			slim.EnterReadLock();
 			try
 			{
-				TableAndFile file;
-				if (_cache.TryGet(fileNumber, out file))
+				Table table;
+				if (cache.TryGet(fileNumber, out table))
 				{
-					return file;
+					return table;
 				}
 			}
 			finally
@@ -64,23 +64,21 @@ namespace Raven.Storage.Impl.Caching
 			slim.EnterWriteLock();
 			try
 			{
-				TableAndFile value;
-				if (_cache.TryGet(fileNumber, out value))
+				Table table;
+				if (cache.TryGet(fileNumber, out table))
 				{
-					return value;
+					return table;
 				}
 
 				var filePath = state.FileSystem.GetFullFileName(fileNumber, Constants.Files.Extensions.TableFile);
 
 				IAccessor file = state.FileSystem.OpenMemoryMap(filePath);
 				var fileData = new FileData(file, fileSize);
-				var table = new Table(state, fileData);
+				table = new Table(state, fileData);
 
-				var tableAndFile = new TableAndFile(fileData, table);
+				cache.Set(fileNumber, table);
 
-				_cache.Set(fileNumber, tableAndFile);
-
-				return tableAndFile;
+				return table;
 			}
 			finally
 			{
@@ -92,15 +90,15 @@ namespace Raven.Storage.Impl.Caching
 
 		public void Evict(ulong fileNumber)
 		{
-			_cache.Remove(fileNumber);
+			cache.Remove(fileNumber);
 		}
 
 		public ItemState Get(InternalKey key, ulong fileNumber, long fileSize, ReadOptions readOptions, IComparator comparator,
 							 out Stream stream)
 		{
-			TableAndFile tableAndFile = FindTable(fileNumber, fileSize);
+			Table table = FindTable(fileNumber, fileSize);
 
-			Tuple<Slice, Stream> result = tableAndFile.Table.InternalGet(readOptions, key);
+			Tuple<Slice, Stream> result = table.InternalGet(readOptions, key);
 
 			stream = null;
 
@@ -142,7 +140,7 @@ namespace Raven.Storage.Impl.Caching
 
 		public void Dispose()
 		{
-			_cache.Dispose();
+			cache.Dispose();
 		}
 	}
 
@@ -152,27 +150,5 @@ namespace Raven.Storage.Impl.Caching
 		Found = 2,
 		Deleted = 3,
 		Corrupt = 4
-	}
-
-	internal class TableAndFile : IDisposable
-	{
-		public TableAndFile(FileData fileData, Table table)
-		{
-			FileData = fileData;
-			Table = table;
-		}
-
-		public FileData FileData { get; private set; }
-
-		public Table Table { get; private set; }
-
-		public void Dispose()
-		{
-			if (Table != null)
-				Table.Dispose();
-
-			if (FileData != null && FileData.File != null)
-				FileData.File.Dispose();
-		}
 	}
 }
