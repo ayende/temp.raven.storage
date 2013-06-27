@@ -94,41 +94,42 @@ namespace Raven.Storage
 			}
 		}
 
-		internal static async Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state, WriteOptions writeOptions)
+		internal static Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state, WriteOptions writeOptions)
 		{
-			var opCount = writes.Sum(x => x._operations.Count);
-
-			if (log.IsDebugEnabled)
-				log.Debug("Writing {0} operations in seq {1}", opCount, seq);
-
-			state.LogWriter.RecordStarted(writeOptions.FlushToDisk);
-
-			var buffer = new byte[12];
-			Bit.Set(buffer, 0, seq);
-			Bit.Set(buffer, 8, opCount);
-			await state.LogWriter.WriteAsync(buffer, 0, 12).ConfigureAwait(false);
-
-			foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
-			{
-				buffer[0] = (byte)operation.Op;
-				await state.LogWriter.WriteAsync(buffer, 0, 1).ConfigureAwait(false);
-				await state.LogWriter.Write7BitEncodedIntAsync(operation.Key.Count).ConfigureAwait(false);
-				await state.LogWriter.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count).ConfigureAwait(false);
-				if (operation.Op != Operations.Put)
-					continue;
-
-				Bit.Set(buffer, 0, operation.Handle.Size);
-				await state.LogWriter.WriteAsync(buffer, 0, 4).ConfigureAwait(false);
-				using (var stream = state.MemTable.Read(operation.Handle))
+			return Task.Factory.StartNew(
+				() =>
 				{
-					await state.LogWriter.CopyFromAsync(stream).ConfigureAwait(false);
-				}
-			}
+					var opCount = writes.Sum(x => x._operations.Count);
 
-			await state.LogWriter.RecordCompletedAsync().ConfigureAwait(false);
+					if (log.IsDebugEnabled) log.Debug("Writing {0} operations in seq {1}", opCount, seq);
 
-			if (log.IsDebugEnabled)
-				log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
+					state.LogWriter.RecordStarted(writeOptions.FlushToDisk);
+
+					var buffer = new byte[12];
+					Bit.Set(buffer, 0, seq);
+					Bit.Set(buffer, 8, opCount);
+					state.LogWriter.Write(buffer, 0, 12);
+
+					foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
+					{
+						buffer[0] = (byte)operation.Op;
+						state.LogWriter.Write(buffer, 0, 1);
+						state.LogWriter.Write7BitEncodedInt(operation.Key.Count);
+						state.LogWriter.Write(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
+						if (operation.Op != Operations.Put) continue;
+
+						Bit.Set(buffer, 0, operation.Handle.Size);
+						state.LogWriter.Write(buffer, 0, 4);
+						using (var stream = state.MemTable.Read(operation.Handle))
+						{
+							state.LogWriter.CopyFrom(stream);
+						}
+					}
+
+					state.LogWriter.RecordCompleted();
+
+					if (log.IsDebugEnabled) log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
+				});
 		}
 
 		internal static IEnumerable<LogReadResult> ReadFromLog(Stream logFile, BufferPool bufferPool)

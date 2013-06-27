@@ -180,6 +180,14 @@ namespace Raven.Storage.Util
 			return stream.WriteAsync(buffer, 0, size);
 		}
 
+		public static int Write7BitEncodedInt(this LogWriter stream, int value)
+		{
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			return stream.Write(buffer, 0, size);
+		}
+
 		public static Task<int> Write7BitEncodedLongAsync(this LogWriter stream, long value)
 		{
 			byte[] buffer;

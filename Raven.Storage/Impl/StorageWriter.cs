@@ -95,7 +95,6 @@ namespace Raven.Storage.Impl
 
 						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, writeOptions).ConfigureAwait(false);
 
-
 						foreach (var write in list)
 						{
 							write.Batch.Apply(_state.MemTable, currentSequence);

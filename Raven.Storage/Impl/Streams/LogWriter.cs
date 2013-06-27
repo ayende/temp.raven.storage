@@ -47,53 +47,50 @@ namespace Raven.Storage.Impl.Streams
 			currentRecordType = LogRecordType.FullType;
 		}
 
-		public Task RecordCompletedAsync()
+		public void RecordCompleted()
 		{
-			return Task.Run(
-				() =>
-				{
-					FlushBuffer(recordCompleted: true);
-					currentRecordType = LogRecordType.ZeroType;
-					_flushToDisk = true;
-				});
+			FlushBuffer(recordCompleted: true);
+			currentRecordType = LogRecordType.ZeroType;
+			_flushToDisk = true;
 		}
 
 		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
 		{
+			return Task.Run(() => Write(buffer, offset, count));
+		}
+
+		public int Write(byte[] buffer, int offset, int count)
+		{
 			if (currentRecordType == LogRecordType.ZeroType)
 				throw new InvalidOperationException("Did you forget to call RecordStarted() ? ");
 
-			return Task.Run(
-				() =>
+			var writtenBytes = count;
+
+			do
+			{
+				var leftover = _buffer.Length - _bufferPos;
+				if (leftover < HeaderSize)
 				{
-					var writtenBytes = count;
-
-					do
+					// not enough space for a record, fill with nulls & flush
+					for (int i = 0; i < leftover; i++)
 					{
-						var leftover = _buffer.Length - _bufferPos;
-						if (leftover < HeaderSize)
-						{
-							// not enough space for a record, fill with nulls & flush
-							for (int i = 0; i < leftover; i++)
-							{
-								_buffer[_bufferPos++] = 0;
-							}
-							FlushBuffer(recordCompleted: false);
-							_bufferPos = HeaderSize;
-						}
-						var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
-						// Invariant: we never leave < HeaderSize bytes in a block.
-						Debug.Assert(avail >= 0);
+						_buffer[_bufferPos++] = 0;
+					}
+					FlushBuffer(recordCompleted: false);
+					_bufferPos = HeaderSize;
+				}
+				var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
+				// Invariant: we never leave < HeaderSize bytes in a block.
+				Debug.Assert(avail >= 0);
 
-						var len = Math.Min(count, avail);
-						Buffer.BlockCopy(buffer, offset, _buffer, _bufferPos, len);
-						_bufferPos += len;
-						offset += len;
-						count -= len;
-					} while (count > 0);
+				var len = Math.Min(count, avail);
+				Buffer.BlockCopy(buffer, offset, _buffer, _bufferPos, len);
+				_bufferPos += len;
+				offset += len;
+				count -= len;
+			} while (count > 0);
 
-					return writtenBytes;
-				});
+			return writtenBytes;
 		}
 
 		private void FlushBuffer(bool recordCompleted)
@@ -143,7 +140,7 @@ namespace Raven.Storage.Impl.Streams
 			_bufferPos += HeaderSize;
 		}
 
-		public async Task CopyFromAsync(Stream incoming)
+		public void CopyFrom(Stream incoming)
 		{
 			var bytes = _bufferPool.Take(BlockSize);
 			try
@@ -153,7 +150,7 @@ namespace Raven.Storage.Impl.Streams
 					var reads = incoming.Read(bytes, 0, bytes.Length);
 					if (reads == 0)
 						break;
-					await WriteAsync(bytes, 0, reads).ConfigureAwait(false);
+					Write(bytes, 0, reads);
 				}
 			}
 			finally
