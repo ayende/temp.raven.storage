@@ -11,7 +11,6 @@ namespace Raven.Storage.Impl.Compactions
 	public class ManualCompactor : Compactor
 	{
 		private Compaction compaction;
-		private bool initialized = false;
 
 		public ManualCompactor(StorageState state)
 			: base(state)
@@ -71,16 +70,16 @@ namespace Raven.Storage.Impl.Compactions
 
 					if (state.BackgroundCompactionScheduled)
 					{
-						await Task.Delay(100);
+						await Task.Delay(100).ConfigureAwait(false);
 						continue;
 					}
 
-					using (AsyncLock.LockScope locker = await state.Lock.LockAsync())
+					using (AsyncLock.LockScope locker = await state.Lock.LockAsync().ConfigureAwait(false))
 					{
 						while (Done == false)
 						{
 							state.BackgroundCompactionScheduled = true;
-							await RunCompactionAsync(locker);
+							await RunCompactionAsync(locker).ConfigureAwait(false);
 
 							var manualEnd = new InternalKey();
 
@@ -110,7 +109,7 @@ namespace Raven.Storage.Impl.Compactions
 		public async Task CompactRangeAsync(Slice begin, Slice end)
 		{
 			int maxLevelWithFiles = 1;
-			using (var locker = await state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
 			{
 				var @base = state.VersionSet.Current;
 				for (var level = 1; level < Config.NumberOfLevels; level++)
@@ -124,23 +123,23 @@ namespace Raven.Storage.Impl.Compactions
 
 			for (var level = 0; level < maxLevelWithFiles; level++)
 			{
-				await CompactAsync(level, begin, end);
+				await CompactAsync(level, begin, end).ConfigureAwait(false);
 			}
 		}
 
-		private async Task EnsureTableFileCreated(AsyncLock.LockScope lockScope)
+		private Task EnsureTableFileCreated(AsyncLock.LockScope lockScope)
 		{
-			await state.MakeRoomForWriteAsync(force: true, lockScope: lockScope); // force to create an ImmutableMemtable
+			return state.MakeRoomForWriteAsync(force: true, lockScope: lockScope); // force to create an ImmutableMemtable
 		}
 
 		public async Task CompactMemTableAsync()
 		{
-			using (var locker = await state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
 			{
-				await EnsureTableFileCreated(locker);
+				await EnsureTableFileCreated(locker).ConfigureAwait(false);
 			}
 
-			await state.BackgroundTask;
+			await state.BackgroundTask.ConfigureAwait(false);
 		}
 	}
 }

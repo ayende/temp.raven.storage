@@ -40,7 +40,7 @@ namespace Raven.Storage.Impl
 			{
 				if (Log.IsDebugEnabled)
 					Log.Debug("Not the only concurrent write for write batch # {0}, waiting...", batch.BatchId);
-				await _writeCompletedEvent.WaitAsync(state);
+				await _writeCompletedEvent.WaitAsync(state).ConfigureAwait(false);
 			}
 
 			if (mine.Done())
@@ -54,7 +54,7 @@ namespace Raven.Storage.Impl
 			List<OutstandingWrite> list = null;
 			try
 			{
-				using (AsyncLock.LockScope locker = await _state.Lock.LockAsync())
+				using (AsyncLock.LockScope locker = await _state.Lock.LockAsync().ConfigureAwait(false))
 				{
 					if (mine.Done())
 					{
@@ -64,7 +64,7 @@ namespace Raven.Storage.Impl
 						return;
 					}
 
-					await _state.MakeRoomForWriteAsync(force: false, lockScope: locker);
+					await _state.MakeRoomForWriteAsync(force: false, lockScope: locker).ConfigureAwait(false);
 
 					ulong lastSequence = _state.VersionSet.LastSequence;
 
@@ -93,7 +93,7 @@ namespace Raven.Storage.Impl
 							write.Batch.Prepare(_state.MemTable);
 						}
 
-						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, writeOptions);
+						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, writeOptions).ConfigureAwait(false);
 
 
 						foreach (var write in list)
@@ -101,7 +101,7 @@ namespace Raven.Storage.Impl
 							write.Batch.Apply(_state.MemTable, currentSequence);
 						}
 					}
-					await locker.LockAsync();
+					await locker.LockAsync().ConfigureAwait(false);
 					_state.VersionSet.LastSequence = lastSequence;
 				}
 			}

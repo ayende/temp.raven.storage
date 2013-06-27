@@ -33,7 +33,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		protected async Task ScheduleCompactionAsync()
 		{
-			using (var locker = await state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
 			{
 				Background.Work(RunCompactionAsync(locker));
 			}
@@ -44,7 +44,7 @@ namespace Raven.Storage.Impl.Compactions
 			Debug.Assert(state.BackgroundCompactionScheduled);
 			state.BackgroundTask = Task.Factory.StartNew(async () =>
 				{
-					await locker.LockAsync();
+					await locker.LockAsync().ConfigureAwait(false);
 					using (LogManager.OpenMappedContext("storage", state.DatabaseName))
 					using (locker)
 					{
@@ -53,7 +53,7 @@ namespace Raven.Storage.Impl.Compactions
 							bool needToWait = false;
 							try
 							{
-								await BackgroundCompactionAsync(locker);
+								await BackgroundCompactionAsync(locker).ConfigureAwait(false);
 							}
 							catch (Exception e)
 							{
@@ -70,11 +70,11 @@ namespace Raven.Storage.Impl.Compactions
 							if (needToWait)
 							{
 								locker.Exit();
-								await Task.Delay(1000);
-								await locker.LockAsync();
+								await Task.Delay(1000).ConfigureAwait(false);
+								await locker.LockAsync().ConfigureAwait(false);
 							}
 
-							await BackgroundCompactionAsync(locker);
+							await BackgroundCompactionAsync(locker).ConfigureAwait(false);
 						}
 						finally
 						{
@@ -93,7 +93,7 @@ namespace Raven.Storage.Impl.Compactions
 		{
 			if (state.ImmutableMemTable != null)
 			{
-				await CompactMemTableAsync(locker);
+				await CompactMemTableAsync(locker).ConfigureAwait(false);
 			}
 
 			var compaction = CompactionToProcess();
@@ -110,7 +110,7 @@ namespace Raven.Storage.Impl.Compactions
 				compaction.Edit.DeleteFile(compaction.Level, file.FileNumber);
 				compaction.Edit.AddFile(compaction.Level + 1, file);
 
-				await state.LogAndApplyAsync(compaction.Edit, locker);
+				await state.LogAndApplyAsync(compaction.Edit, locker).ConfigureAwait(false);
 
 				log.Info("Moved {0} to level-{1} {2} bytes", file.FileNumber, compaction.Level + 1, file.FileSize);
 			}
@@ -120,7 +120,7 @@ namespace Raven.Storage.Impl.Compactions
 				{
 					try
 					{
-						await DoCompactionWorkAsync(compactionState, locker);
+						await DoCompactionWorkAsync(compactionState, locker).ConfigureAwait(false);
 					}
 					finally
 					{
@@ -143,7 +143,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task DoCompactionWorkAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 			var watch = Stopwatch.StartNew();
 
 			log.Info("Compacting {0}@{1} + {2}@{3} files.", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1);
@@ -165,7 +165,7 @@ namespace Raven.Storage.Impl.Compactions
 				while (input.IsValid)
 				{
 					if (state.ImmutableMemTable != null)
-						await CompactMemTableAsync(locker);
+						await CompactMemTableAsync(locker).ConfigureAwait(false);
 
 					var key = input.Key;
 
@@ -212,7 +212,7 @@ namespace Raven.Storage.Impl.Compactions
 
 					if (!drop)
 					{
-						await this.OpenCompactionOutputFileIfNecessaryAsync(compactionState, locker);
+						await OpenCompactionOutputFileIfNecessaryAsync(compactionState, locker).ConfigureAwait(false);
 						Debug.Assert(compactionState.Builder != null);
 
 						if (compactionState.Builder.NumEntries == 0)
@@ -234,7 +234,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			CreateCompactionStats(compactionState, watch);
 
-			await InstallCompactionResultsAsync(compactionState, locker);
+			await InstallCompactionResultsAsync(compactionState, locker).ConfigureAwait(false);
 		}
 
 		private void CreateCompactionStats(CompactionState compactionState, Stopwatch watch)
@@ -262,7 +262,7 @@ namespace Raven.Storage.Impl.Compactions
 			if (compactionState.Builder != null)
 				return;
 
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 
 			var fileNumber = state.VersionSet.NewFileNumber();
 			pendingOutputs.Add(fileNumber);
@@ -279,7 +279,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task InstallCompactionResultsAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 
 			log.Info("Compacted {0}@{1} + {2}@{3} files => {4} bytes", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1, compactionState.TotalBytes);
 
@@ -290,7 +290,7 @@ namespace Raven.Storage.Impl.Compactions
 				compactionState.Compaction.Edit.AddFile(level + 1, output);
 			}
 
-			await state.LogAndApplyAsync(compactionState.Compaction.Edit, locker);
+			await state.LogAndApplyAsync(compactionState.Compaction.Edit, locker).ConfigureAwait(false);
 		}
 
 		private void FinishCompactionOutputFileIfNecessary(CompactionState compactionState, IIterator input, bool force = false)
@@ -351,7 +351,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			edit.SetPrevLogNumber(0);
 			edit.SetLogNumber(state.LogFileNumber);
-			await state.LogAndApplyAsync(edit, locker);
+			await state.LogAndApplyAsync(edit, locker).ConfigureAwait(false);
 
 			state.ImmutableMemTable = null;
 			DeleteObsoleteFiles();

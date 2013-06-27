@@ -16,11 +16,11 @@
 		public async Task CompactAsync(int level, Slice begin, Slice end)
 		{
 			Task compactAsync;
-			using (await state.Lock.LockAsync())
+			using (await state.Lock.LockAsync().ConfigureAwait(false))
 			{
 				compactAsync = state.Compactor.Manual.CompactAsync(level, begin, end);
 			}
-			await compactAsync; // we do the wait _outside_ the lock
+			await compactAsync.ConfigureAwait(false); // we do the wait _outside_ the lock
 		}
 
 		public Task CompactRangeAsync(Slice begin, Slice end)
@@ -40,17 +40,17 @@
 
 		public async Task<Snapshot> CreateSnapshotAsync()
 		{
-			using (var locker = await state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
 			{
-				return await state.Snapshooter.CreateNewSnapshotAsync(state.VersionSet, locker);
+				return await state.Snapshooter.CreateNewSnapshotAsync(state.VersionSet, locker).ConfigureAwait(false);
 			}
 		}
 
 		public async Task ReleaseSnapshotAsync(Snapshot snapshot)
 		{
-			using (var locker = await state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
 			{
-				await state.Snapshooter.DeleteAsync(snapshot, locker);
+				await state.Snapshooter.DeleteAsync(snapshot, locker).ConfigureAwait(false);
 			}
 		}
 	}

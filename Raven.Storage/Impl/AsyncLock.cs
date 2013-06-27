@@ -37,7 +37,7 @@ namespace Raven.Storage.Impl
 				waiters.Enqueue(taskCompletionSource);
 			}
 
-			await taskCompletionSource.Task;
+			await taskCompletionSource.Task.ConfigureAwait(false);
 			lock (locker)
 			{
 				locked = true;
@@ -90,7 +90,7 @@ namespace Raven.Storage.Impl
 			{
 				if (_locked)
 					return;
-				await _asyncLock.LockAsync();
+				await _asyncLock.LockAsync().ConfigureAwait(false);
 				_locked = true;
 			}
 		}

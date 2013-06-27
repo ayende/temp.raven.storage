@@ -36,7 +36,7 @@ namespace Raven.Storage.Impl
 
                 callerState.Value = _state;
             }
-            await taskCompletionSource.Task;
+            await taskCompletionSource.Task.ConfigureAwait(false);
             return true;
 
         }

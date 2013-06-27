@@ -103,30 +103,29 @@ namespace Raven.Storage
 
 			state.LogWriter.RecordStarted(writeOptions.FlushToDisk);
 
-			var buffer = new byte[8];
+			var buffer = new byte[12];
 			Bit.Set(buffer, 0, seq);
-			await state.LogWriter.WriteAsync(buffer, 0, 8);
-			Bit.Set(buffer, 0, opCount);
-			await state.LogWriter.WriteAsync(buffer, 0, 4);
+			Bit.Set(buffer, 8, opCount);
+			await state.LogWriter.WriteAsync(buffer, 0, 12).ConfigureAwait(false);
 
 			foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
 			{
 				buffer[0] = (byte)operation.Op;
-				await state.LogWriter.WriteAsync(buffer, 0, 1);
-				await state.LogWriter.Write7BitEncodedIntAsync(operation.Key.Count);
-				await state.LogWriter.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
+				await state.LogWriter.WriteAsync(buffer, 0, 1).ConfigureAwait(false);
+				await state.LogWriter.Write7BitEncodedIntAsync(operation.Key.Count).ConfigureAwait(false);
+				await state.LogWriter.WriteAsync(operation.Key.Array, operation.Key.Offset, operation.Key.Count).ConfigureAwait(false);
 				if (operation.Op != Operations.Put)
 					continue;
 
 				Bit.Set(buffer, 0, operation.Handle.Size);
-				await state.LogWriter.WriteAsync(buffer, 0, 4);
+				await state.LogWriter.WriteAsync(buffer, 0, 4).ConfigureAwait(false);
 				using (var stream = state.MemTable.Read(operation.Handle))
 				{
-					await state.LogWriter.CopyFromAsync(stream);
+					await state.LogWriter.CopyFromAsync(stream).ConfigureAwait(false);
 				}
 			}
 
-			await state.LogWriter.RecordCompletedAsync();
+			await state.LogWriter.RecordCompletedAsync().ConfigureAwait(false);
 
 			if (log.IsDebugEnabled)
 				log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);

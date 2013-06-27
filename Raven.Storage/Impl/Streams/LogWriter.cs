@@ -58,15 +58,16 @@ namespace Raven.Storage.Impl.Streams
 				});
 		}
 
-		public Task WriteAsync(byte[] buffer, int offset, int count)
+		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
 		{
+			if (currentRecordType == LogRecordType.ZeroType)
+				throw new InvalidOperationException("Did you forget to call RecordStarted() ? ");
+
 			return Task.Run(
 				() =>
 				{
-					if (currentRecordType == LogRecordType.ZeroType)
-					{
-						throw new InvalidOperationException("Did you forget to call RecordStarted() ? ");
-					}
+					var writtenBytes = count;
+
 					do
 					{
 						var leftover = _buffer.Length - _bufferPos;
@@ -90,6 +91,8 @@ namespace Raven.Storage.Impl.Streams
 						offset += len;
 						count -= len;
 					} while (count > 0);
+
+					return writtenBytes;
 				});
 		}
 
@@ -150,7 +153,7 @@ namespace Raven.Storage.Impl.Streams
 					var reads = incoming.Read(bytes, 0, bytes.Length);
 					if (reads == 0)
 						break;
-					await WriteAsync(bytes, 0, reads);
+					await WriteAsync(bytes, 0, reads).ConfigureAwait(false);
 				}
 			}
 			finally

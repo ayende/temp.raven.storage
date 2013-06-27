@@ -155,62 +155,62 @@ namespace Raven.Storage.Impl
 
             if (HasComparator)
             {
-                await writer.Write7BitEncodedIntAsync((int)Tag.Comparator);
-                await writer.WriteLengthPrefixedSliceAsync(Comparator);
+				await writer.Write7BitEncodedIntAsync((int)Tag.Comparator).ConfigureAwait(false);
+				await writer.WriteLengthPrefixedSliceAsync(Comparator).ConfigureAwait(false);
             }
 
             if (LogNumber.HasValue)
             {
-                await writer.Write7BitEncodedIntAsync((int)Tag.LogNumber);
-                await writer.Write7BitEncodedLongAsync((long)LogNumber.Value);
+				await writer.Write7BitEncodedIntAsync((int)Tag.LogNumber).ConfigureAwait(false);
+				await writer.Write7BitEncodedLongAsync((long)LogNumber.Value).ConfigureAwait(false);
             }
 
             if (PrevLogNumber.HasValue)
             {
-                await writer.Write7BitEncodedIntAsync((int)Tag.PrevLogNumber);
-                await writer.Write7BitEncodedLongAsync((long)PrevLogNumber.Value);
+				await writer.Write7BitEncodedIntAsync((int)Tag.PrevLogNumber).ConfigureAwait(false);
+				await writer.Write7BitEncodedLongAsync((long)PrevLogNumber.Value).ConfigureAwait(false);
             }
 
             if (NextFileNumber.HasValue)
             {
-                await writer.Write7BitEncodedIntAsync((int)Tag.NextFileNumber);
-                await writer.Write7BitEncodedLongAsync((long)NextFileNumber.Value);
+				await writer.Write7BitEncodedIntAsync((int)Tag.NextFileNumber).ConfigureAwait(false);
+				await writer.Write7BitEncodedLongAsync((long)NextFileNumber.Value).ConfigureAwait(false);
             }
 
             if (LastSequence.HasValue)
             {
-                await writer.Write7BitEncodedIntAsync((int)Tag.LastSequence);
-                await writer.Write7BitEncodedLongAsync((long)LastSequence.Value);
+				await writer.Write7BitEncodedIntAsync((int)Tag.LastSequence).ConfigureAwait(false);
+				await writer.Write7BitEncodedLongAsync((long)LastSequence.Value).ConfigureAwait(false);
             }
 
             for (int level = 0; level < Config.NumberOfLevels; level++)
             {
                 foreach (var compactionPointer in CompactionPointers[level])
                 {
-                    await writer.Write7BitEncodedIntAsync((int)Tag.CompactPointer);
-                    await writer.Write7BitEncodedIntAsync(level);
-                    await writer.WriteLengthPrefixedInternalKeyAsync(compactionPointer);
+					await writer.Write7BitEncodedIntAsync((int)Tag.CompactPointer).ConfigureAwait(false);
+					await writer.Write7BitEncodedIntAsync(level).ConfigureAwait(false);
+					await writer.WriteLengthPrefixedInternalKeyAsync(compactionPointer).ConfigureAwait(false);
                 }
 
                 foreach (var fileNumber in DeletedFiles[level])
                 {
-                    await writer.Write7BitEncodedIntAsync((int)Tag.DeletedFile);
-                    await writer.Write7BitEncodedIntAsync(level);
-                    await writer.Write7BitEncodedLongAsync((long)fileNumber);
+					await writer.Write7BitEncodedIntAsync((int)Tag.DeletedFile).ConfigureAwait(false);
+					await writer.Write7BitEncodedIntAsync(level).ConfigureAwait(false);
+					await writer.Write7BitEncodedLongAsync((long)fileNumber).ConfigureAwait(false);
                 }
 
                 foreach (var fileMetadata in NewFiles[level])
                 {
-                    await writer.Write7BitEncodedIntAsync((int)Tag.NewFile);
-                    await writer.Write7BitEncodedIntAsync(level);
-                    await writer.Write7BitEncodedLongAsync((long)fileMetadata.FileNumber);
-                    await writer.Write7BitEncodedLongAsync(fileMetadata.FileSize);
-                    await writer.WriteLengthPrefixedInternalKeyAsync(fileMetadata.SmallestKey);
-                    await writer.WriteLengthPrefixedInternalKeyAsync(fileMetadata.LargestKey);
+					await writer.Write7BitEncodedIntAsync((int)Tag.NewFile).ConfigureAwait(false);
+					await writer.Write7BitEncodedIntAsync(level).ConfigureAwait(false);
+					await writer.Write7BitEncodedLongAsync((long)fileMetadata.FileNumber).ConfigureAwait(false);
+					await writer.Write7BitEncodedLongAsync(fileMetadata.FileSize).ConfigureAwait(false);
+					await writer.WriteLengthPrefixedInternalKeyAsync(fileMetadata.SmallestKey).ConfigureAwait(false);
+					await writer.WriteLengthPrefixedInternalKeyAsync(fileMetadata.LargestKey).ConfigureAwait(false);
                 }
             }
 
-            await writer.RecordCompletedAsync();
+			await writer.RecordCompletedAsync().ConfigureAwait(false);
         }
 
         public static VersionEdit DecodeFrom(Stream stream)
