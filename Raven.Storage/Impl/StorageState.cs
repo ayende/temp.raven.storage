@@ -409,6 +409,11 @@ namespace Raven.Storage.Impl
 
 		public void Dispose()
 		{
+			ShuttingDown = true;
+
+			if (BackgroundTask != null)
+				BackgroundTask.Wait(TimeSpan.FromSeconds(5));
+
 			if (LogWriter != null)
 				LogWriter.Dispose();
 			if (DescriptorLogWriter != null)

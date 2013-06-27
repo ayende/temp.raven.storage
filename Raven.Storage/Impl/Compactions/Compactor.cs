@@ -91,6 +91,9 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task BackgroundCompactionAsync(AsyncLock.LockScope locker)
 		{
+			if (state.ShuttingDown)
+				return;
+
 			if (state.ImmutableMemTable != null)
 			{
 				await CompactMemTableAsync(locker).ConfigureAwait(false);
