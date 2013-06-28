@@ -134,6 +134,11 @@ namespace Raven.Storage.Util
 				             }).Unwrap();
 		}
 
+		public static int WriteLengthPrefixedSlice(this LogWriter stream, Slice slice)
+		{
+			return stream.Write7BitEncodedInt(slice.Count) + stream.Write(slice.Array, slice.Offset, slice.Count);
+		}
+
 		public static int WriteLengthPrefixedInternalKey(this Stream stream, InternalKey internalKey)
 		{
 			return WriteLengthPrefixedSlice(stream, internalKey.TheInternalKey);
@@ -142,6 +147,11 @@ namespace Raven.Storage.Util
 		public static Task<int> WriteLengthPrefixedInternalKeyAsync(this LogWriter stream, InternalKey internalKey)
 		{
 			return WriteLengthPrefixedSliceAsync(stream, internalKey.TheInternalKey);
+		}
+
+		public static int WriteLengthPrefixedInternalKey(this LogWriter stream, InternalKey internalKey)
+		{
+			return WriteLengthPrefixedSlice(stream, internalKey.TheInternalKey);
 		}
 
 		public static Slice ReadLengthPrefixedSlice(this Stream stream)
@@ -194,6 +204,14 @@ namespace Raven.Storage.Util
 			int size;
 			Get7BitsBuffer(value, out buffer, out size);
 			return stream.WriteAsync(buffer, 0, size);
+		}
+
+		public static int Write7BitEncodedLong(this LogWriter stream, long value)
+		{
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			return stream.Write(buffer, 0, size);
 		}
 
 		public static int Write7BitEncodedLong(this Stream stream, long value)

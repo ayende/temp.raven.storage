@@ -149,64 +149,64 @@ namespace Raven.Storage.Impl
             NewFiles[level].Add(file);
         }
 
-        public async Task EncodeToAsync(LogWriter writer)
+        public void EncodeTo(LogWriter writer)
         {
             writer.RecordStarted();
 
             if (HasComparator)
             {
-				await writer.Write7BitEncodedIntAsync((int)Tag.Comparator).ConfigureAwait(false);
-				await writer.WriteLengthPrefixedSliceAsync(Comparator).ConfigureAwait(false);
+	            writer.Write7BitEncodedInt((int)Tag.Comparator);
+	            writer.WriteLengthPrefixedSlice(Comparator);
             }
 
             if (LogNumber.HasValue)
             {
-				await writer.Write7BitEncodedIntAsync((int)Tag.LogNumber).ConfigureAwait(false);
-				await writer.Write7BitEncodedLongAsync((long)LogNumber.Value).ConfigureAwait(false);
+	            writer.Write7BitEncodedInt((int)Tag.LogNumber);
+				writer.Write7BitEncodedLong((long)LogNumber.Value);
             }
 
             if (PrevLogNumber.HasValue)
             {
-				await writer.Write7BitEncodedIntAsync((int)Tag.PrevLogNumber).ConfigureAwait(false);
-				await writer.Write7BitEncodedLongAsync((long)PrevLogNumber.Value).ConfigureAwait(false);
+				writer.Write7BitEncodedInt((int)Tag.PrevLogNumber);
+				writer.Write7BitEncodedLong((long)PrevLogNumber.Value);
             }
 
             if (NextFileNumber.HasValue)
             {
-				await writer.Write7BitEncodedIntAsync((int)Tag.NextFileNumber).ConfigureAwait(false);
-				await writer.Write7BitEncodedLongAsync((long)NextFileNumber.Value).ConfigureAwait(false);
+				writer.Write7BitEncodedInt((int)Tag.NextFileNumber);
+				writer.Write7BitEncodedLong((long)NextFileNumber.Value);
             }
 
             if (LastSequence.HasValue)
             {
-				await writer.Write7BitEncodedIntAsync((int)Tag.LastSequence).ConfigureAwait(false);
-				await writer.Write7BitEncodedLongAsync((long)LastSequence.Value).ConfigureAwait(false);
+				writer.Write7BitEncodedInt((int)Tag.LastSequence);
+				writer.Write7BitEncodedLong((long)LastSequence.Value);
             }
 
             for (int level = 0; level < Config.NumberOfLevels; level++)
             {
                 foreach (var compactionPointer in CompactionPointers[level])
                 {
-					await writer.Write7BitEncodedIntAsync((int)Tag.CompactPointer).ConfigureAwait(false);
-					await writer.Write7BitEncodedIntAsync(level).ConfigureAwait(false);
-					await writer.WriteLengthPrefixedInternalKeyAsync(compactionPointer).ConfigureAwait(false);
+					writer.Write7BitEncodedInt((int)Tag.CompactPointer);
+					writer.Write7BitEncodedInt(level);
+					writer.WriteLengthPrefixedInternalKey(compactionPointer);
                 }
 
                 foreach (var fileNumber in DeletedFiles[level])
                 {
-					await writer.Write7BitEncodedIntAsync((int)Tag.DeletedFile).ConfigureAwait(false);
-					await writer.Write7BitEncodedIntAsync(level).ConfigureAwait(false);
-					await writer.Write7BitEncodedLongAsync((long)fileNumber).ConfigureAwait(false);
+					writer.Write7BitEncodedInt((int)Tag.DeletedFile);
+					writer.Write7BitEncodedInt(level);
+					writer.Write7BitEncodedLong((long)fileNumber);
                 }
 
                 foreach (var fileMetadata in NewFiles[level])
                 {
-					await writer.Write7BitEncodedIntAsync((int)Tag.NewFile).ConfigureAwait(false);
-					await writer.Write7BitEncodedIntAsync(level).ConfigureAwait(false);
-					await writer.Write7BitEncodedLongAsync((long)fileMetadata.FileNumber).ConfigureAwait(false);
-					await writer.Write7BitEncodedLongAsync(fileMetadata.FileSize).ConfigureAwait(false);
-					await writer.WriteLengthPrefixedInternalKeyAsync(fileMetadata.SmallestKey).ConfigureAwait(false);
-					await writer.WriteLengthPrefixedInternalKeyAsync(fileMetadata.LargestKey).ConfigureAwait(false);
+					writer.Write7BitEncodedInt((int)Tag.NewFile);
+					writer.Write7BitEncodedInt(level);
+					writer.Write7BitEncodedLong((long)fileMetadata.FileNumber);
+					writer.Write7BitEncodedLong(fileMetadata.FileSize);
+					writer.WriteLengthPrefixedInternalKey(fileMetadata.SmallestKey);
+					writer.WriteLengthPrefixedInternalKey(fileMetadata.LargestKey);
                 }
             }
 

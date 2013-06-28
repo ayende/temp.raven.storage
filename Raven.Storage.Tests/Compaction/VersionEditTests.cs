@@ -53,7 +53,7 @@ namespace Raven.Storage.Tests.Compaction
 
 			var memoryStream = new MemoryStream();
 			var logWriter = new LogWriter(memoryStream, new BufferPool());
-			versionEdit.EncodeToAsync(logWriter).Wait(TimeSpan.FromSeconds(15));
+			versionEdit.EncodeTo(logWriter);
 
 			memoryStream.Position = 0;
 

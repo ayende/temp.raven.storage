@@ -47,16 +47,16 @@
 				snapshots.Remove(snapshot);
 		}
 
-		public async Task WriteSnapshotAsync(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
+		public void WriteSnapshot(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync().ConfigureAwait(false);
+			locker.LockAsync().Wait();
 
 			var edit = new VersionEdit();
 			AddMetadata(edit, storageContext.Options);
 			AddCompactionPointers(edit, versionSet);
 			AddFiles(edit, versionSet);
 
-			await edit.EncodeToAsync(logWriter).ConfigureAwait(false);
+			edit.EncodeTo(logWriter);
 		}
 
 		private static void AddFiles(VersionEdit edit, VersionSet versionSet)
