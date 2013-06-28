@@ -29,7 +29,7 @@
 
 		public async Task<Snapshot> CreateNewSnapshotAsync(VersionSet versionSet, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 			var snapshot = new Snapshot
 				               {
 					               Sequence = versionSet.LastSequence
@@ -42,21 +42,21 @@
 
 		public async Task DeleteAsync(Snapshot snapshot, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 			if (snapshots.Contains(snapshot))
 				snapshots.Remove(snapshot);
 		}
 
 		public async Task WriteSnapshotAsync(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 
 			var edit = new VersionEdit();
 			AddMetadata(edit, storageContext.Options);
 			AddCompactionPointers(edit, versionSet);
 			AddFiles(edit, versionSet);
 
-			await edit.EncodeToAsync(logWriter);
+			await edit.EncodeToAsync(logWriter).ConfigureAwait(false);
 		}
 
 		private static void AddFiles(VersionEdit edit, VersionSet versionSet)

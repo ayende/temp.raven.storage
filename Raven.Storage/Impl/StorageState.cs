@@ -70,7 +70,8 @@ namespace Raven.Storage.Impl
 			var newFileNumber = VersionSet.NewFileNumber();
 			try
 			{
-				var file = FileSystem.NewWritable(newFileNumber, Constants.Files.Extensions.LogFile);
+				var name = FileSystem.GetLogFileName(newFileNumber);
+				var file = FileSystem.NewWritable(name);
 				LogWriter = new LogWriter(file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}
@@ -84,7 +85,7 @@ namespace Raven.Storage.Impl
 
 		public async Task LogAndApplyAsync(VersionEdit edit, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
+			await locker.LockAsync().ConfigureAwait(false);
 
 			string newManifestFile = null;
 
@@ -122,7 +123,7 @@ namespace Raven.Storage.Impl
 					var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
 					DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
-					await Snapshooter.WriteSnapshotAsync(DescriptorLogWriter, VersionSet, locker);
+					await Snapshooter.WriteSnapshotAsync(DescriptorLogWriter, VersionSet, locker).ConfigureAwait(false);
 				}
 
 				// Unlock during expensive MANIFEST log write
@@ -130,7 +131,7 @@ namespace Raven.Storage.Impl
 
 				// Write new record to MANIFEST log
 
-				await edit.EncodeToAsync(DescriptorLogWriter);
+				await edit.EncodeToAsync(DescriptorLogWriter).ConfigureAwait(false);
 
 				//if (!s.ok()) {
 				//	Log(options_->info_log, "MANIFEST write: %s\n", s.ToString().c_str());
@@ -146,12 +147,12 @@ namespace Raven.Storage.Impl
 				// new CURRENT file that points to it.
 				if (!string.IsNullOrEmpty(newManifestFile))
 				{
-					await SetCurrentFileAsync(VersionSet.ManifestFileNumber);
+					await SetCurrentFileAsync(VersionSet.ManifestFileNumber).ConfigureAwait(false);
 					// No need to double-check MANIFEST in case of error since it
 					// will be discarded below.
 				}
 
-				await locker.LockAsync();
+				await locker.LockAsync().ConfigureAwait(false);
 
 				// Install the new version
 				VersionSet.AppendVersion(version);
@@ -182,8 +183,8 @@ namespace Raven.Storage.Impl
 
 			using (var writer = new StreamWriter(FileSystem.NewWritable(tempFileName)))
 			{
-				await writer.WriteAsync(manifest);
-				await writer.FlushAsync();
+				await writer.WriteAsync(manifest).ConfigureAwait(false);
+				await writer.FlushAsync().ConfigureAwait(false);
 			}
 
 			FileSystem.RenameFile(tempFileName, FileSystem.GetCurrentFileName());
@@ -198,7 +199,7 @@ namespace Raven.Storage.Impl
 			{
 				if (Options.CreateIfMissing)
 				{
-					await CreateNewDatabaseAsync();
+					await CreateNewDatabaseAsync().ConfigureAwait(false);
 				}
 				else
 				{
@@ -330,7 +331,10 @@ namespace Raven.Storage.Impl
 			{
 				var iterator = memTable.NewIterator();
 				iterator.SeekToFirst();
-				Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
+
+				if (Log.IsDebugEnabled)
+					Log.Debug("Writing table with {0:#,#;;00} items to {1}", memTable.Count, tableFileName);
+
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
@@ -342,8 +346,9 @@ namespace Raven.Storage.Impl
 						var key = iterator.Key;
 
 						meta.LargestKey = new InternalKey(key);
-						
-						Log.Debug("Writing item with key {0}", meta.LargestKey.DebugVal);
+
+						if (Log.IsDebugEnabled)
+							Log.Debug("Writing item with key {0}", meta.LargestKey.DebugVal);
 
 						using (var stream = iterator.CreateValueStream())
 							builder.Add(key, stream);
@@ -388,11 +393,11 @@ namespace Raven.Storage.Impl
 				{
 					using (var logWriter = new LogWriter(file, Options.BufferPool))
 					{
-						await newDb.EncodeToAsync(logWriter);
+						await newDb.EncodeToAsync(logWriter).ConfigureAwait(false);
 					}
 				}
 
-				await SetCurrentFileAsync(1);
+				await SetCurrentFileAsync(1).ConfigureAwait(false);
 			}
 			catch (Exception)
 			{
@@ -404,6 +409,11 @@ namespace Raven.Storage.Impl
 
 		public void Dispose()
 		{
+			ShuttingDown = true;
+
+			if (BackgroundTask != null)
+				BackgroundTask.Wait(TimeSpan.FromSeconds(5));
+
 			if (LogWriter != null)
 				LogWriter.Dispose();
 			if (DescriptorLogWriter != null)
@@ -456,10 +466,10 @@ namespace Raven.Storage.Impl
 			bool allowDelay = force == false;
 			while (true)
 			{
-				await lockScope.LockAsync();
+				await lockScope.LockAsync().ConfigureAwait(false);
 				if (BackgroundTask.IsCanceled || BackgroundTask.IsFaulted)
 				{
-					await BackgroundTask; // throws
+					await BackgroundTask.ConfigureAwait(false); // throws
 				}
 				else if (allowDelay && VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
 				{
@@ -471,9 +481,9 @@ namespace Raven.Storage.Impl
 					// case it is sharing the same core as the writer.
 					lockScope.Exit();
 					{
-						await Task.Delay(TimeSpan.FromMilliseconds(1));
+						await Task.Delay(TimeSpan.FromMilliseconds(1)).ConfigureAwait(false);
 					}
-					await lockScope.LockAsync();
+					await lockScope.LockAsync().ConfigureAwait(false);
 					allowDelay = false; // Do not delay a single write more than once
 				}
 				else if (force == false && MemTable.ApproximateMemoryUsage <= Options.WriteBatchSize)
@@ -483,18 +493,20 @@ namespace Raven.Storage.Impl
 				}
 				else if (ImmutableMemTable != null)
 				{
+					Compactor.MaybeScheduleCompaction(lockScope);
 					lockScope.Exit();
 
 					// We have filled up the current memtable, but the previous
 					// one is still being compacted, so we wait.
-					await BackgroundTask;
+					await BackgroundTask.ConfigureAwait(false);
 				}
 				else if (VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
 				{
+					Compactor.MaybeScheduleCompaction(lockScope);
 					lockScope.Exit();
 
 					// There are too many level-0 files.
-					await BackgroundTask;
+					await BackgroundTask.ConfigureAwait(false);
 				}
 				else
 				{
@@ -516,7 +528,7 @@ namespace Raven.Storage.Impl
 
 		public async Task<StorageStatistics> GetStorageStatisticsAsync()
 		{
-			using (await Lock.LockAsync())
+			using (await Lock.LockAsync().ConfigureAwait(false))
 			{
 				var files = new List<FileMetadata>[Config.NumberOfLevels];
 				for (var level = 0; level < Config.NumberOfLevels; level++)

@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 using Raven.Storage.Impl;
+using Raven.Storage.Tests.Utils;
 using Xunit;
 
 namespace Raven.Storage.Tests.Recovery

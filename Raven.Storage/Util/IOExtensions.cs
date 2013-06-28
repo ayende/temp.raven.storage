@@ -117,12 +117,21 @@ namespace Raven.Storage.Util
 			return size + slice.Count;
 		}
 
-		public static async Task<int> WriteLengthPrefixedSliceAsync(this LogWriter stream, Slice slice)
+		public static Task<int> WriteLengthPrefixedSliceAsync(this LogWriter stream, Slice slice)
 		{
-			var size = await stream.Write7BitEncodedIntAsync(slice.Count);
-			await stream.WriteAsync(slice.Array, slice.Offset, slice.Count);
+			return stream.Write7BitEncodedIntAsync(slice.Count)
+			             .ContinueWith(writeBitTask =>
+				             {
+					             writeBitTask.AssertNotFaulted();
 
-			return size + slice.Count;
+					             return stream.WriteAsync(slice.Array, slice.Offset, slice.Count)
+					                          .ContinueWith(writeSliceTask =>
+						                          {
+							                          writeSliceTask.AssertNotFaulted();
+
+							                          return writeBitTask.Result + slice.Count;
+						                          });
+				             }).Unwrap();
 		}
 
 		public static int WriteLengthPrefixedInternalKey(this Stream stream, InternalKey internalKey)
@@ -130,9 +139,9 @@ namespace Raven.Storage.Util
 			return WriteLengthPrefixedSlice(stream, internalKey.TheInternalKey);
 		}
 
-		public static async Task<int> WriteLengthPrefixedInternalKeyAsync(this LogWriter stream, InternalKey internalKey)
+		public static Task<int> WriteLengthPrefixedInternalKeyAsync(this LogWriter stream, InternalKey internalKey)
 		{
-			return await WriteLengthPrefixedSliceAsync(stream, internalKey.TheInternalKey);
+			return WriteLengthPrefixedSliceAsync(stream, internalKey.TheInternalKey);
 		}
 
 		public static Slice ReadLengthPrefixedSlice(this Stream stream)
@@ -140,7 +149,7 @@ namespace Raven.Storage.Util
 			var size = stream.Read7BitEncodedInt();
 
 			var buffer = new byte[size];
-			stream.Read(buffer, 0, size);
+			stream.ReadExactly(buffer, size);
 
 			return new Slice(buffer);
 		}
@@ -150,31 +159,41 @@ namespace Raven.Storage.Util
 			return new InternalKey(ReadLengthPrefixedSlice(stream));
 		}
 
-		public static async Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)
+		public static Task<int> Write7BitEncodedIntAsync(this Stream stream, int value)
 		{
 			byte[] buffer;
 			int size;
 			Get7BitsBuffer(value, out buffer, out size);
-			await stream.WriteAsync(buffer, 0, size);
-			return size;
+			return stream.WriteAsync(buffer, 0, size).ContinueWith(t =>
+				{
+					t.AssertNotFaulted();
+
+					return size;
+				});
 		}
 
-		public static async Task<int> Write7BitEncodedIntAsync(this LogWriter stream, int value)
+		public static Task<int> Write7BitEncodedIntAsync(this LogWriter stream, int value)
 		{
 			byte[] buffer;
 			int size;
 			Get7BitsBuffer(value, out buffer, out size);
-			await stream.WriteAsync(buffer, 0, size);
-			return size;
+			return stream.WriteAsync(buffer, 0, size);
 		}
 
-		public static async Task<int> Write7BitEncodedLongAsync(this LogWriter stream, long value)
+		public static int Write7BitEncodedInt(this LogWriter stream, int value)
 		{
 			byte[] buffer;
 			int size;
 			Get7BitsBuffer(value, out buffer, out size);
-			await stream.WriteAsync(buffer, 0, size);
-			return size;
+			return stream.Write(buffer, 0, size);
+		}
+
+		public static Task<int> Write7BitEncodedLongAsync(this LogWriter stream, long value)
+		{
+			byte[] buffer;
+			int size;
+			Get7BitsBuffer(value, out buffer, out size);
+			return stream.WriteAsync(buffer, 0, size);
 		}
 
 		public static int Write7BitEncodedLong(this Stream stream, long value)

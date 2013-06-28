@@ -224,7 +224,7 @@
 			uint crc = 0;
 			while (bytes < 500 * 1048576)
 			{
-				crc = Crc.CalculateCrc(0, buffer, 0, buffer.Length);
+				crc = Crc.Value(buffer, 0, buffer.Length);
 				bytes += Size;
 				result.FinishOperation();
 			}
@@ -523,7 +523,7 @@
 
 			Output("CPU:				{0}", CPUInfo.GetProcessorName());
 			Output("CPU Cores:			{0}", CPUInfo.GetNumberOfProcessors());
-			Output("CPU Cache:			{0}", CPUInfo.GetCacheSize(CacheLevel.Level1) + CPUInfo.GetCacheSize(CacheLevel.Level2) + CPUInfo.GetCacheSize(CacheLevel.Level3));
+			Output("CPU Cache:			{0} KB", CPUInfo.GetCacheSize(CacheLevel.Level3));
 		}
 
 		private void Output(string format, params object[] args)

@@ -2,11 +2,10 @@
 {
 	using System;
 	using System.Threading.Tasks;
-	using System.Xml;
 
 	using NDesk.Options;
 
-	using NLog.Config;
+	using NLog;
 
 	public class Program
 	{
@@ -14,10 +13,10 @@
 
 		private readonly OptionSet optionSet;
 
+		private bool enableLogging = false;
+
 		private Program()
 		{
-			ConfigureLogging();
-
 			options = new BenchmarkOptions();
 			optionSet = new OptionSet
 				            {
@@ -57,6 +56,7 @@
 					            { "cache-size:", "Number of megabytes to use as a cache of uncompressed data. Negative means use default settings.", s => options.CacheSize = int.Parse(s) },
 					            { "bloom-bits:", "Bloom filter bits per key. Negative means use default settings.", s => options.BloomBits = int.Parse(s) },
 					            { "db:", "Use the db with the following name.", s => options.DatabaseName = s },
+								{ "log:", "Enables logging.", s => enableLogging = true },
 					            { "h|?|help", v => PrintUsageAndExit(0) },
 				            };
 		}
@@ -84,8 +84,10 @@
 
 			if (string.IsNullOrEmpty(options.DatabaseName))
 			{
-				options.DatabaseName = string.Format("DBBench-{0}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"));
+				options.DatabaseName = string.Format("DBBench-{0}-{1}", DateTime.Now.ToString("yyyy-MM-dd,HH-mm-ss"), Guid.NewGuid());
 			}
+
+			ConfigureLogging();
 
 			try
 			{
@@ -123,11 +125,8 @@ Command line options:", DateTime.UtcNow.Year);
 
 		private void ConfigureLogging()
 		{
-			using (var stream = this.GetType().Assembly.GetManifestResourceStream("Raven.Storage.Benchmark.NLog.config"))
-			using (var reader = XmlReader.Create(stream))
-			{
-				NLog.LogManager.Configuration = new XmlLoggingConfiguration(reader, "default-config");
-			}
+			if (!enableLogging)
+				LogManager.DisableLogging();
 		}
 	}
 }

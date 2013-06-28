@@ -59,7 +59,7 @@ namespace Raven.Storage.Impl
 
 		private async Task MaybeScheduleCompactionAsync()
 		{
-			using (var locker = await state.Lock.LockAsync())
+			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
 			{
 				state.Compactor.MaybeScheduleCompaction(locker);
 			}

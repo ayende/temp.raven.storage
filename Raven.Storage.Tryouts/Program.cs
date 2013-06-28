@@ -10,40 +10,25 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-			var generator = new RandomGenerator();
-
-			var sp = Stopwatch.StartNew();
-			using (var storage = new Storage("test", new StorageOptions()))
+			try
 			{
-				storage.InitAsync().Wait();
-				for (var i = 0; i < 100*1000; i += 1)
+				for (int i = 0; i < 100; i++)
 				{
-					var batch = new WriteBatch();
-					{
-						var k = i;
-						var key = string.Format("{0:0000000000000000}", k);
-						batch.Put(key, generator.Generate(100));
-					}
-
-					storage.Writer.WriteAsync(batch, new WriteOptions
-						{
-							FlushToDisk = true
-						}).Wait();
-					if (i%1000 == 0)
-					{
-						Console.WriteLine("{0:#,#} {1}", i, sp.Elapsed);
-					}
+					Benchmark.Program.Main(new[] { "--benchmarks=fill100k" });
 				}
 			}
-
+			catch (Exception)
+			{
+				Console.ReadLine();
+			}
 		}
 	}
 
 	public class MyConsoleTarget : Raven.Abstractions.Logging.Target
-    {
+	{
 		public override void Write(Raven.Abstractions.Logging.LogEventInfo logEvent)
-        {
-            Console.WriteLine(logEvent.FormattedMessage);
-        }
-    }
+		{
+			Console.WriteLine(logEvent.FormattedMessage);
+		}
+	}
 }

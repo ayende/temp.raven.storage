@@ -8,5 +8,11 @@ namespace Raven.Storage.Util
 		{
 			return (task.IsCompleted || task.IsCanceled || task.IsFaulted) == false;
 		}
+
+		public static void AssertNotFaulted(this Task task)
+		{
+			if (task.IsFaulted)
+				task.Wait(); // will throw
+		}
 	}
 }

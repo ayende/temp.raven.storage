@@ -10,7 +10,7 @@ using Raven.Storage.Impl.Streams;
 using Raven.Storage.Util;
 using Xunit;
 
-namespace Raven.Storage.Tests.Compactions
+namespace Raven.Storage.Tests.Compaction
 {
 	using System;
 

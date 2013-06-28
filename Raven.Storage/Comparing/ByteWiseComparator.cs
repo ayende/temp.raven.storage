@@ -4,12 +4,15 @@ using Raven.Storage.Data;
 
 namespace Raven.Storage.Comparing
 {
+	using System.Runtime.CompilerServices;
+
 	public class ByteWiseComparator : IComparator
 	{
 		public readonly static ByteWiseComparator  Default = new ByteWiseComparator();
 
 		public string Name { get { return "ByteWiseComparator"; } }
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int Compare(Slice a, Slice b)
 		{
 			var minLen = Math.Min(a.Count, b.Count);
@@ -22,6 +25,7 @@ namespace Raven.Storage.Comparing
 			return a.Count - b.Count;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int FindSharedPrefix(Slice a, Slice b)
 		{
 			int pos = 0;
@@ -33,6 +37,7 @@ namespace Raven.Storage.Comparing
 			return pos;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void FindShortestSeparator(ref Slice start, Slice limit)
 		{
 			var minLen = Math.Min(start.Count, limit.Count);
@@ -50,6 +55,7 @@ namespace Raven.Storage.Comparing
 			}
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
 		{
 			for (int i = 0; i < key.Count; i++)

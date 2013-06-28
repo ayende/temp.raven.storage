@@ -37,7 +37,7 @@ namespace Raven.Storage
 
 		public async Task InitAsync()
 		{
-			var edit = await _storageState.RecoverAsync();
+			var edit = await _storageState.RecoverAsync().ConfigureAwait(false);
 			
 			_storageState.CreateNewLog();
 			edit.SetComparatorName(_storageState.Options.Comparator.Name);
@@ -46,9 +46,9 @@ namespace Raven.Storage
 			Writer = new StorageWriter(_storageState);
 			Reader = new StorageReader(_storageState);
 			Commands = new StorageCommands(_storageState);
-			using (var locker = await _storageState.Lock.LockAsync())
+			using (var locker = await _storageState.Lock.LockAsync().ConfigureAwait(false))
 			{
-				await _storageState.LogAndApplyAsync(edit, locker);
+				await _storageState.LogAndApplyAsync(edit, locker).ConfigureAwait(false);
 				_storageState.Compactor.DeleteObsoleteFiles();
 				_storageState.Compactor.MaybeScheduleCompaction(locker);
 			}

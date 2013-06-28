@@ -12,12 +12,12 @@ namespace Raven.Storage.Impl.Streams
 	{
 		public static readonly Dictionary<LogRecordType, uint> RecordTypeCrcs =
 			((LogRecordType[])Enum.GetValues(typeof(LogRecordType)))
-				.ToDictionary(x => x, x => Crc.CalculateCrc(0, (byte)x));
+				.ToDictionary(x => x, x => Crc.Extend(0, (byte)x));
 
 
 		private readonly Stream stream;
 		private readonly BufferPool _bufferPool;
-		private readonly AsyncBinaryWriter _binaryWriter;
+		private readonly BinaryWriter _binaryWriter;
 
 		public const int BlockSize = 32 * 1024;
 		// Header is checksum (4 bytes), length (2 bytes) + type (1 byte)
@@ -36,7 +36,7 @@ namespace Raven.Storage.Impl.Streams
 			this.stream = stream;
 			_bufferPool = bufferPool;
 			_buffer = bufferPool.Take(BlockSize);
-			_binaryWriter = new AsyncBinaryWriter(stream);
+			_binaryWriter = new BinaryWriter(stream);
 			_bufferPos = HeaderSize;
 			_flushToDisk = true;
 		}
@@ -47,19 +47,25 @@ namespace Raven.Storage.Impl.Streams
 			currentRecordType = LogRecordType.FullType;
 		}
 
-		public async Task RecordCompletedAsync()
+		public void RecordCompleted()
 		{
-			await FlushBuffer(recordCompleted: true);
+			FlushBuffer(recordCompleted: true);
 			currentRecordType = LogRecordType.ZeroType;
 			_flushToDisk = true;
 		}
 
-		public async Task WriteAsync(byte[] buffer, int offset, int count)
+		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
+		{
+			return Task.Run(() => Write(buffer, offset, count));
+		}
+
+		public int Write(byte[] buffer, int offset, int count)
 		{
 			if (currentRecordType == LogRecordType.ZeroType)
-			{
 				throw new InvalidOperationException("Did you forget to call RecordStarted() ? ");
-			}
+
+			var writtenBytes = count;
+
 			do
 			{
 				var leftover = _buffer.Length - _bufferPos;
@@ -70,13 +76,12 @@ namespace Raven.Storage.Impl.Streams
 					{
 						_buffer[_bufferPos++] = 0;
 					}
-					await FlushBuffer(recordCompleted: false);
+					FlushBuffer(recordCompleted: false);
 					_bufferPos = HeaderSize;
 				}
 				var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
 				// Invariant: we never leave < HeaderSize bytes in a block.
 				Debug.Assert(avail >= 0);
-
 
 				var len = Math.Min(count, avail);
 				Buffer.BlockCopy(buffer, offset, _buffer, _bufferPos, len);
@@ -84,9 +89,11 @@ namespace Raven.Storage.Impl.Streams
 				offset += len;
 				count -= len;
 			} while (count > 0);
+
+			return writtenBytes;
 		}
 
-		private async Task FlushBuffer(bool recordCompleted)
+		private void FlushBuffer(bool recordCompleted)
 		{
 			switch (currentRecordType)
 			{
@@ -103,7 +110,7 @@ namespace Raven.Storage.Impl.Streams
 					throw new ArgumentOutOfRangeException("Cannot flush when the currentRecordType is: " + currentRecordType);
 			}
 
-			await EmitPhysicalRecord(currentRecordType, _buffer, HeaderSize, _bufferPos - HeaderSize);
+			EmitPhysicalRecord(currentRecordType, _buffer, HeaderSize, _bufferPos - HeaderSize);
 
 			if (recordCompleted)
 			{
@@ -118,32 +125,32 @@ namespace Raven.Storage.Impl.Streams
 			stream.Dispose();
 		}
 
-		private async Task EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
+		private void EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
 		{
 			// calc crc & write header
-			var crc = Crc.CalculateCrc(RecordTypeCrcs[type], buffer, offset, count);
-			await _binaryWriter.WriteAsync(Crc.Mask(crc));
-			await _binaryWriter.WriteAsync((ushort)count);
-			await _binaryWriter.WriteAsync((byte)type);
-			await _binaryWriter.WriteAsync(buffer, offset, count);
+			var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
+			_binaryWriter.Write(Crc.Mask(crc));
+			_binaryWriter.Write((ushort)count);
+			_binaryWriter.Write((byte)type);
+			_binaryWriter.Write(buffer, offset, count);
 
 			if (_flushToDisk)
-				await _binaryWriter.FlushAsync();
+				_binaryWriter.Flush();
 
 			_bufferPos += HeaderSize;
 		}
 
-		public async Task CopyFromAsync(Stream incoming)
+		public void CopyFrom(Stream incoming)
 		{
 			var bytes = _bufferPool.Take(BlockSize);
 			try
 			{
 				while (true)
 				{
-					var reads = await incoming.ReadAsync(bytes, 0, bytes.Length);
+					var reads = incoming.Read(bytes, 0, bytes.Length);
 					if (reads == 0)
 						break;
-					await WriteAsync(bytes, 0, reads);
+					Write(bytes, 0, reads);
 				}
 			}
 			finally

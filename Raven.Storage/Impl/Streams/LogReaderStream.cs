@@ -93,7 +93,7 @@ namespace Raven.Storage.Impl.Streams
 			_posInBuffer = 0;
 			if (_checksum)
 			{
-				var actualCrc = Crc.CalculateCrc(LogWriter.RecordTypeCrcs[type], _buffer, 0, _bufferLen);
+				var actualCrc = Crc.Extend(LogWriter.RecordTypeCrcs[type], _buffer, 0, _bufferLen);
 				if (actualCrc != crc)
 				{
 					throw new CorruptedDataException("checksum mismatch");

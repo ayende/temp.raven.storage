@@ -19,14 +19,9 @@ namespace Raven.Storage.Impl
 			this.databaseName = databaseName;
 		}
 
-		public string GetFileName(string name, ulong num, string ext)
+		private string GetFileName(string name, ulong num, string ext)
 		{
 			return string.Format("{0}{1:000000}{2}", name, num, ext);
-		}
-
-		public string GetFullFileName(string name, ulong num, string ext)
-		{
-			return Path.Combine(databaseName, string.Format("{0}{1:000000}{2}", name, num, ext));
 		}
 
 		public virtual string GetFullFileName(ulong num, string ext)
@@ -39,11 +34,6 @@ namespace Raven.Storage.Impl
 			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
 			TrackResourceUsage.Track(() => stream.SafeFileHandle);
 			return stream;
-		}
-		
-		public Stream NewWritable(ulong num, string ext)
-		{
-			return NewWritable(GetFileName(string.Empty, num, ext));
 		}
 
 		public virtual void DeleteFile(string name)
@@ -91,6 +81,12 @@ namespace Raven.Storage.Impl
 			}
 			else
 			{
+				var extension = Path.GetExtension(file);
+				if (extension == Constants.Files.Extensions.TempFile && fileName.Length >= 37)
+				{
+					fileName = fileName.Substring(37, fileName.Length - 37);
+				}
+
 				ulong extractedNumber;
 				var toParse = Regex.Replace(fileName, @"[^\d]", string.Empty);
 
@@ -99,7 +95,7 @@ namespace Raven.Storage.Impl
 					return false;
 				}
 
-				switch (Path.GetExtension(file))
+				switch (extension)
 				{
 					case Constants.Files.Extensions.LogFile:
 						fileType = FileType.LogFile;
@@ -173,7 +169,7 @@ namespace Raven.Storage.Impl
 			CreateDirectory(databaseName);
 		}
 
-		public void CreateDirectory(string name)
+		private void CreateDirectory(string name)
 		{
 			Directory.CreateDirectory(name);
 		}
@@ -206,7 +202,7 @@ namespace Raven.Storage.Impl
 
 		public string GetTempFileName(ulong fileNumber)
 		{
-			return GetFileName(Guid.NewGuid().ToString(), fileNumber, Constants.Files.Extensions.TempFile);
+			return GetFileName(Guid.NewGuid().ToString() + "-", fileNumber, Constants.Files.Extensions.TempFile);
 		}
 
 		public string GetTableFileName(ulong fileNumber)
