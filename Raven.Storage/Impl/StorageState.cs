@@ -85,64 +85,52 @@ namespace Raven.Storage.Impl
 
 		public async Task LogAndApplyAsync(VersionEdit edit, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync();
-
 			string newManifestFile = null;
 
 			try
 			{
-				if (!edit.LogNumber.HasValue)
-					edit.SetLogNumber(VersionSet.LogNumber);
-				else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
-					throw new InvalidOperationException("LogNumber");
+				Version version;
 
-				if (!edit.PrevLogNumber.HasValue)
-					edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
-
-				edit.SetNextFile(VersionSet.NextFileNumber);
-				edit.SetLastSequence(VersionSet.LastSequence);
-
-				var version = new Version(this, VersionSet);
-
-				var builder = new Builder(this, VersionSet, VersionSet.Current);
-				builder.Apply(edit);
-				builder.SaveTo(version);
-
-				Version.Finalize(version);
-
-				// Initialize new descriptor log file if necessary by creating
-				// a temporary file that contains a snapshot of the current version.
-
-				if (DescriptorLogWriter == null)
+				using (await locker.LockAsync())
 				{
-					// No reason to unlock *mu here since we only hit this path in the
-					// first call to LogAndApply (when opening the database).
+					if (!edit.LogNumber.HasValue) edit.SetLogNumber(VersionSet.LogNumber);
+					else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
+						throw new InvalidOperationException("LogNumber");
 
-					newManifestFile = FileSystem.DescriptorFileName(VersionSet.ManifestFileNumber);
+					if (!edit.PrevLogNumber.HasValue) edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
+
 					edit.SetNextFile(VersionSet.NextFileNumber);
-					var descriptorFile = FileSystem.NewWritable(newManifestFile);
+					edit.SetLastSequence(VersionSet.LastSequence);
 
-					DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
+					version = new Version(this, VersionSet);
 
-					Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet);
+					var builder = new Builder(this, VersionSet, VersionSet.Current);
+					builder.Apply(edit);
+					builder.SaveTo(version);
+
+					Version.Finalize(version);
+
+					// Initialize new descriptor log file if necessary by creating
+					// a temporary file that contains a snapshot of the current version.
+
+					if (DescriptorLogWriter == null)
+					{
+						// No reason to unlock *mu here since we only hit this path in the
+						// first call to LogAndApply (when opening the database).
+
+						newManifestFile = FileSystem.DescriptorFileName(VersionSet.ManifestFileNumber);
+						edit.SetNextFile(VersionSet.NextFileNumber);
+						var descriptorFile = FileSystem.NewWritable(newManifestFile);
+
+						DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
+
+						Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet);
+					}
 				}
-
-				// Unlock during expensive MANIFEST log write
-				locker.Exit();
 
 				// Write new record to MANIFEST log
 
 				edit.EncodeTo(DescriptorLogWriter);
-
-				//if (!s.ok()) {
-				//	Log(options_->info_log, "MANIFEST write: %s\n", s.ToString().c_str());
-				//	if (ManifestContains(record)) {
-				//	  Log(options_->info_log,
-				//		  "MANIFEST contains log record despite error; advancing to new "
-				//		  "version to prevent mismatch between in-memory and logged state");
-				//	  s = Status::OK();
-				//	}
-				//}
 
 				// If we just created a new descriptor file, install it by writing a
 				// new CURRENT file that points to it.
@@ -153,12 +141,13 @@ namespace Raven.Storage.Impl
 					// will be discarded below.
 				}
 
-				await locker.LockAsync();
-
-				// Install the new version
-				VersionSet.AppendVersion(version);
-				VersionSet.SetLogNumber(edit.LogNumber.Value);
-				VersionSet.SetPrevLogNumber(edit.PrevLogNumber.Value);
+				using (await locker.LockAsync())
+				{
+					// Install the new version
+					VersionSet.AppendVersion(version);
+					VersionSet.SetLogNumber(edit.LogNumber.Value);
+					VersionSet.SetPrevLogNumber(edit.PrevLogNumber.Value);
+				}
 			}
 			catch (Exception)
 			{
@@ -467,63 +456,63 @@ namespace Raven.Storage.Impl
 			bool allowDelay = force == false;
 			while (true)
 			{
-				await lockScope.LockAsync().ConfigureAwait(false);
-				if (BackgroundTask.IsCanceled || BackgroundTask.IsFaulted)
+				using (await lockScope.LockAsync())
 				{
-					await BackgroundTask.ConfigureAwait(false); // throws
-				}
-				else if (allowDelay && VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
-				{
-					// We are getting close to hitting a hard limit on the number of
-					// L0 files.  Rather than delaying a single write by several
-					// seconds when we hit the hard limit, start delaying each
-					// individual write by 1ms to reduce latency variance.  Also,
-					// this delay hands over some CPU to the compaction thread in
-					// case it is sharing the same core as the writer.
-					lockScope.Exit();
+					if (BackgroundTask.IsCanceled || BackgroundTask.IsFaulted)
 					{
-						await Task.Delay(TimeSpan.FromMilliseconds(1)).ConfigureAwait(false);
+						await BackgroundTask.ConfigureAwait(false); // throws
 					}
-					await lockScope.LockAsync().ConfigureAwait(false);
-					allowDelay = false; // Do not delay a single write more than once
-				}
-				else if (force == false && MemTable.ApproximateMemoryUsage <= Options.WriteBatchSize)
-				{
-					// There is room in current memtable
-					break;
-				}
-				else if (ImmutableMemTable != null)
-				{
-					Compactor.MaybeScheduleCompaction(lockScope);
-					lockScope.Exit();
+					else if (allowDelay && VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
+					{
+						// We are getting close to hitting a hard limit on the number of
+						// L0 files.  Rather than delaying a single write by several
+						// seconds when we hit the hard limit, start delaying each
+						// individual write by 1ms to reduce latency variance.  Also,
+						// this delay hands over some CPU to the compaction thread in
+						// case it is sharing the same core as the writer.
+						lockScope.Exit();
+						{
+							await Task.Delay(TimeSpan.FromMilliseconds(1)).ConfigureAwait(false);
+						}
+						await lockScope.LockAsync().ConfigureAwait(false);
+						allowDelay = false; // Do not delay a single write more than once
+					}
+					else if (force == false && MemTable.ApproximateMemoryUsage <= Options.WriteBatchSize)
+					{
+						// There is room in current memtable
+						break;
+					}
+					else if (ImmutableMemTable != null)
+					{
+						Compactor.MaybeScheduleCompaction(lockScope);
+						lockScope.Exit();
 
-					// We have filled up the current memtable, but the previous
-					// one is still being compacted, so we wait.
-					await BackgroundTask.ConfigureAwait(false);
+						// We have filled up the current memtable, but the previous
+						// one is still being compacted, so we wait.
+						await BackgroundTask.ConfigureAwait(false);
+					}
+					else if (VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
+					{
+						Compactor.MaybeScheduleCompaction(lockScope);
+						lockScope.Exit();
+
+						// There are too many level-0 files.
+						await BackgroundTask.ConfigureAwait(false);
+					}
+					else
+					{
+						// Attempt to switch to a new memtable and trigger compaction of old
+						Debug.Assert(VersionSet.PrevLogNumber == 0);
+
+						LogWriter.Dispose();
+
+						CreateNewLog();
+						ImmutableMemTable = MemTable;
+						MemTable = new MemTable(this);
+						force = false;
+						Compactor.MaybeScheduleCompaction(lockScope);
+					}
 				}
-				else if (VersionSet.GetNumberOfFilesAtLevel(0) >= Config.StopWritesTrigger)
-				{
-					Compactor.MaybeScheduleCompaction(lockScope);
-					lockScope.Exit();
-
-					// There are too many level-0 files.
-					await BackgroundTask.ConfigureAwait(false);
-				}
-				else
-				{
-					// Attempt to switch to a new memtable and trigger compaction of old
-					Debug.Assert(VersionSet.PrevLogNumber == 0);
-
-					LogWriter.Dispose();
-
-					CreateNewLog();
-					ImmutableMemTable = MemTable;
-					MemTable = new MemTable(this);
-					force = false;
-					Compactor.MaybeScheduleCompaction(lockScope);
-				}
-
-				lockScope.Exit();
 			}
 		}
 

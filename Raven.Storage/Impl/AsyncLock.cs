@@ -86,12 +86,15 @@ namespace Raven.Storage.Impl
 				_locked = false;
 			}
 
-			public async Task LockAsync()
+			public async Task<LockScope> LockAsync()
 			{
 				if (_locked)
-					return;
+					return this;
+				
 				await _asyncLock.LockAsync().ConfigureAwait(false);
 				_locked = true;
+
+				return this;
 			}
 		}
 	}

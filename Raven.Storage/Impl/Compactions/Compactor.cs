@@ -44,9 +44,8 @@ namespace Raven.Storage.Impl.Compactions
 			Debug.Assert(state.BackgroundCompactionScheduled);
 			state.BackgroundTask = Task.Factory.StartNew(async () =>
 				{
-					await locker.LockAsync().ConfigureAwait(false);
 					using (LogManager.OpenMappedContext("storage", state.DatabaseName))
-					using (locker)
+					using (await locker.LockAsync())
 					{
 						try
 						{
@@ -146,18 +145,17 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task DoCompactionWorkAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync().ConfigureAwait(false);
 			var watch = Stopwatch.StartNew();
 
-			log.Info("Compacting {0}@{1} + {2}@{3} files.", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1);
+			using (await locker.LockAsync())
+			{
+				log.Info("Compacting {0}@{1} + {2}@{3} files.", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1);
 
-			Debug.Assert(state.VersionSet.GetNumberOfFilesAtLevel(compactionState.Compaction.Level) > 0);
-			Debug.Assert(compactionState.Builder == null);
+				Debug.Assert(state.VersionSet.GetNumberOfFilesAtLevel(compactionState.Compaction.Level) > 0);
+				Debug.Assert(compactionState.Builder == null);
 
-			compactionState.SmallestSnapshot = state.Snapshooter.Snapshots.Count == 0 ? state.VersionSet.LastSequence : state.Snapshooter.Snapshots.First().Sequence;
-
-			// Release mutex while we're actually doing the compaction work
-			locker.Exit();
+				compactionState.SmallestSnapshot = state.Snapshooter.Snapshots.Count == 0 ? state.VersionSet.LastSequence : state.Snapshooter.Snapshots.First().Sequence;
+			}
 
 			Slice currentUserKey = null;
 			var lastSequenceForKey = Format.MaxSequenceNumber;
@@ -265,13 +263,13 @@ namespace Raven.Storage.Impl.Compactions
 			if (compactionState.Builder != null)
 				return;
 
-			await locker.LockAsync().ConfigureAwait(false);
-
-			var fileNumber = state.VersionSet.NewFileNumber();
-			pendingOutputs.Add(fileNumber);
-			compactionState.AddOutput(fileNumber);
-
-			locker.Exit();
+			ulong fileNumber;
+			using (await locker.LockAsync())
+			{
+				fileNumber = state.VersionSet.NewFileNumber();
+				pendingOutputs.Add(fileNumber);
+				compactionState.AddOutput(fileNumber);
+			}
 
 			// make the output file
 			var fileName = state.FileSystem.GetTableFileName(fileNumber);
@@ -282,16 +280,12 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task InstallCompactionResultsAsync(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
-			await locker.LockAsync().ConfigureAwait(false);
-
 			log.Info("Compacted {0}@{1} + {2}@{3} files => {4} bytes", compactionState.Compaction.GetNumberOfInputFiles(0), compactionState.Compaction.Level, compactionState.Compaction.GetNumberOfInputFiles(1), compactionState.Compaction.Level + 1, compactionState.TotalBytes);
 
 			compactionState.Compaction.AddInputDeletions(compactionState.Compaction.Edit);
 			var level = compactionState.Compaction.Level;
 			foreach (var output in compactionState.Outputs)
-			{
 				compactionState.Compaction.Edit.AddFile(level + 1, output);
-			}
 
 			await state.LogAndApplyAsync(compactionState.Compaction.Edit, locker).ConfigureAwait(false);
 		}
@@ -341,19 +335,21 @@ namespace Raven.Storage.Impl.Compactions
 		/// <param name="locker"></param>
 		private async Task CompactMemTableAsync(AsyncLock.LockScope locker)
 		{
-			if (state.ImmutableMemTable == null)
-				throw new InvalidOperationException("ImmutableMemTable cannot be null.");
+			MemTable immutableMemTable;
+			Version currentVersion;
 
-			var immutableMemTable = state.ImmutableMemTable;
+			using (await locker.LockAsync())
+			{
+				if (state.ImmutableMemTable == null)
+					throw new InvalidOperationException("ImmutableMemTable cannot be null.");
+
+				immutableMemTable = state.ImmutableMemTable;
+				currentVersion = state.VersionSet.Current;
+			}
 
 			var edit = new VersionEdit();
-			var currentVersion = state.VersionSet.Current;
-
-			locker.Exit();
-
 			WriteLevel0Table(immutableMemTable, currentVersion, edit);
 
-			await locker.LockAsync();
 			// Replace immutable memtable with the generated Table
 
 			edit.SetPrevLogNumber(0);
@@ -361,6 +357,7 @@ namespace Raven.Storage.Impl.Compactions
 			await state.LogAndApplyAsync(edit, locker).ConfigureAwait(false);
 
 			state.ImmutableMemTable = null;
+
 			DeleteObsoleteFiles();
 		}
 
