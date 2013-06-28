@@ -327,10 +327,11 @@ namespace Raven.Storage.Impl.Compactions
 			if (currentEntries <= 0)
 				return;
 
-			// Verify that the table is usable
-			using (this.state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
-			{
-			}
+			if (state.Options.ParanoidChecks)
+				using (this.state.TableCache.NewIterator(new ReadOptions(), outputNumber, currentBytes))
+				{
+					// Verify that the table is usable
+				}
 		}
 
 		/// <summary>
