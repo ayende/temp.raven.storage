@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Impl
+﻿using System.Threading;
+
+namespace Raven.Storage.Impl
 {
 	using System;
 	using System.Collections.Generic;
@@ -20,6 +22,7 @@
 		private readonly ILog log = LogManager.GetCurrentClassLogger();
 
 		private ulong lastSequence;
+		private ReaderWriterLockSlim lastSequenceLock = new ReaderWriterLockSlim();
 
 		private Version current;
 
@@ -41,15 +44,35 @@
 		}
 
 		/// <summary>
-		/// Return the last sequence number.
+		/// Return the last sequence number (thread safety).
 		/// </summary>
 		public ulong LastSequence
 		{
-			get { return lastSequence; }
+			get
+			{
+				lastSequenceLock.EnterReadLock();
+				try
+				{
+					return lastSequence;
+				}
+				finally
+				{
+					lastSequenceLock.ExitReadLock();
+				}
+				
+			}
 			set
 			{
-				Debug.Assert(value >= lastSequence);
-				lastSequence = value;
+				lastSequenceLock.EnterWriteLock();
+				try
+				{
+					Debug.Assert(value >= lastSequence);
+					lastSequence = value;
+				}
+				finally
+				{
+					lastSequenceLock.ExitWriteLock();
+				}
 			}
 		}
 

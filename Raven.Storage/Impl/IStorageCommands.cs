@@ -14,8 +14,8 @@
 
 		Task<StorageStatistics> GetStatisticsAsync();
 
-		Task<Snapshot> CreateSnapshotAsync();
+		Snapshot CreateSnapshot();
 
-		Task ReleaseSnapshotAsync(Snapshot snapshot);
+		void ReleaseSnapshot(Snapshot snapshot);
 	}
 }

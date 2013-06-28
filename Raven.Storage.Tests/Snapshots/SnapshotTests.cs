@@ -27,7 +27,7 @@ namespace Raven.Storage.Tests.Snapshots
 
 				await storage.Writer.WriteAsync(writeBatch);
 
-				var snapshot = await storage.Commands.CreateSnapshotAsync();
+				var snapshot = storage.Commands.CreateSnapshot();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
@@ -40,7 +40,7 @@ namespace Raven.Storage.Tests.Snapshots
 						                                                  Snapshot = snapshot
 					                                                  }));
 
-				await storage.Commands.ReleaseSnapshotAsync(snapshot);
+				storage.Commands.ReleaseSnapshot(snapshot);
 			}
 		}
 
@@ -59,7 +59,7 @@ namespace Raven.Storage.Tests.Snapshots
 				writeBatch.Put("key1", s1);
 				await storage.Writer.WriteAsync(writeBatch);
 
-				var snapshot = await storage.Commands.CreateSnapshotAsync();
+				var snapshot = storage.Commands.CreateSnapshot();
 
 				writeBatch = new WriteBatch();
 				writeBatch.Put("key1", s2);
@@ -79,7 +79,7 @@ namespace Raven.Storage.Tests.Snapshots
 					Snapshot = snapshot
 				}));
 
-				await storage.Commands.ReleaseSnapshotAsync(snapshot);
+				storage.Commands.ReleaseSnapshot(snapshot);
 			}
 		}
 

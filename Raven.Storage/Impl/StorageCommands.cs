@@ -38,20 +38,14 @@
 			return state.GetStorageStatisticsAsync();
 		}
 
-		public async Task<Snapshot> CreateSnapshotAsync()
+		public Snapshot CreateSnapshot()
 		{
-			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
-			{
-				return await state.Snapshooter.CreateNewSnapshotAsync(state.VersionSet, locker).ConfigureAwait(false);
-			}
+			return state.Snapshooter.CreateNewSnapshot(state.VersionSet);
 		}
 
-		public async Task ReleaseSnapshotAsync(Snapshot snapshot)
+		public void ReleaseSnapshot(Snapshot snapshot)
 		{
-			using (var locker = await state.Lock.LockAsync().ConfigureAwait(false))
-			{
-				await state.Snapshooter.DeleteAsync(snapshot, locker).ConfigureAwait(false);
-			}
+			state.Snapshooter.Delete(snapshot);
 		}
 	}
 }
