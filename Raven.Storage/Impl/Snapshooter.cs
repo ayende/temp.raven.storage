@@ -45,10 +45,8 @@
 			snapshots.TryRemove(snapshot, out _);
 		}
 
-		public void WriteSnapshot(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
+		public void WriteSnapshot(LogWriter logWriter, VersionSet versionSet)
 		{
-			locker.LockAsync().Wait();
-
 			var edit = new VersionEdit();
 			AddMetadata(edit, storageContext.Options);
 			AddCompactionPointers(edit, versionSet);

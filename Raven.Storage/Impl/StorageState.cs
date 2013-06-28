@@ -83,101 +83,98 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		public Task LogAndApplyAsync(VersionEdit edit, AsyncLock.LockScope locker)
+		public async Task LogAndApplyAsync(VersionEdit edit, AsyncLock.LockScope locker)
 		{
-			return Task.Factory.StartNew(
-				() =>
+			await locker.LockAsync();
+
+			string newManifestFile = null;
+
+			try
+			{
+				if (!edit.LogNumber.HasValue)
+					edit.SetLogNumber(VersionSet.LogNumber);
+				else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
+					throw new InvalidOperationException("LogNumber");
+
+				if (!edit.PrevLogNumber.HasValue)
+					edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
+
+				edit.SetNextFile(VersionSet.NextFileNumber);
+				edit.SetLastSequence(VersionSet.LastSequence);
+
+				var version = new Version(this, VersionSet);
+
+				var builder = new Builder(this, VersionSet, VersionSet.Current);
+				builder.Apply(edit);
+				builder.SaveTo(version);
+
+				Version.Finalize(version);
+
+				// Initialize new descriptor log file if necessary by creating
+				// a temporary file that contains a snapshot of the current version.
+
+				if (DescriptorLogWriter == null)
 				{
-					locker.LockAsync().Wait();
+					// No reason to unlock *mu here since we only hit this path in the
+					// first call to LogAndApply (when opening the database).
 
-					string newManifestFile = null;
+					newManifestFile = FileSystem.DescriptorFileName(VersionSet.ManifestFileNumber);
+					edit.SetNextFile(VersionSet.NextFileNumber);
+					var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
-					try
+					DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
+
+					Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet);
+				}
+
+				// Unlock during expensive MANIFEST log write
+				locker.Exit();
+
+				// Write new record to MANIFEST log
+
+				edit.EncodeTo(DescriptorLogWriter);
+
+				//if (!s.ok()) {
+				//	Log(options_->info_log, "MANIFEST write: %s\n", s.ToString().c_str());
+				//	if (ManifestContains(record)) {
+				//	  Log(options_->info_log,
+				//		  "MANIFEST contains log record despite error; advancing to new "
+				//		  "version to prevent mismatch between in-memory and logged state");
+				//	  s = Status::OK();
+				//	}
+				//}
+
+				// If we just created a new descriptor file, install it by writing a
+				// new CURRENT file that points to it.
+				if (!string.IsNullOrEmpty(newManifestFile))
+				{
+					SetCurrentFile(VersionSet.ManifestFileNumber);
+					// No need to double-check MANIFEST in case of error since it
+					// will be discarded below.
+				}
+
+				await locker.LockAsync();
+
+				// Install the new version
+				VersionSet.AppendVersion(version);
+				VersionSet.SetLogNumber(edit.LogNumber.Value);
+				VersionSet.SetPrevLogNumber(edit.PrevLogNumber.Value);
+			}
+			catch (Exception)
+			{
+				if (!string.IsNullOrEmpty(newManifestFile))
+				{
+					if (DescriptorLogWriter != null)
 					{
-						if (!edit.LogNumber.HasValue)
-							edit.SetLogNumber(VersionSet.LogNumber);
-						else if (edit.LogNumber < VersionSet.LogNumber || edit.LogNumber >= VersionSet.NextFileNumber)
-							throw new InvalidOperationException("LogNumber");
-
-						if (!edit.PrevLogNumber.HasValue)
-							edit.SetPrevLogNumber(VersionSet.PrevLogNumber);
-
-						edit.SetNextFile(VersionSet.NextFileNumber);
-						edit.SetLastSequence(VersionSet.LastSequence);
-
-						var version = new Version(this, VersionSet);
-
-						var builder = new Builder(this, VersionSet, VersionSet.Current);
-						builder.Apply(edit);
-						builder.SaveTo(version);
-
-						Version.Finalize(version);
-
-						// Initialize new descriptor log file if necessary by creating
-						// a temporary file that contains a snapshot of the current version.
-
-						if (DescriptorLogWriter == null)
-						{
-							// No reason to unlock *mu here since we only hit this path in the
-							// first call to LogAndApply (when opening the database).
-
-							newManifestFile = FileSystem.DescriptorFileName(VersionSet.ManifestFileNumber);
-							edit.SetNextFile(VersionSet.NextFileNumber);
-							var descriptorFile = FileSystem.NewWritable(newManifestFile);
-
-							DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
-							Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet, locker);
-						}
-
-						// Unlock during expensive MANIFEST log write
-						locker.Exit();
-
-						// Write new record to MANIFEST log
-
-						edit.EncodeTo(DescriptorLogWriter);
-
-						//if (!s.ok()) {
-						//	Log(options_->info_log, "MANIFEST write: %s\n", s.ToString().c_str());
-						//	if (ManifestContains(record)) {
-						//	  Log(options_->info_log,
-						//		  "MANIFEST contains log record despite error; advancing to new "
-						//		  "version to prevent mismatch between in-memory and logged state");
-						//	  s = Status::OK();
-						//	}
-						//}
-
-						// If we just created a new descriptor file, install it by writing a
-						// new CURRENT file that points to it.
-						if (!string.IsNullOrEmpty(newManifestFile))
-						{
-							SetCurrentFile(VersionSet.ManifestFileNumber);
-							// No need to double-check MANIFEST in case of error since it
-							// will be discarded below.
-						}
-
-						locker.LockAsync().Wait();
-
-						// Install the new version
-						VersionSet.AppendVersion(version);
-						VersionSet.SetLogNumber(edit.LogNumber.Value);
-						VersionSet.SetPrevLogNumber(edit.PrevLogNumber.Value);
+						DescriptorLogWriter.Dispose();
+						DescriptorLogWriter = null;
 					}
-					catch (Exception)
-					{
-						if (!string.IsNullOrEmpty(newManifestFile))
-						{
-							if (DescriptorLogWriter != null)
-							{
-								DescriptorLogWriter.Dispose();
-								DescriptorLogWriter = null;
-							}
 
-							FileSystem.DeleteFile(newManifestFile);
-						}
+					FileSystem.DeleteFile(newManifestFile);
+				}
 
-						throw;
-					}
-				});
+				throw;
+			}
 		}
 
 		private void SetCurrentFile(ulong descriptorNumber)
@@ -194,7 +191,7 @@ namespace Raven.Storage.Impl
 			FileSystem.RenameFile(tempFileName, FileSystem.GetCurrentFileName());
 		}
 
-		public async Task<VersionEdit> RecoverAsync()
+		public VersionEdit Recover()
 		{
 			FileSystem.EnsureDatabaseDirectoryExists();
 			FileSystem.Lock();
@@ -203,7 +200,7 @@ namespace Raven.Storage.Impl
 			{
 				if (Options.CreateIfMissing)
 				{
-					await CreateNewDatabaseAsync().ConfigureAwait(false);
+					CreateNewDatabase();
 				}
 				else
 				{
@@ -380,7 +377,7 @@ namespace Raven.Storage.Impl
 			return meta;
 		}
 
-		public async Task CreateNewDatabaseAsync()
+		public void CreateNewDatabase()
 		{
 			var newDb = new VersionEdit();
 
