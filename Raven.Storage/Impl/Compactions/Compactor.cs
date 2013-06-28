@@ -348,8 +348,11 @@ namespace Raven.Storage.Impl.Compactions
 			var edit = new VersionEdit();
 			var currentVersion = state.VersionSet.Current;
 
+			locker.Exit();
+
 			WriteLevel0Table(immutableMemTable, currentVersion, edit);
 
+			await locker.LockAsync();
 			// Replace immutable memtable with the generated Table
 
 			edit.SetPrevLogNumber(0);
