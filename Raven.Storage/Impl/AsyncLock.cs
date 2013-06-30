@@ -61,11 +61,12 @@ namespace Raven.Storage.Impl
 		{
 			private readonly AsyncLock _asyncLock;
 			private bool _locked;
-
+		    private int counter;
 			public LockScope(AsyncLock asyncLock)
 			{
 				_asyncLock = asyncLock;
 				_locked = true;
+			    counter = 1;
 			}
 
 			public bool Locked
@@ -75,6 +76,9 @@ namespace Raven.Storage.Impl
 
 			public void Dispose()
 			{
+			    counter--;
+			    if (counter > 0)
+			        return;
 				if (_locked)
 					_asyncLock.Exit();
 				_locked = false;
@@ -89,7 +93,10 @@ namespace Raven.Storage.Impl
 			public async Task<LockScope> LockAsync()
 			{
 				if (_locked)
-					return this;
+				{
+				    counter += 1;
+				    return this;
+				}
 				
 				await _asyncLock.LockAsync().ConfigureAwait(false);
 				_locked = true;
