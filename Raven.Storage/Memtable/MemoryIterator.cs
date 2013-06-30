@@ -8,9 +8,9 @@ namespace Raven.Storage.Memtable
 	public class MemoryIterator : IIterator
 	{
 		private readonly MemTable _table;
-		private readonly SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>.Iterator _iterator;
+		private readonly SkipList<InternalKey, UnamangedMemoryAccessor.MemoryHandle>.Iterator _iterator;
 
-		public MemoryIterator(MemTable table, SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>.Iterator iterator)
+		public MemoryIterator(MemTable table, SkipList<InternalKey, UnamangedMemoryAccessor.MemoryHandle>.Iterator iterator)
 		{
 			_table = table;
 			_iterator = iterator;
@@ -33,7 +33,7 @@ namespace Raven.Storage.Memtable
 
 		public void Seek(Slice target)
 		{
-			_iterator.Seek(target);
+			_iterator.Seek(new InternalKey(target, Format.MaxSequenceNumber, ItemType.ValueForSeek));
 		}
 
 		public void Next()
@@ -46,7 +46,7 @@ namespace Raven.Storage.Memtable
 			_iterator.Prev();
 		}
 
-		public Slice Key { get { return _iterator.Key; } }
+		public Slice Key { get { return _iterator.Key.TheInternalKey; } }
 
 		public Stream CreateValueStream()
 		{

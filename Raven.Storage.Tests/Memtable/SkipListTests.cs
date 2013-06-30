@@ -15,7 +15,7 @@ namespace Raven.Storage.Tests.Memtable
 		[Fact]
 		public void Empty()
 		{
-			var skiplist = new SkipList<string>(string.Compare);
+			var skiplist = new SkipList<string>(StringComparer.InvariantCultureIgnoreCase);
 			Assert.False(skiplist.Contains("10"));
 
 			var iterator = skiplist.NewIterator();
@@ -34,7 +34,7 @@ namespace Raven.Storage.Tests.Memtable
 			const int N = 2000;
 			const int R = 5000;
 			var rnd = new Random(1000);
-			var skiplist = new SkipList<string>(string.Compare);
+			var skiplist = new SkipList<string>(StringComparer.InvariantCultureIgnoreCase);
 			var keys = new List<string>();
 			for (int i = 0; i < N; i++)
 			{
@@ -122,7 +122,7 @@ namespace Raven.Storage.Tests.Memtable
 		public void ConcurrentTest()
 		{
 			var c = new ConcurrentDictionary<int, string>();
-			var list = new SkipList<string>(String.Compare);
+			var list = new SkipList<string>(StringComparer.InvariantCultureIgnoreCase);
 
 			var reading = true;
 			// we have one thread doing writes, and we make sure that all of the readers are always

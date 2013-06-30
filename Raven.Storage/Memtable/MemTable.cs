@@ -15,7 +15,7 @@ namespace Raven.Storage.Memtable
 	public class MemTable : IDisposable
 	{
 		private readonly BufferPool _bufferPool;
-		private readonly SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle> _table;
+		private readonly SkipList<InternalKey, UnamangedMemoryAccessor.MemoryHandle> _table;
 		private readonly UnamangedMemoryAccessor _memoryAccessor;
 		private readonly InternalKeyComparator _internalKeyComparator;
 
@@ -34,7 +34,7 @@ namespace Raven.Storage.Memtable
 			_memoryAccessor = new UnamangedMemoryAccessor(writeBatchSize);
 
 			_internalKeyComparator = internalKeyComparator;
-			_table = new SkipList<Slice, UnamangedMemoryAccessor.MemoryHandle>(_internalKeyComparator.Compare);
+			_table = new SkipList<InternalKey, UnamangedMemoryAccessor.MemoryHandle>(_internalKeyComparator);
 		}
 
 		public int ApproximateMemoryUsage { get; private set; }
@@ -73,11 +73,7 @@ namespace Raven.Storage.Memtable
 
 		public void Add(ulong seq, ItemType type, Slice key, UnamangedMemoryAccessor.MemoryHandle memoryHandle)
 		{
-			var buffer = new byte[key.Count + 8];
-			Buffer.BlockCopy(key.Array, key.Offset, buffer, 0, key.Count);
-			buffer.WriteLong(key.Count, Format.PackSequenceAndType(seq, type));
-
-			var internalKey = new Slice(buffer);
+			var internalKey = new InternalKey(key, seq, type);
 
 			_table.Insert(internalKey, memoryHandle);
 		}
@@ -92,21 +88,17 @@ namespace Raven.Storage.Memtable
 			var buffer = _bufferPool.Take(userKey.Count + 8);
 			try
 			{
-				Buffer.BlockCopy(userKey.Array, userKey.Offset, buffer, 0, userKey.Count);
-				buffer.WriteLong(userKey.Count, Format.PackSequenceAndType(sequence, ItemType.ValueForSeek));
-
-				var memKey = new Slice(buffer, 0, userKey.Count + 8);
+				var memKey = new InternalKey(userKey, sequence, ItemType.ValueForSeek);
 				var iterator = _table.NewIterator();
 				iterator.Seek(memKey);
 				if (iterator.IsValid == false ||
-					_internalKeyComparator.EqualKeys(memKey, iterator.Key) == false)
+					_internalKeyComparator.Compare(memKey, iterator.Key) > 0)
 				{
 					stream = null;
 					return false;
 				}
 
-				var tag = iterator.Key.Array.ReadLong(iterator.Key.Count - 8);
-				switch ((ItemType)tag)
+				switch (iterator.Key.Type)
 				{
 					case ItemType.Deletion:
 						stream = null;
