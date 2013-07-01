@@ -33,7 +33,7 @@ namespace Raven.Storage.Memtable
 
 		public void Seek(Slice target)
 		{
-			_iterator.Seek(new InternalKey(target, Format.MaxSequenceNumber, ItemType.ValueForSeek));
+			_iterator.Seek(new InternalKey(target));
 		}
 
 		public void Next()
