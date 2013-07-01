@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Raven.Storage.Data;
 
 namespace Raven.Storage.Comparing
@@ -12,17 +13,15 @@ namespace Raven.Storage.Comparing
 
 		public string Name { get { return "ByteWiseComparator"; } }
 
+		[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
+		static extern int memcmp(byte[] b1, byte[] b2, int count);
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int Compare(Slice a, Slice b)
 		{
 			var minLen = Math.Min(a.Count, b.Count);
-			for (int i = 0; i < minLen; i++)
-			{
-				var diff = a.Array[a.Offset + i] - b.Array[b.Offset + i];
-				if (diff != 0)
-					return diff;
-			}
-			return a.Count - b.Count;
+			var result = memcmp(a.Array, b.Array, minLen);
+			return result == 0 ? a.Count - b.Count : result;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
