@@ -34,10 +34,10 @@ namespace Raven.Storage.Comparing
 							if (((*aPtr >= 'a' && *aPtr <= 'z') || (*aPtr >= 'A' && *aPtr <= 'Z')) && ((*bPtr >= 'a' && *bPtr <= 'z') || (*bPtr >= 'A' && *bPtr <= 'Z')))
 							{
 								var diff = *aPtr - *bPtr;
-								if (diff == 0 || diff == 32 || diff == -32)
-									continue;
-
-								return diff;
+								if (diff != 0 && diff != 32 && diff != -32)
+								{
+									return diff;
+								}
 							}
 							else
 							{

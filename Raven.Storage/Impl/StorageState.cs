@@ -328,7 +328,7 @@ namespace Raven.Storage.Impl
 				if (iterator.IsValid)
 				{
 					var tableFile = FileSystem.NewWritable(tableFileName);
-					builder = new TableBuilder(this, tableFile, () => FileSystem.NewWritable(FileSystem.GetTempFileName(fileNumber), deleteOnClose: true));
+					builder = new TableBuilder(this, tableFile, new TemporaryFiles(FileSystem, fileNumber));
 
 					meta.SmallestKey = new InternalKey(iterator.Key);
 					while (iterator.IsValid)

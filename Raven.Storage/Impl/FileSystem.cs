@@ -29,25 +29,9 @@ namespace Raven.Storage.Impl
 			return Path.Combine(databaseName, string.Format("{0:000000}{1}", num, ext));
 		}
 
-		public virtual Stream NewWritable(string name, bool deleteOnClose = false)
+		public virtual Stream NewWritable(string name)
 		{
-			FileStream stream;
-
-			if (deleteOnClose)
-			{
-				stream = new FileStream(
-					Path.Combine(databaseName, name),
-					FileMode.CreateNew,
-					FileAccess.ReadWrite,
-					FileShare.Read,
-					4096,
-					FileOptions.DeleteOnClose);
-			}
-			else
-			{
-				stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
-			}
-
+			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew , FileAccess.ReadWrite);
 			TrackResourceUsage.Track(() => stream.SafeFileHandle);
 			return stream;
 		}
@@ -242,7 +226,7 @@ namespace Raven.Storage.Impl
 		{
 			var file = MemoryMappedFile.CreateFromFile(name, FileMode.Open);
 			TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
-			return new MemoryMappedFileAccessor(name, file);
+			return new MemoryMappedFileAccessor(name ,file);
 		}
 	}
 }

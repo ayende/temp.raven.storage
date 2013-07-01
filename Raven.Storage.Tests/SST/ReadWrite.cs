@@ -19,6 +19,12 @@ namespace Raven.Storage.Tests.SST
 	{
 		readonly List<FileStream> shouldHaveBeenDisposed = new List<FileStream>();
 
+		public ReadWrite()
+		{
+			if (Directory.Exists("none") == false)
+				Directory.CreateDirectory("none");
+		}
+
 		[Fact]
 		public void CanReadValuesBackWithoutFilter()
 		{
@@ -31,7 +37,7 @@ namespace Raven.Storage.Tests.SST
 			using (var file = CreateFile())
 			{
 				name = file.Name;
-				using (var tblBuilder = new TableBuilder(state, file, TempStreamGenerator))
+				using (var tblBuilder = new TableBuilder(state, file, new TemporaryFiles(state.FileSystem, 1)))
 				{
 					for (int i = 0; i < 10; i++)
 					{
@@ -78,7 +84,7 @@ namespace Raven.Storage.Tests.SST
 			using (var file = CreateFile())
 			{
 				name = file.Name;
-				using (var tblBuilder = new TableBuilder(state, file, TempStreamGenerator))
+				using (var tblBuilder = new TableBuilder(state, file, new TemporaryFiles(state.FileSystem, 1)))
 				{
 					for (int i = 0; i < count; i++)
 					{
@@ -123,23 +129,13 @@ namespace Raven.Storage.Tests.SST
 			return f;
 		}
 
-
-		private Stream TempStreamGenerator()
-		{
-			var s = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite, 4096,
-			                      FileOptions.SequentialScan | FileOptions.DeleteOnClose);
-
-			shouldHaveBeenDisposed.Add(s);
-
-			return s;
-		}
-
 		public void Dispose()
 		{
 			foreach (var stream in shouldHaveBeenDisposed)
 			{
-				Assert.False(stream.CanRead);
+				File.Delete(stream.Name);
 			}
+			Directory.Delete("none", true);
 		}
 	}
 }

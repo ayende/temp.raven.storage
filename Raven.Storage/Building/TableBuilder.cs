@@ -9,6 +9,7 @@ namespace Raven.Storage.Building
 {
 	public class TableBuilder : IDisposable
 	{
+		private readonly TemporaryFiles _temporaryFiles;
 		private readonly StorageState _storageState;
 		private byte[] _scratchBuffer;
 		private byte[] _lastKeyBuffer;
@@ -38,13 +39,14 @@ namespace Raven.Storage.Building
 		/// </summary>
 		public TableBuilder(StorageState storageState,
 			Stream dataStream,
-			Func<Stream> tempStreamGenerator)
+			TemporaryFiles temporaryFiles)
 		{
+			_temporaryFiles = temporaryFiles;
 			try
 			{
 				_storageState = storageState;
 				_dataStream = dataStream;
-				_indexStream = tempStreamGenerator();
+				_indexStream = temporaryFiles.Create();
 				_originalIndexStreamPosition = _indexStream.Position;
 
 				_lastKeyBuffer = _storageState.Options.BufferPool.Take(storageState.Options.MaximumExpectedKeySize);
@@ -53,7 +55,7 @@ namespace Raven.Storage.Building
 				if (storageState.Options.FilterPolicy != null)
 				{
 					var filterBuilder = storageState.Options.FilterPolicy.CreateBuilder();
-					_filterBlockStream = tempStreamGenerator();
+					_filterBlockStream = temporaryFiles.Create();
 					_filterBuilder = new FilterBlockBuilder(_filterBlockStream, filterBuilder);
 					_filterBuilder.StartBlock(0);
 				}
@@ -235,6 +237,9 @@ namespace Raven.Storage.Building
 				_filterBlockStream.Dispose();
 			if (_dataStream != null)
 				_dataStream.Dispose();
+
+			if (_temporaryFiles != null)
+				_temporaryFiles.Dispose();
 		}
 	}
 }

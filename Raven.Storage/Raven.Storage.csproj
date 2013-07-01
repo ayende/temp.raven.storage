@@ -52,6 +52,7 @@
     <Compile Include="Impl\Compactions\BackgroundCompactor.cs" />
     <Compile Include="Impl\InMemoryFileSystem.cs" />
     <Compile Include="Impl\Reference.cs" />
+    <Compile Include="Impl\TemporaryFiles.cs" />
     <Compile Include="Reading\DbIterator.cs" />
     <Compile Include="Impl\Snapshooter.cs" />
     <Compile Include="Comparing\CaseInsensitiveComparator.cs" />
