@@ -6,6 +6,7 @@ using Raven.Storage.Reading;
 namespace Raven.Storage.Memtable
 {
 	using System.Collections.Generic;
+	using System.Runtime.CompilerServices;
 
 	/// <summary>
 	///  Thread safety
@@ -86,7 +87,7 @@ namespace Raven.Storage.Memtable
 			Count ++;
 		}
 
-		public Node FindGreaterOrEqual(TKey key, Node[] prev)
+		private Node FindGreaterOrEqual(TKey key, Node[] prev)
 		{
 			Node x = head;
 			int level = MaxHeight - 1;
@@ -112,7 +113,7 @@ namespace Raven.Storage.Memtable
 			}
 		}
 
-		public Node FindLessThan(TKey key)
+		private Node FindLessThan(TKey key)
 		{
 			Node x = head;
 			int level = MaxHeight - 1;
@@ -136,7 +137,7 @@ namespace Raven.Storage.Memtable
 			}
 		}
 
-		public Node FindLast()
+		private Node FindLast()
 		{
 			Node x = head;
 			int level = MaxHeight - 1;
@@ -159,18 +160,17 @@ namespace Raven.Storage.Memtable
 			}
 		}
 
-
 		private bool Equal(TKey a, TKey b)
 		{
 			return _comparer.Compare(a, b) == 0;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private bool KeyIsAfterNode(TKey key, Node n)
 		{
 			// NULL n is considered infinite
 			return (n != null) && (_comparer.Compare(n.Key, key) < 0);
 		}
-
 
 		private int RandomHeight()
 		{
