@@ -1,7 +1,7 @@
 ﻿namespace Raven.Storage.Impl
 {
-	using System;
-	using System.Collections.Generic;
+	using System.Collections.Concurrent;
+	using System.Collections.ObjectModel;
 	using System.Threading.Tasks;
 
 	using Raven.Storage.Data;
@@ -11,52 +11,48 @@
 	{
 		private readonly IStorageContext storageContext;
 
-		private readonly List<Snapshot> snapshots;
+		private readonly ConcurrentDictionary<Snapshot, object> snapshots;
 
-		public IReadOnlyList<Snapshot> Snapshots
+		public ReadOnlyCollection<Snapshot> Snapshots
 		{
 			get
 			{
-				return snapshots.AsReadOnly();
+				return (ReadOnlyCollection<Snapshot>) snapshots.Keys;
 			}
 		} 
 
 		public Snapshooter(IStorageContext storageContext)
 		{
 			this.storageContext = storageContext;
-			snapshots = new List<Snapshot>();
+			snapshots = new ConcurrentDictionary<Snapshot, object>();
 		}
 
-		public async Task<Snapshot> CreateNewSnapshotAsync(VersionSet versionSet, AsyncLock.LockScope locker)
+		public Snapshot CreateNewSnapshot(VersionSet versionSet)
 		{
-			await locker.LockAsync().ConfigureAwait(false);
 			var snapshot = new Snapshot
 				               {
 					               Sequence = versionSet.LastSequence
 				               };
 
-			snapshots.Add(snapshot);
+			snapshots.TryAdd(snapshot, null);
 
 			return snapshot;
 		}
 
-		public async Task DeleteAsync(Snapshot snapshot, AsyncLock.LockScope locker)
+		public void Delete(Snapshot snapshot)
 		{
-			await locker.LockAsync().ConfigureAwait(false);
-			if (snapshots.Contains(snapshot))
-				snapshots.Remove(snapshot);
+			object _;
+			snapshots.TryRemove(snapshot, out _);
 		}
 
-		public async Task WriteSnapshotAsync(LogWriter logWriter, VersionSet versionSet, AsyncLock.LockScope locker)
+		public void WriteSnapshot(LogWriter logWriter, VersionSet versionSet)
 		{
-			await locker.LockAsync().ConfigureAwait(false);
-
 			var edit = new VersionEdit();
 			AddMetadata(edit, storageContext.Options);
 			AddCompactionPointers(edit, versionSet);
 			AddFiles(edit, versionSet);
 
-			await edit.EncodeToAsync(logWriter).ConfigureAwait(false);
+			edit.EncodeTo(logWriter);
 		}
 
 		private static void AddFiles(VersionEdit edit, VersionSet versionSet)

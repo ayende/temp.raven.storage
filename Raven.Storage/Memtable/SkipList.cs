@@ -5,6 +5,8 @@ using Raven.Storage.Reading;
 
 namespace Raven.Storage.Memtable
 {
+	using System.Collections.Generic;
+
 	/// <summary>
 	///  Thread safety
 	///  -------------
@@ -16,7 +18,7 @@ namespace Raven.Storage.Memtable
 	/// </summary>
 	public class SkipList<TKey, TVal>
 	{
-		private readonly Comparison<TKey> _comparer;
+		private readonly IComparer<TKey> _comparer;
 		public const int SkipListMaxHeight = 12;
 
 		private readonly Node head = new Node(default(TKey), default(TVal), SkipListMaxHeight);
@@ -34,7 +36,7 @@ namespace Raven.Storage.Memtable
 
 		public int Count { get; private set; }
 
-		public SkipList(Comparison<TKey> comparer)
+		public SkipList(IComparer<TKey> comparer)
 		{
 			_comparer = comparer;
 		}
@@ -116,9 +118,9 @@ namespace Raven.Storage.Memtable
 			int level = MaxHeight - 1;
 			while (true)
 			{
-				Debug.Assert(x == head || _comparer(x.Key, key) < 0);
+				Debug.Assert(x == head || _comparer.Compare(x.Key, key) < 0);
 				Node next = x.Next(level);
-				if (next == null || _comparer(next.Key, key) >= 0)
+				if (next == null || _comparer.Compare(next.Key, key) >= 0)
 				{
 					if (level == 0)
 					{
@@ -160,13 +162,13 @@ namespace Raven.Storage.Memtable
 
 		private bool Equal(TKey a, TKey b)
 		{
-			return _comparer(a, b) == 0;
+			return _comparer.Compare(a, b) == 0;
 		}
 
 		private bool KeyIsAfterNode(TKey key, Node n)
 		{
 			// NULL n is considered infinite
-			return (n != null) && (_comparer(n.Key, key) < 0);
+			return (n != null) && (_comparer.Compare(n.Key, key) < 0);
 		}
 
 
@@ -299,7 +301,7 @@ namespace Raven.Storage.Memtable
 
 	public class SkipList<TKey> : SkipList<TKey, TKey>
 	{
-		public SkipList(Comparison<TKey> comparer)
+		public SkipList(IComparer<TKey> comparer)
 			: base(comparer)
 		{
 		}

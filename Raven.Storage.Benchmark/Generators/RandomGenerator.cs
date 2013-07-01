@@ -23,9 +23,10 @@
 			var stream = new MemoryStream();
 			using (var repeatingStream = new RepeatingStream(_buffer, next, size))
 			{
-				repeatingStream.CopyTo(stream);
+				repeatingStream.CopyTo(stream, size);
 			}
 
+			stream.Position = 0;
 			return stream;
 		}
 
@@ -62,7 +63,7 @@
 				if (Position >= Length)
 					return 0;
 
-				int countToRead = Math.Min(count, _buffer.Length - _offset);
+				int countToRead = Math.Min((int)Length, Math.Min(count, _buffer.Length - _offset));
 
 				Buffer.BlockCopy(_buffer, _offset, buffer, offset, countToRead);
 

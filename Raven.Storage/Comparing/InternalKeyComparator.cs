@@ -5,11 +5,14 @@ using Raven.Storage.Util;
 
 namespace Raven.Storage.Comparing
 {
+	using System.Collections.Generic;
+	using System.Runtime.CompilerServices;
+
 	/// <summary>
 	/// An internal comparator that uses a user comparator and breaks 
 	/// ties by decreasing sequnece number
 	/// </summary>
-	public class InternalKeyComparator : IComparator
+	public class InternalKeyComparator : IComparator, IComparer<InternalKey>
 	{
 		public string Name { get { return "InternalKeyComparator"; } }
 
@@ -28,6 +31,7 @@ namespace Raven.Storage.Comparing
 			_comparator = comparator;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int Compare(Slice a, Slice b)
 		{
 			var r = _comparator.Compare(InternalKey.ExtractUserKey(a), InternalKey.ExtractUserKey(b));
@@ -46,11 +50,23 @@ namespace Raven.Storage.Comparing
 		    return 0;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int Compare(InternalKey a, InternalKey b)
 		{
-			return Compare(a.TheInternalKey, b.TheInternalKey);
+			var r = _comparator.Compare(a.UserKey, b.UserKey);
+			if (r != 0)
+				return r;
+
+			if (a.Sequence > b.Sequence)
+				return -1;
+
+			if (a.Sequence < b.Sequence)
+				return 1;
+
+			return 0;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int FindSharedPrefix(Slice a, Slice b)
 		{
 			var aUser = InternalKey.ExtractUserKey(a);
@@ -69,6 +85,7 @@ namespace Raven.Storage.Comparing
 			return pos;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void FindShortestSeparator(ref Slice start, Slice limit)
 		{
 			var userStart = InternalKey.ExtractUserKey(start);
@@ -88,6 +105,7 @@ namespace Raven.Storage.Comparing
 			start = tmp;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public Slice FindShortestSuccessor(Slice key, ref byte[] scratch)
 		{
 			var userKey = InternalKey.ExtractUserKey(key);
@@ -110,6 +128,7 @@ namespace Raven.Storage.Comparing
 			return new Slice(scratch, 0, r.Count + 8);
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool EqualKeys(Slice a, Slice b)
 		{
 			var aUser = InternalKey.ExtractUserKey(a);

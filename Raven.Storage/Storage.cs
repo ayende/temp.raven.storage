@@ -37,7 +37,7 @@ namespace Raven.Storage
 
 		public async Task InitAsync()
 		{
-			var edit = await _storageState.RecoverAsync().ConfigureAwait(false);
+			var edit = _storageState.Recover();
 			
 			_storageState.CreateNewLog();
 			edit.SetComparatorName(_storageState.Options.Comparator.Name);

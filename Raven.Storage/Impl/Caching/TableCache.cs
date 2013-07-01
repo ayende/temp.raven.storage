@@ -41,6 +41,10 @@ namespace Raven.Storage.Impl.Caching
 			catch (Exception e)
 			{
 				log.InfoException("Could not open iterator for " + fileNumber + ", will return empty iterator", e);
+
+				if (state.Options.ParanoidChecks)
+					throw;
+
 				return new EmptyIterator();
 			}
 		}

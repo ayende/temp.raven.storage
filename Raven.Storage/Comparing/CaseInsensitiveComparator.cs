@@ -18,7 +18,8 @@ namespace Raven.Storage.Comparing
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int Compare(Slice a, Slice b)
 		{
-			var minLen = Math.Min(a.Count, b.Count);
+			var minLen = a.Count <= b.Count ? a.Count : b.Count;
+
 			for (int i = 0; i < minLen; i++)
 			{
 				var cha = (char)a.Array[a.Offset + i];
