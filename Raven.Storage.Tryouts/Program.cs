@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Raven.Aggregation.Tests;
 using Raven.Storage.Benchmark.Generators;
+using Raven.Storage.Comparing;
 using Raven.Storage.Data;
+using Raven.Storage.Memtable;
 
 namespace Raven.Storage.Tryouts
 {
@@ -10,17 +13,15 @@ namespace Raven.Storage.Tryouts
 	{
 		public static void Main(string[] args)
 		{
-			try
+			var sp = Stopwatch.StartNew();
+			//var sl = new SkipList<InternalKey, object>(new InternalKeyComparator(new ByteWiseComparator()));
+			var sl = new SortedDictionary<InternalKey, object>(new InternalKeyComparator(new ByteWiseComparator()));
+			for (ulong i = 0; i < 1000*1000; i++)
 			{
-				for (int i = 0; i < 100; i++)
-				{
-					Benchmark.Program.Main(new[] { "--benchmarks=fill100k" });
-				}
+				//sl.Insert(new InternalKey(new Slice(Guid.NewGuid().ToByteArray()), i, ItemType.Value), null);
+				sl.Add(new InternalKey(new Slice(Guid.NewGuid().ToByteArray()), i, ItemType.Value), null);
 			}
-			catch (Exception)
-			{
-				Console.ReadLine();
-			}
+			Console.WriteLine(sp.Elapsed);
 		}
 	}
 

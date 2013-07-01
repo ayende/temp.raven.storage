@@ -1,4 +1,6 @@
-﻿namespace Raven.Storage.Benchmark
+﻿using Raven.Storage.Comparing;
+
+namespace Raven.Storage.Benchmark
 {
 	using System;
 	using System.Diagnostics;
@@ -478,7 +480,8 @@
 									 {
 										 CreateIfMissing = !options.UseExistingDatabase,
 										 WriteBatchSize = options.WriteBatchSize,
-										 FilterPolicy = filterPolicy
+										 FilterPolicy = filterPolicy,
+										 Comparator = new ByteWiseComparator()
 									 };
 
 			if (options.CacheSize > 0)
