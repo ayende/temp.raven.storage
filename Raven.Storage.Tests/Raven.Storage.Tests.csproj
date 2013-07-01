@@ -48,6 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitTests.cs" />
+    <Compile Include="Bugs\WillNotFindMissingValues.cs" />
     <Compile Include="Compaction\CompactionTests.cs" />
     <Compile Include="Compaction\ReadingAfterCompaction.cs" />
     <Compile Include="Compaction\VersionEditTests.cs" />
