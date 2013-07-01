@@ -89,7 +89,7 @@ namespace Raven.Storage.Memtable
 			var iterator = _table.NewIterator();
 			iterator.Seek(memKey);
 			if (iterator.IsValid == false ||
-				_internalKeyComparator.Compare(memKey, iterator.Key) > 0)
+				_internalKeyComparator.EqualKeys(memKey.TheInternalKey, iterator.Key.TheInternalKey) == false)
 			{
 				stream = null;
 				return false;
