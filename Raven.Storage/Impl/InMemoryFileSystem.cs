@@ -14,7 +14,7 @@ namespace Raven.Storage.Impl
 		{
 		}
 
-		public override Stream NewWritable(string name)
+		public override Stream NewWritable(string name, bool deleteOnClose = false)
 		{
 			return new MemoryStreamAddToFileSystemOnDispose(this, name);
 		}

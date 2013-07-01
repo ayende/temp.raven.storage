@@ -481,7 +481,7 @@ namespace Raven.Storage.Benchmark
 										 CreateIfMissing = !options.UseExistingDatabase,
 										 WriteBatchSize = options.WriteBatchSize,
 										 FilterPolicy = filterPolicy,
-										 Comparator = new ByteWiseComparator()
+										 //Comparator = new ByteWiseComparator()
 									 };
 
 			if (options.CacheSize > 0)
