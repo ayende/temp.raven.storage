@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Raven.Storage.Memtable;
 using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
@@ -79,7 +76,7 @@ namespace Raven.Storage.Impl
 
 					ulong currentSequence = lastSequence + 1;
 
-					lastSequence += (ulong)list.Count;
+					lastSequence += (ulong)list.Sum(x => x.Batch.OperationCount);
 
 					// Add to log and apply to memtable.  We can release the lock
 					// during this phase since mine is currently responsible for logging
