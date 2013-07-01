@@ -15,9 +15,15 @@ using Xunit;
 
 namespace Raven.Storage.Tests.SST
 {
-	public class ReadWrite
+	public class ReadWrite : IDisposable
 	{
 		readonly List<FileStream> shouldHaveBeenDisposed = new List<FileStream>();
+
+		public ReadWrite()
+		{
+			if (Directory.Exists("none") == false)
+				Directory.CreateDirectory("none");
+		}
 
 		[Fact]
 		public void CanReadValuesBackWithoutFilter()
@@ -122,6 +128,14 @@ namespace Raven.Storage.Tests.SST
 
 			return f;
 		}
-	
+
+		public void Dispose()
+		{
+			foreach (var stream in shouldHaveBeenDisposed)
+			{
+				File.Delete(stream.Name);
+			}
+			Directory.Delete("none", true);
+		}
 	}
 }

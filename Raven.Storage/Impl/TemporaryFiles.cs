@@ -21,7 +21,8 @@ namespace Raven.Storage.Impl
 		{
 			foreach (var temp in _temps)
 			{
-				_fileSystem.DeleteFile(temp);
+				if (_fileSystem.Exists(temp))
+					_fileSystem.DeleteFile(temp);
 			}
 		}
 
