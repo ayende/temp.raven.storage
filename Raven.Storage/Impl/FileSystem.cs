@@ -31,7 +31,7 @@ namespace Raven.Storage.Impl
 
 		public virtual Stream NewWritable(string name)
 		{
-			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew, FileAccess.ReadWrite);
+			var stream = File.Open(Path.Combine(databaseName, name), FileMode.CreateNew , FileAccess.ReadWrite);
 			TrackResourceUsage.Track(() => stream.SafeFileHandle);
 			return stream;
 		}
