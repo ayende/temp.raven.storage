@@ -177,7 +177,7 @@ namespace Raven.Storage.Building
 					Count = indexBlockSize
 				};
 
-			_indexBlock.Stream.CopyTo(_dataStream);
+			_indexBlock.Stream.Stream.CopyTo(_dataStream);
 
 			// write footer
 			var footer = new Footer
