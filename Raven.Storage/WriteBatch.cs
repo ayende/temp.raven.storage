@@ -36,6 +36,11 @@ namespace Raven.Storage
 			public Slice Key;
 			public Stream Value;
 			public UnamangedMemoryAccessor.MemoryHandle Handle;
+
+			public override string ToString()
+			{
+				return string.Format("{0}: {1}", Op, Key.DebugVal);
+			}
 		}
 
 		public WriteBatch()
