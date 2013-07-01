@@ -19,7 +19,7 @@ namespace Raven.Storage.Memtable
 	public class SkipList<TKey, TVal>
 	{
 		private readonly IComparer<TKey> _comparer;
-		public const int SkipListMaxHeight = 12;
+		public const int SkipListMaxHeight = 17;
 
 		private readonly Node head = new Node(default(TKey), default(TVal), SkipListMaxHeight);
 
@@ -177,7 +177,7 @@ namespace Raven.Storage.Memtable
 			// Increase height with probability 1 in kBranching
 			const int branching = 4;
 			int height = 1;
-			while (height < MaxHeight && ((_rnd.Next() % branching) == 0))
+			while (height < SkipListMaxHeight && ((_rnd.Next() % branching) == 0))
 			{
 				height++;
 			}
