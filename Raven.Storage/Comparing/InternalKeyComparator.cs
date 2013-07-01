@@ -57,10 +57,13 @@ namespace Raven.Storage.Comparing
 			if (r != 0)
 				return r;
 
-			if (a.Sequence > b.Sequence)
+			var anum = a.TheInternalKey.Array.ReadLong(a.TheInternalKey.Count - 8);
+			var bnum = b.TheInternalKey.Array.ReadLong(a.TheInternalKey.Count - 8);
+
+			if (anum > bnum)
 				return -1;
 
-			if (a.Sequence < b.Sequence)
+			if (anum < bnum)
 				return 1;
 
 			return 0;
