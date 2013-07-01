@@ -39,6 +39,10 @@ namespace Raven.Storage.Util
 				unsafe
 				{
 					fixed (byte* ptr = data)
+					fixed (uint* t0 = Table_0)
+					fixed (uint* t1 = Table_1)
+					fixed (uint* t2 = Table_2)
+					fixed (uint* t3 = Table_3)
 					{
 						byte* dataPtr = ptr + offset;
 						byte* endPtr = dataPtr + count;
@@ -58,7 +62,7 @@ namespace Raven.Storage.Util
 							while (dataPtr != x)
 							{
 								c = (crc & 0xff) ^ *dataPtr++;
-								crc = Table_0[c] ^ (crc >> 8);
+								crc = *(t0 +c) ^ (crc >> 8);
 							}
 						}
 
@@ -70,10 +74,10 @@ namespace Raven.Storage.Util
 								uint32Value = *dataPtr | (uint)*(dataPtr + 1) << 8 | (uint)*(dataPtr + 2) << 16 | (uint)*(dataPtr + 3) << 24;
 								c = crc ^ uint32Value;
 								dataPtr += 4;
-								crc = Table_3[c & 0xff] ^
-									Table_2[(c >> 8) & 0xff] ^
-									Table_1[(c >> 16) & 0xff] ^
-									Table_0[c >> 24];
+								crc = *(t3 + (c & 0xff)) ^
+									*(t2 +((c >> 8) & 0xff)) ^
+									*(t1 +((c >> 16) & 0xff)) ^
+									*(t0 + (c >> 24));
 							}
 						}
 
@@ -83,17 +87,17 @@ namespace Raven.Storage.Util
 							uint32Value = *dataPtr | (uint)*(dataPtr + 1) << 8 | (uint)*(dataPtr + 2) << 16 | (uint)*(dataPtr + 3) << 24;
 							c = crc ^ uint32Value;
 							dataPtr += 4;
-							crc = Table_3[c & 0xff] ^
-								Table_2[(c >> 8) & 0xff] ^
-								Table_1[(c >> 16) & 0xff] ^
-								Table_0[c >> 24];
+							crc = *(t3 + (c & 0xff)) ^
+									*(t2 + ((c >> 8) & 0xff)) ^
+									*(t1 + ((c >> 16) & 0xff)) ^
+									*(t0 + (c >> 24));
 						}
 
 						// Process the last few bytes
 						while (dataPtr != endPtr)
 						{
 							c = (crc & 0xff) ^ *dataPtr++;
-							crc = Table_0[c] ^ (crc >> 8);
+							crc = *(t0 + c) ^ (crc >> 8);
 						}
 
 						return crc ^ 0xFFFFFFFF;
@@ -114,8 +118,14 @@ namespace Raven.Storage.Util
 		{
 			unchecked
 			{
-				crcSeed ^= 0xFFFFFFFF;
-				return (Table_0[(crcSeed & 0xff) ^ b] ^ (crcSeed >> 8)) ^ 0xFFFFFFFF;
+				unsafe
+				{
+					fixed (uint* t0 = Table_0)
+					{
+						crcSeed ^= 0xFFFFFFFF;
+						return (*(t0 + ((crcSeed & 0xff) ^ b)) ^ (crcSeed >> 8)) ^ 0xFFFFFFFF;
+					}
+				}
 			}
 		}
 
