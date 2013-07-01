@@ -87,22 +87,23 @@ namespace Raven.Aggregation
 					await _aggregationEngine.WaitForAppendAsync(_appendEventState);
 					continue;
 				}
-				var items = eventDatas.Select(x => new DynamicJsonObject(x.Data)).ToArray();
+				try
+				{
+					var items = eventDatas.Select(x => new DynamicJsonObject(x.Data)).ToArray();
+					var writeBatch = new WriteBatch();
+					var groupedByReduceKey = ExecuteMaps(items);
+					ExecuteReduce(groupedByReduceKey, writeBatch);
+					lastAggregatedEtag = eventDatas.Last().Etag;
+					var status = new RavenJObject { { "@etag", lastAggregatedEtag.ToString() } };
+					writeBatch.Put(_aggStat, AggregationEngine.RavenJTokenToStream(status));
+					await _aggregationEngine.Storage.Writer.WriteAsync(writeBatch);
+				}
+				finally
+				{
+					Thread.VolatileWrite(ref _lastAggregatedEtag, lastAggregatedEtag);
 
-				var writeBatch = new WriteBatch();
-
-				var groupedByReduceKey = ExecuteMaps(items);
-				ExecuteReduce(groupedByReduceKey, writeBatch);
-			
-				lastAggregatedEtag = eventDatas.Last().Etag;
-				
-				var status = new RavenJObject { { "@etag", lastAggregatedEtag.ToString() } };
-			    writeBatch.Put(_aggStat, AggregationEngine.RavenJTokenToStream(status));
-				await _aggregationEngine.Storage.Writer.WriteAsync(writeBatch);
-
-				Thread.VolatileWrite(ref _lastAggregatedEtag, lastAggregatedEtag);
-
-				_aggregationCompleted.PulseAll();
+					_aggregationCompleted.PulseAll();
+				}
 			}
 		}
 
