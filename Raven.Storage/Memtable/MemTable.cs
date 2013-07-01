@@ -55,21 +55,21 @@ namespace Raven.Storage.Memtable
 			return new MemoryIterator(this, _table.NewIterator());
 		}
 
-	    public IEnumerable<Slice>  AllKeys
-	    {
-	        get
-	        {
-	            using (var it = NewIterator())
-	            {
-	                it.SeekToFirst();
-	                while (it.IsValid)
-	                {
-	                    yield return it.Key;
-                        it.Next();
-	                }
-	            }
-	        }
-	    }
+		public IEnumerable<Slice> AllKeys
+		{
+			get
+			{
+				using (var it = NewIterator())
+				{
+					it.SeekToFirst();
+					while (it.IsValid)
+					{
+						yield return it.Key;
+						it.Next();
+					}
+				}
+			}
+		}
 
 		public void Add(ulong seq, ItemType type, Slice key, UnamangedMemoryAccessor.MemoryHandle memoryHandle)
 		{
@@ -85,34 +85,26 @@ namespace Raven.Storage.Memtable
 		/// </summary>
 		public bool TryGet(Slice userKey, ulong sequence, out Stream stream)
 		{
-			var buffer = _bufferPool.Take(userKey.Count + 8);
-			try
+			var memKey = new InternalKey(userKey, sequence, ItemType.ValueForSeek);
+			var iterator = _table.NewIterator();
+			iterator.Seek(memKey);
+			if (iterator.IsValid == false ||
+				_internalKeyComparator.Compare(memKey, iterator.Key) > 0)
 			{
-				var memKey = new InternalKey(userKey, sequence, ItemType.ValueForSeek);
-				var iterator = _table.NewIterator();
-				iterator.Seek(memKey);
-				if (iterator.IsValid == false ||
-					_internalKeyComparator.Compare(memKey, iterator.Key) > 0)
-				{
-					stream = null;
-					return false;
-				}
-
-				switch (iterator.Key.Type)
-				{
-					case ItemType.Deletion:
-						stream = null;
-						return true;
-					case ItemType.Value:
-						stream = _memoryAccessor.Read(iterator.Val);
-						return true;
-					default:
-						throw new ArgumentOutOfRangeException();
-				}
+				stream = null;
+				return false;
 			}
-			finally
+
+			switch (iterator.Key.Type)
 			{
-				_bufferPool.Return(buffer);
+				case ItemType.Deletion:
+					stream = null;
+					return true;
+				case ItemType.Value:
+					stream = _memoryAccessor.Read(iterator.Val);
+					return true;
+				default:
+					throw new ArgumentOutOfRangeException();
 			}
 		}
 
