@@ -59,7 +59,7 @@ namespace Raven.Storage
 		///  Also, a larger write buffer will result in a longer recovery time
 		///  the next time the database is opened.
 		/// 
-		///  Default: 4MB
+		///  Default: 12MB
 		/// </summary>
 		public int WriteBatchSize { get; set; }
 
@@ -114,7 +114,7 @@ namespace Raven.Storage
 			Comparator = new CaseInsensitiveComparator();
 			FilterPolicy = new BloomFilterPolicy();
 			MaximumExpectedKeySize = 2048;
-			WriteBatchSize = 1024 * 1024 * 4;
+			WriteBatchSize = 1024 * 1024 * 12;
 			CacheSizeInMegabytes = 256;
 			BufferPool = new BufferPool();
 		}
