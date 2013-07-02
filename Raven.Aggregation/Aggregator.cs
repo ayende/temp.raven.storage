@@ -94,9 +94,14 @@ namespace Raven.Aggregation
 					var groupedByReduceKey = ExecuteMaps(items);
 					ExecuteReduce(groupedByReduceKey, writeBatch);
 					lastAggregatedEtag = eventDatas.Last().Etag;
-					var status = new RavenJObject { { "@etag", lastAggregatedEtag.ToString() } };
+					var status = new RavenJObject {{"@etag", lastAggregatedEtag.ToString()}};
 					writeBatch.Put(_aggStat, AggregationEngine.RavenJTokenToStream(status));
 					await _aggregationEngine.Storage.Writer.WriteAsync(writeBatch);
+				}
+				catch (Exception e)
+				{
+					Log.ErrorException("Could not process aggregation", e);
+					throw;
 				}
 				finally
 				{
@@ -176,7 +181,7 @@ namespace Raven.Aggregation
 			return groupedResults;
 		}
 
-		private IGrouping<dynamic, object>[] ExecuteMaps(IEnumerable<object> items)
+		private IEnumerable<IGrouping<dynamic, object>> ExecuteMaps(IEnumerable<object> items)
 		{
 			var robustEnumerator = new RobustEnumerator2(_aggregationEngine.CancellationToken, 50)
 				{
