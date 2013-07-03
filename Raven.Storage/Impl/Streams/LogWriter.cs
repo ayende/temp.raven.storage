@@ -49,9 +49,9 @@ namespace Raven.Storage.Impl.Streams
 
 		public void RecordCompleted()
 		{
+			_flushToDisk = true;
 			FlushBuffer(recordCompleted: true);
 			currentRecordType = LogRecordType.ZeroType;
-			_flushToDisk = true;
 		}
 
 		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
