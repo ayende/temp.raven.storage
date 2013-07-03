@@ -401,7 +401,11 @@ namespace Raven.Storage.Benchmark
 				long bytes = 0;
 				for (iterator.SeekToLast(); i < parameters.Reads && iterator.IsValid; iterator.Prev())
 				{
-					bytes += iterator.Key.Count + iterator.CreateValueStream().Length;
+					using (var valueStream = iterator.CreateValueStream())
+					{
+						bytes += iterator.Key.Count + valueStream.Length;
+					}
+					
 					result.FinishOperation();
 					++i;
 				}
@@ -420,7 +424,10 @@ namespace Raven.Storage.Benchmark
 				long bytes = 0;
 				for (iterator.SeekToFirst(); i < parameters.Reads && iterator.IsValid; iterator.Next())
 				{
-					bytes += iterator.Key.Count + iterator.CreateValueStream().Length;
+					using (var valueStream = iterator.CreateValueStream())
+					{
+						bytes += iterator.Key.Count + valueStream.Length;
+					}
 					result.FinishOperation();
 					++i;
 				}
