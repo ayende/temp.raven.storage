@@ -502,7 +502,7 @@ namespace Raven.Storage.Benchmark
 			Output("Keys:				{0:#,#} bytes each", KeySize);
 			Output("Values:				{0:#,#} bytes each", options.ValueSize);
 			Output("Entries:			{0:#,#}", options.Num);
-			Output("File Size:			{0:#,#} MB (estimated)", ((KeySize + options.ValueSize) * options.Num) / 1048576.0);
+			Output("File Size:			{0:#,#} MB (estimated)", (((long)KeySize + (long)options.ValueSize) * (long)options.Num) / 1048576.0);
 			Output(Constants.Separator);
 
 			PrintWarnings();
