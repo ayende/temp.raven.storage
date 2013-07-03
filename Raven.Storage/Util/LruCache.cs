@@ -43,7 +43,7 @@ namespace Raven.Storage.Util
 
 		private void TrimCache()
 		{
-			foreach (var source in _nodes.OrderBy(x => x.Value.Ticks).Take(_nodes.Count/10))
+			foreach (var source in _nodes.OrderBy(x => x.Value.Ticks.Value).Take(_nodes.Count/10))
 			{
 				Node removed;
 				if (!_nodes.TryRemove(source.Key, out removed)) 
