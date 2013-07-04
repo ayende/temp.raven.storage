@@ -372,7 +372,7 @@ namespace Raven.Storage.Impl
 			return NewMergingIterator(storageContext.InternalKeyComparator, list);
 		}
 
-		private IIterator GetFileIterator(ReadOptions readOptions, BlockHandle handle)
+		internal IIterator GetFileIterator(ReadOptions readOptions, BlockHandle handle)
 		{
 			var fileNumber = (ulong)handle.Position;
 			var fileSize = handle.Count;

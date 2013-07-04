@@ -443,7 +443,7 @@ namespace Raven.Storage.Impl
 			for (var level = 1; level < Config.NumberOfLevels; level++)
 			{
 				if (currentVersion.Files[level].Count > 0)
-					iterators.Add(new LevelFileNumIterator(InternalKeyComparator, currentVersion.Files[level]));
+					iterators.Add(new TwoLevelIterator(new LevelFileNumIterator(InternalKeyComparator, currentVersion.Files[level]), VersionSet.GetFileIterator, options));
 			}
 
 			var internalIterator = new MergingIterator(InternalKeyComparator, iterators);
