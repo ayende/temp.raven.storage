@@ -467,10 +467,7 @@ namespace Raven.Storage.Benchmark
 					result.FinishOperation();
 				}
 
-				await storage.Writer.WriteAsync(batch, new WriteOptions
-														   {
-															   FlushToDisk = parameters.Sync
-														   });
+				await storage.Writer.WriteAsync(batch);
 			}
 
 			result.AddBytes(bytes);

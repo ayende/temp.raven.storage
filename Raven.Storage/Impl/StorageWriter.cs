@@ -21,11 +21,8 @@ namespace Raven.Storage.Impl
 			_state = state;
 		}
 
-		public async Task WriteAsync(WriteBatch batch, WriteOptions writeOptions = null)
+		public async Task WriteAsync(WriteBatch batch)
 		{
-			if (writeOptions == null)
-				writeOptions = new WriteOptions();
-
 			if (Log.IsDebugEnabled)
 				Log.Debug(batch.DebugVal);
 
@@ -90,7 +87,7 @@ namespace Raven.Storage.Impl
 							write.Batch.Prepare(_state.MemTable);
 						}
 
-						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, writeOptions).ConfigureAwait(false);
+						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state).ConfigureAwait(false);
 
 						foreach (var write in list)
 						{

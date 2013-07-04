@@ -29,8 +29,6 @@ namespace Raven.Storage.Impl.Streams
 
 		private LogRecordType currentRecordType = LogRecordType.ZeroType;
 
-		private bool _flushToDisk;
-
 		public LogWriter(Stream stream, BufferPool bufferPool)
 		{
 			this.stream = stream;
@@ -38,19 +36,16 @@ namespace Raven.Storage.Impl.Streams
 			_buffer = bufferPool.Take(BlockSize);
 			_binaryWriter = new BinaryWriter(stream);
 			_bufferPos = HeaderSize;
-			_flushToDisk = true;
 		}
 
-		public void RecordStarted(bool flushToDisk = true)
+		public void RecordStarted()
 		{
-			_flushToDisk = flushToDisk;
 			currentRecordType = LogRecordType.FullType;
 		}
 
 		public void RecordCompleted()
 		{
-			_flushToDisk = true;
-			FlushBuffer(recordCompleted: true);
+			FlushBuffer(recordCompleted: true, force: true);
 			currentRecordType = LogRecordType.ZeroType;
 		}
 
@@ -76,7 +71,7 @@ namespace Raven.Storage.Impl.Streams
 					{
 						_buffer[_bufferPos++] = 0;
 					}
-					FlushBuffer(recordCompleted: false);
+					FlushBuffer(recordCompleted: false, force: false);
 					_bufferPos = HeaderSize;
 				}
 				var avail = BlockSize - _bufferPos;// - HeaderSize, _bufferPos already starts there
@@ -93,7 +88,7 @@ namespace Raven.Storage.Impl.Streams
 			return writtenBytes;
 		}
 
-		private void FlushBuffer(bool recordCompleted)
+		private void FlushBuffer(bool recordCompleted, bool force)
 		{
 			switch (currentRecordType)
 			{
@@ -110,7 +105,7 @@ namespace Raven.Storage.Impl.Streams
 					throw new ArgumentOutOfRangeException("Cannot flush when the currentRecordType is: " + currentRecordType);
 			}
 
-			EmitPhysicalRecord(currentRecordType, _buffer, HeaderSize, _bufferPos - HeaderSize);
+			EmitPhysicalRecord(currentRecordType, _buffer, HeaderSize, _bufferPos - HeaderSize, force);
 
 			if (recordCompleted)
 			{
@@ -125,7 +120,7 @@ namespace Raven.Storage.Impl.Streams
 			stream.Dispose();
 		}
 
-		private void EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count)
+		private void EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count, bool force)
 		{
 			// calc crc & write header
 			var crc = Crc.Extend(RecordTypeCrcs[type], buffer, offset, count);
@@ -134,7 +129,7 @@ namespace Raven.Storage.Impl.Streams
 			_binaryWriter.Write((byte)type);
 			_binaryWriter.Write(buffer, offset, count);
 
-			if (_flushToDisk)
+			if (force)
 				_binaryWriter.Flush();
 
 			_bufferPos += HeaderSize;

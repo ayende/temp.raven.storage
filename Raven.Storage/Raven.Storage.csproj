@@ -144,7 +144,6 @@
     <Compile Include="Util\TaskExtensions.cs" />
     <Compile Include="Util\TrackResourceUsage.cs" />
     <Compile Include="WriteBatch.cs" />
-    <Compile Include="Data\WriteOptions.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Raven.Temp\Raven.Temp.csproj">
