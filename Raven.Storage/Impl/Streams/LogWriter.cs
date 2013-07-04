@@ -15,7 +15,6 @@ namespace Raven.Storage.Impl.Streams
 				.ToDictionary(x => x, x => Crc.Extend(0, (byte)x));
 
 
-		private readonly Stream stream;
 		private readonly BufferPool _bufferPool;
 		private readonly BinaryWriter _binaryWriter;
 
@@ -31,7 +30,6 @@ namespace Raven.Storage.Impl.Streams
 
 		public LogWriter(Stream stream, BufferPool bufferPool)
 		{
-			this.stream = stream;
 			_bufferPool = bufferPool;
 			_buffer = bufferPool.Take(BlockSize);
 			_binaryWriter = new BinaryWriter(stream);
@@ -117,7 +115,7 @@ namespace Raven.Storage.Impl.Streams
 		public void Dispose()
 		{
 			_bufferPool.Return(_buffer);
-			stream.Dispose();
+			_binaryWriter.Dispose();
 		}
 
 		private void EmitPhysicalRecord(LogRecordType type, byte[] buffer, int offset, int count, bool force)
