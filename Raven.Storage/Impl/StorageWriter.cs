@@ -1,25 +1,26 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
 {
-	using Raven.Storage.Data;
-
 	public class StorageWriter
 	{
 		private static readonly ILog Log = LogManager.GetCurrentClassLogger();
 		private readonly ConcurrentQueue<OutstandingWrite> _pendingWrites = new ConcurrentQueue<OutstandingWrite>();
 		private readonly StorageState _state;
-		private readonly AsyncEvent _writeCompletedEvent = new AsyncEvent();
 
 		public StorageWriter(StorageState state)
 		{
 			_state = state;
 		}
+
+		public SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
 		public async Task WriteAsync(WriteBatch batch)
 		{
@@ -29,35 +30,22 @@ namespace Raven.Storage.Impl
 			var mine = new OutstandingWrite(batch);
 			_pendingWrites.Enqueue(mine);
 
-			var state = new Reference<int>();
-			while (mine.Done() == false && _pendingWrites.Peek() != mine)
-			{
-				if (Log.IsDebugEnabled)
-					Log.Debug("Not the only concurrent write for write batch # {0}, waiting...", batch.BatchId);
-				await _writeCompletedEvent.WaitAsync(state).ConfigureAwait(false);
-			}
-
-			if (mine.Done())
-			{
-				if (Log.IsDebugEnabled)
-					Log.Debug("Write batch #{0} was completed early, done (no lock needed), will pulse.", batch.BatchId);
-				_writeCompletedEvent.PulseAll();
-				return;
-			}
-
 			List<OutstandingWrite> list = null;
+
+			await semaphore.WaitAsync();
+
 			try
 			{
+				if (mine.Done)
+				{
+					if (Log.IsDebugEnabled)
+						Log.Debug("Write batch #{0} was completed early, done (lock was taken & released).",
+								   batch.BatchId);
+					return;
+				}
+
 				using (AsyncLock.LockScope locker = await _state.Lock.LockAsync().ConfigureAwait(false))
 				{
-					if (mine.Done())
-					{
-						if (Log.IsDebugEnabled)
-							Log.Debug("Write batch #{0} was completed early, done (lock was taken & released).",
-									   batch.BatchId);
-						return;
-					}
-
 					await _state.MakeRoomForWriteAsync(force: false, lockScope: locker).ConfigureAwait(false);
 
 					ulong lastSequence = _state.VersionSet.LastSequence;
@@ -96,6 +84,8 @@ namespace Raven.Storage.Impl
 					}
 					await locker.LockAsync().ConfigureAwait(false);
 					_state.VersionSet.LastSequence = lastSequence;
+
+					
 				}
 			}
 			finally
@@ -107,14 +97,11 @@ namespace Raven.Storage.Impl
 						Debug.Assert(_pendingWrites.Peek() == item);
 						OutstandingWrite write;
 						_pendingWrites.TryDequeue(out write);
-						write.Result.SetResult(null);
+						write.Done = true;
 					}
 				}
 
-				if (Log.IsDebugEnabled)
-					Log.Debug("Pulsing all pending writes from batch #{0}", batch.BatchId);
-
-				_writeCompletedEvent.PulseAll();
+				semaphore.Release();
 			}
 		}
 
@@ -151,23 +138,13 @@ namespace Raven.Storage.Impl
 			{
 				Batch = batch;
 				Size = batch.Size;
-				Result = new TaskCompletionSource<object>();
 			}
 
 			public WriteBatch Batch { get; private set; }
-			public TaskCompletionSource<object> Result { get; private set; }
 
 			public long Size { get; private set; }
 
-			public bool Done()
-			{
-				Task<object> task = Result.Task;
-				if (task.IsCompleted)
-					return true;
-				if (task.IsCanceled || task.IsFaulted)
-					task.Wait(); // throws
-				return false;
-			}
+			public bool Done;
 		}
 	}
 }

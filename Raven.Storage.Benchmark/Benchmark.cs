@@ -1,4 +1,5 @@
-﻿using Raven.Storage.Comparing;
+﻿using System.Collections.Generic;
+using Raven.Storage.Comparing;
 
 namespace Raven.Storage.Benchmark
 {
@@ -279,10 +280,12 @@ namespace Raven.Storage.Benchmark
 			return DoDelete(parameters, true);
 		}
 
-		private async Task<BenchmarkResult> DoDelete(BenchmarkParameters parameters, bool seq)
+		private Task<BenchmarkResult> DoDelete(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
 			var result = new BenchmarkResult(parameters);
+
+			var tasks = new List<Task>(parameters.Num);
 
 			for (var i = 0; i < parameters.Num; i += parameters.EntriesPerBatch)
 			{
@@ -295,10 +298,10 @@ namespace Raven.Storage.Benchmark
 					result.FinishOperation();
 				}
 
-				await storage.Writer.WriteAsync(batch);
+				tasks.Add(storage.Writer.WriteAsync(batch));
 			}
 
-			return result;
+			return Task.WhenAll(tasks).ContinueWith(t => result);
 		}
 
 		private async Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
@@ -447,12 +450,14 @@ namespace Raven.Storage.Benchmark
 			return DoWrite(parameters, true);
 		}
 
-		private async Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
+		private Task<BenchmarkResult> DoWrite(BenchmarkParameters parameters, bool seq)
 		{
 			var random = new Random();
 			var generator = new RandomGenerator();
 
 			var result = new BenchmarkResult(parameters);
+
+			var tasks = new List<Task>(parameters.Num);
 
 			long bytes = 0;
 			for (var i = 0; i < parameters.Num; i += parameters.EntriesPerBatch)
@@ -467,12 +472,12 @@ namespace Raven.Storage.Benchmark
 					result.FinishOperation();
 				}
 
-				await storage.Writer.WriteAsync(batch);
+				tasks.Add(storage.Writer.WriteAsync(batch));
 			}
 
 			result.AddBytes(bytes);
 
-			return result;
+			return Task.WhenAll(tasks).ContinueWith(t => result);
 		}
 
 		private async Task OpenAsync()

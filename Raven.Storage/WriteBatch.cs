@@ -52,7 +52,7 @@ namespace Raven.Storage
 
 		public long Size
 		{
-			get { return _operations.Sum(x => x.Key.Count + x.Op == Operations.Put ? x.Value.Length : 0); }
+			get { return _operations.Sum(x => x.Op == Operations.Put ? x.Value.Length + x.Key.Count : x.Key.Count); }
 		}
 
 		public int OperationCount
