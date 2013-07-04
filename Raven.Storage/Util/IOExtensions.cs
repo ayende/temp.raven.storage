@@ -245,12 +245,20 @@ namespace Raven.Storage.Util
 
 		public static ulong ReadLong(this byte[] array, int offset)
 		{
-			ulong val = 0;
-			for (int i = 0; i < sizeof(ulong); i++)
+			unsafe
 			{
-				val |= (ulong)array[offset + i] << i * 8;
+				fixed (byte* pArray = array)
+				{
+					byte* ptr = pArray + offset;
+					ulong val = 0;
+
+					for (int i = 0; i < sizeof (ulong); i++)
+					{
+						val |= (ulong) *(ptr + i) << i*8;
+					}
+					return val;
+				}
 			}
-			return val;
 		}
 
 		private static void Get7BitsBuffer(int value, out byte[] buffer, out int size)

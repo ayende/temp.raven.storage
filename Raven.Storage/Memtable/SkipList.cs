@@ -189,20 +189,15 @@ namespace Raven.Storage.Memtable
 
 		public class Node
 		{
-			private readonly TVal _val;
-			public TKey Key { get; private set; }
+			public readonly TVal Val;
+			public TKey Key;
 			private readonly Node[] next;
 
 			public Node(TKey key, TVal val, int height)
 			{
-				_val = val;
+				Val = val;
 				Key = key;
 				next = new Node[height];
-			}
-
-			public TVal Val
-			{
-				get { return _val; }
 			}
 
 			public Node Next(int i)
