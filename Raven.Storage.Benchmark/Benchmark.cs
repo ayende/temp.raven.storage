@@ -312,7 +312,7 @@ namespace Raven.Storage.Benchmark
 			{
 				var k = random.Next() % range;
 				var key = string.Format("{0:0000000000000000}", k);
-				using (storage.Reader.Read(key)) {}
+				using (storage.Reader.Read(key)) { }
 
 				result.FinishOperation();
 			}
@@ -358,7 +358,7 @@ namespace Raven.Storage.Benchmark
 				var k = random.Next() % options.Num;
 				var key = string.Format("{0:0000000000000000}", k);
 
-				using (storage.Reader.Read(key)) {}
+				using (storage.Reader.Read(key)) { }
 
 				result.FinishOperation();
 			}
@@ -380,7 +380,7 @@ namespace Raven.Storage.Benchmark
 
 				using (var streamValue = storage.Reader.Read(key))
 				{
-					if (streamValue!= null)
+					if (streamValue != null)
 						found++;
 				}
 
@@ -405,7 +405,7 @@ namespace Raven.Storage.Benchmark
 					{
 						bytes += iterator.Key.Count + valueStream.Length;
 					}
-					
+
 					result.FinishOperation();
 					++i;
 				}

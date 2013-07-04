@@ -111,7 +111,7 @@
 				}
 			}
 
-			savedKey = InternalKey.ExtractUserKey(iterator.Key);
+			savedKey = InternalKey.ExtractUserKey(iterator.Key).Clone();
 			FindNextUserEntry(true);
 		}
 
@@ -120,7 +120,6 @@
 			// Loop until we hit an acceptable entry to yield
 			Debug.Assert(iterator.IsValid);
 			Debug.Assert(direction == Direction.Forward);
-
 
 			if (savedValueStream != null)
 				savedValueStream.Dispose();
