@@ -200,21 +200,25 @@ namespace Raven.Storage.Memtable
 				next = new Node[height];
 			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Node Next(int i)
 			{
 				return Volatile.Read(ref next[i]);
 			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public void SetNext(int i, Node val)
 			{
-				Volatile.Write(ref next[i], val);
+				next[i] = val; // write in C# are volatile anyway
 			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Node GetNextWithNoBarrier(int i)
 			{
 				return next[i];
 			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public void SetNextWithNoBarrier(int i, Node val)
 			{
 				next[i] = val;
