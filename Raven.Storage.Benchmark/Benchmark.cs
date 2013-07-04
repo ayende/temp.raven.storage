@@ -139,12 +139,6 @@ namespace Raven.Storage.Benchmark
 					parameters.FreshDatabase = false;
 					parameters.Method = WriteRandom;
 					break;
-				case "fillsync":
-					parameters.FreshDatabase = true;
-					parameters.Num /= 1000;
-					parameters.Sync = true;
-					parameters.Method = WriteRandom;
-					break;
 				case "fill100k":
 					parameters.FreshDatabase = true;
 					parameters.Num /= 1000;

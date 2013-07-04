@@ -22,7 +22,6 @@
 			Benchmarks = new List<string>
 				             {
 					             "fillseq",
-					             "fillsync",
 					             "fillrandom",
 					             "overwrite",
 					             "readrandom",
@@ -45,7 +44,6 @@
 		///      fillseq       -- write N values in sequential key order in async mode
 		///      fillrandom    -- write N values in random key order in async mode
 		///      overwrite     -- overwrite N values in random key order in async mode
-		///      fillsync      -- write N/100 values in random key order in sync mode
 		///      fill100K      -- write N/1000 100K values in random order in async mode
 		///      deleteseq     -- delete N keys in sequential order
 		///      deleterandom  -- delete N keys in random order

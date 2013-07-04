@@ -13,7 +13,6 @@
 			EntriesPerBatch = 1;
 			FreshDatabase = false;
 			NumberOfThreads = options.Threads;
-			Sync = false;
 			Histogram = options.Histogram;
 		}
 
@@ -32,8 +31,6 @@
 		public bool FreshDatabase { get; set; }
 
 		public Func<BenchmarkParameters, Task<BenchmarkResult>> Method { get; set; }
-
-		public bool Sync { get; set; }
 
 		public bool Histogram { get; set; }
 	}

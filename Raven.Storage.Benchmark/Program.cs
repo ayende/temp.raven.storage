@@ -27,7 +27,6 @@
 									+ Environment.NewLine + "- fillseq - write N values in sequential key order in async mode"
 						            + Environment.NewLine + "- fillrandom - write N values in random key order in async mode"
 						            + Environment.NewLine + "- overwrite - overwrite N values in random key order in async mode"
-						            + Environment.NewLine + "- fillsync - write N/100 values in random key order in sync mode"
 						            + Environment.NewLine + "- fill100K - write N/1000 100K values in random order in async mode"
 						            + Environment.NewLine + "- deleteseq - delete N keys in sequential order"
 						            + Environment.NewLine + "- deleterandom - delete N keys in random order"
