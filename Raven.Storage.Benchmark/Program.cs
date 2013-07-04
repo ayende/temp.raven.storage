@@ -51,7 +51,7 @@
 					            { "reads:", "Number of read operations to do. If negative, do FLAGS_num reads.", s => options.Reads = int.Parse(s) },
 					            { "threads:", "Number of concurrent threads to run.", s => options.Threads = int.Parse(s) },
 					            { "value-size:", "Size of each value", s => options.ValueSize = int.Parse(s) },
-					            { "write-batch-size:", "Number of bytes to buffer in memtable before compacting", s => options.WriteBatchSize = int.Parse(s) },
+					            { "write-batch-size:", "Number of MB to buffer in memtable before compacting", s => options.WriteBatchSize = int.Parse(s) * 1024 * 1024 },
 					            { "cache-size:", "Number of megabytes to use as a cache of uncompressed data. Negative means use default settings.", s => options.CacheSize = int.Parse(s) },
 					            { "bloom-bits:", "Bloom filter bits per key. Negative means use default settings.", s => options.BloomBits = int.Parse(s) },
 					            { "db:", "Use the db with the following name.", s => options.DatabaseName = s },
