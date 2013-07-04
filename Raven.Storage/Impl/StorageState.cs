@@ -1,4 +1,5 @@
-﻿using Raven.Temp.Logging;
+﻿using System.Threading;
+using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
 {
@@ -20,7 +21,7 @@ namespace Raven.Storage.Impl
 
 	using Raven.Storage.Reading;
 
-	public class StorageState : IDisposable, IStorageContext
+	public class StorageState : IDisposable
 	{
 		private static readonly ILog Log = LogManager.GetCurrentClassLogger();
 
@@ -28,7 +29,9 @@ namespace Raven.Storage.Impl
 		public volatile MemTable ImmutableMemTable;
 		public volatile bool BackgroundCompactionScheduled;
 		public volatile Task BackgroundTask = Task.FromResult<object>(null);
-		public volatile bool ShuttingDown;
+		private readonly CancellationTokenSource _cancellationTokenSource;
+
+		public CancellationToken CancellationToken;
 
 		public LogWriter LogWriter { get; private set; }
 
@@ -42,6 +45,7 @@ namespace Raven.Storage.Impl
 		public ulong LogFileNumber { get; private set; }
 
 		public CompactionStats[] CompactionStats = new CompactionStats[Config.NumberOfLevels];
+		private PerfCounters _perfCounters;
 
 		public TableCache TableCache { get; private set; }
 
@@ -53,6 +57,9 @@ namespace Raven.Storage.Impl
 
 		public StorageState(string name, StorageOptions options)
 		{
+			_perfCounters = new PerfCounters(name);
+			_cancellationTokenSource = new CancellationTokenSource();
+			CancellationToken = _cancellationTokenSource.Token;
 			Options = options;
 			InternalKeyComparator = new InternalKeyComparator(options.Comparator);
 			DatabaseName = name;
@@ -63,6 +70,11 @@ namespace Raven.Storage.Impl
 			VersionSet = new VersionSet(this);
 			Compactor = new BackgroundCompactor(this);
 			Snapshooter = new Snapshooter(this);
+		}
+
+		public PerfCounters PerfCounters
+		{
+			get { return _perfCounters; }
 		}
 
 		public void CreateNewLog()
@@ -309,6 +321,8 @@ namespace Raven.Storage.Impl
 		/// <returns></returns>
 		public FileMetadata BuildTable(MemTable memTable, ulong fileNumber)
 		{
+			CancellationToken.ThrowIfCancellationRequested();
+			
 			TableBuilder builder = null;
 			var meta = new FileMetadata
 						   {
@@ -316,7 +330,6 @@ namespace Raven.Storage.Impl
 						   };
 
 			var tableFileName = FileSystem.GetTableFileName(fileNumber);
-
 			try
 			{
 				var iterator = memTable.NewIterator();
@@ -333,6 +346,7 @@ namespace Raven.Storage.Impl
 					meta.SmallestKey = new InternalKey(iterator.Key);
 					while (iterator.IsValid)
 					{
+						CancellationToken.ThrowIfCancellationRequested();
 						var key = iterator.Key;
 
 						meta.LargestKey = new InternalKey(key);
@@ -399,10 +413,19 @@ namespace Raven.Storage.Impl
 
 		public void Dispose()
 		{
-			ShuttingDown = true;
+			_cancellationTokenSource.Cancel();
 
 			if (BackgroundTask != null)
-				BackgroundTask.Wait(TimeSpan.FromSeconds(5));
+			{
+				try
+				{
+					BackgroundTask.Wait();
+				}
+				catch (Exception e)
+				{
+					Log.ErrorException("Failure in background task", e);
+				}
+			}
 
 			if (LogWriter != null)
 				LogWriter.Dispose();
@@ -416,6 +439,9 @@ namespace Raven.Storage.Impl
 				ImmutableMemTable.Dispose();
 			if (TableCache != null)
 				TableCache.Dispose();
+
+			if (_perfCounters != null)
+				_perfCounters.Dispose();
 		}
 
 		public Tuple<IIterator, ulong> NewInternalIterator(ReadOptions options)

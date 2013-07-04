@@ -15,9 +15,9 @@
 	{
 		private readonly ILog log = LogManager.GetCurrentClassLogger();
 
-		private readonly IStorageContext storageContext;
+		private readonly StorageState storageContext;
 
-		private Version(IStorageContext storageContext)
+		private Version(StorageState storageContext)
 		{
 			this.storageContext = storageContext;
 			Files = new List<FileMetadata>[Config.NumberOfLevels];
@@ -34,7 +34,7 @@
 			}
 		}
 
-		public Version(IStorageContext storageContext, VersionSet versionSet)
+		public Version(StorageState storageContext, VersionSet versionSet)
 			: this(storageContext)
 		{
 			VersionSet = versionSet;

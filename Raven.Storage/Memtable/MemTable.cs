@@ -21,7 +21,7 @@ namespace Raven.Storage.Memtable
 
 		public DateTime CreatedAt { get; private set; }
 
-		public MemTable(IStorageContext storageContext)
+		public MemTable(StorageState storageContext)
 			: this(storageContext.Options.WriteBatchSize, storageContext.InternalKeyComparator, storageContext.Options.BufferPool)
 		{
 

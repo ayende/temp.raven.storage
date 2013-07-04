@@ -51,6 +51,7 @@
     <Compile Include="Impl\AsyncEvent.cs" />
     <Compile Include="Impl\Compactions\BackgroundCompactor.cs" />
     <Compile Include="Impl\InMemoryFileSystem.cs" />
+    <Compile Include="Impl\PerfCounters.cs" />
     <Compile Include="Impl\Reference.cs" />
     <Compile Include="Impl\TemporaryFiles.cs" />
     <Compile Include="Reading\DbIterator.cs" />
@@ -82,7 +83,6 @@
     <Compile Include="Impl\FileMetadata.cs" />
     <Compile Include="Impl\FileSystem.cs" />
     <Compile Include="Impl\IStorageCommands.cs" />
-    <Compile Include="Impl\IStorageContext.cs" />
     <Compile Include="Impl\StorageCommands.cs" />
     <Compile Include="Impl\StorageReader.cs" />
     <Compile Include="Impl\Streams\LogReader.cs" />

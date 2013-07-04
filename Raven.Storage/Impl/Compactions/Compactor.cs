@@ -90,8 +90,7 @@ namespace Raven.Storage.Impl.Compactions
 
 		private async Task BackgroundCompactionAsync(AsyncLock.LockScope locker)
 		{
-			if (state.ShuttingDown)
-				return;
+			state.CancellationToken.ThrowIfCancellationRequested();
 
 			if (state.ImmutableMemTable != null)
 			{
@@ -159,6 +158,8 @@ namespace Raven.Storage.Impl.Compactions
 
 			Slice currentUserKey = null;
 			var lastSequenceForKey = Format.MaxSequenceNumber;
+			
+			state.CancellationToken.ThrowIfCancellationRequested();
 
 			using (IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction))
 			{
@@ -167,7 +168,8 @@ namespace Raven.Storage.Impl.Compactions
 				{
 					if (state.ImmutableMemTable != null)
 						await CompactMemTableAsync(locker).ConfigureAwait(false);
-
+				
+					state.CancellationToken.ThrowIfCancellationRequested();
 					var key = input.Key;
 
 					FinishCompactionOutputFileIfNecessary(compactionState, input);
@@ -347,6 +349,7 @@ namespace Raven.Storage.Impl.Compactions
 				currentVersion = state.VersionSet.Current;
 			}
 
+			state.CancellationToken.ThrowIfCancellationRequested(); 
 			var edit = new VersionEdit();
 			WriteLevel0Table(immutableMemTable, currentVersion, edit);
 

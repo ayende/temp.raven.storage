@@ -28,9 +28,9 @@ namespace Raven.Storage.Impl
 
 		public Slice[] CompactionPointers { get; private set; }
 
-		private readonly IStorageContext storageContext;
+		private readonly StorageState storageContext;
 
-		public VersionSet(IStorageContext storageContext)
+		public VersionSet(StorageState storageContext)
 		{
 			this.storageContext = storageContext;
 

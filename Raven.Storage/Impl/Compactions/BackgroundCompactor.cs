@@ -30,7 +30,7 @@ namespace Raven.Storage.Impl.Compactions
 			{
 				return; // already scheduled, nothing to do
 			}
-			if (state.ShuttingDown)
+			if (state.CancellationToken.IsCancellationRequested)
 			{
 				return;    // DB is being disposed; no more background compactions
 			}

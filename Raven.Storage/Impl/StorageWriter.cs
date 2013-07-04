@@ -92,13 +92,19 @@ namespace Raven.Storage.Impl
 			{
 				if (list != null)
 				{
+					int count = 0;
+					long size = 0;
 					foreach (OutstandingWrite item in list)
 					{
 						Debug.Assert(_pendingWrites.Peek() == item);
 						OutstandingWrite write;
 						_pendingWrites.TryDequeue(out write);
+						count += write.Batch.OperationCount;
+						size += write.Size;
 						write.Done = true;
 					}
+					_state.PerfCounters.Write(count);
+					_state.PerfCounters.BytesWritten(size);
 				}
 
 				semaphore.Release();

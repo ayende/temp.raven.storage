@@ -61,9 +61,9 @@
 		/// </summary>
 		private readonly int[] levelPointers;
 
-		private readonly IStorageContext storageContext;
+		private readonly StorageState storageContext;
 
-		public Compaction(IStorageContext storageContext, int level, Version inputVersion = null)
+		public Compaction(StorageState storageContext, int level, Version inputVersion = null)
 		{
 			this.storageContext = storageContext;
 			Level = level;

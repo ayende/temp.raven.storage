@@ -65,8 +65,7 @@ namespace Raven.Storage.Impl.Compactions
 
 				while (task == null)
 				{
-					if (state.ShuttingDown)
-						throw new InvalidOperationException("Database is shutting down.");
+					state.CancellationToken.ThrowIfCancellationRequested();
 
 					if (state.BackgroundCompactionScheduled)
 					{

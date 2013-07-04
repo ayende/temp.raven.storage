@@ -14,13 +14,13 @@
 
 		private readonly ulong sequence;
 
-		private readonly IStorageContext storageContext;
+		private readonly StorageState storageContext;
 
 		private Slice savedKey;
 
 		private Stream savedValueStream;
 
-		public DbIterator(IStorageContext storageContext, IIterator iterator, ulong sequence)
+		public DbIterator(StorageState storageContext, IIterator iterator, ulong sequence)
 		{
 			this.iterator = iterator;
 			this.sequence = sequence;
@@ -45,7 +45,7 @@
 		{
 			direction = Direction.Forward;
 			savedValueStream = null;
-
+			storageContext.PerfCounters.Read();
 			iterator.SeekToFirst();
 
 			if (iterator.IsValid)
@@ -61,6 +61,7 @@
 		{
 			direction = Direction.Reverse;
 			savedValueStream = null;
+			storageContext.PerfCounters.Read();
 			iterator.SeekToLast();
 			FindPrevUserEntry();
 		}
@@ -70,6 +71,8 @@
 			direction = Direction.Forward;
 			savedKey = null;
 			savedValueStream = null;
+
+			storageContext.PerfCounters.Read();
 
 			savedKey = new InternalKey(target, sequence, ItemType.ValueForSeek).TheInternalKey;
 			iterator.Seek(savedKey);
@@ -87,6 +90,7 @@
 		{
 			Debug.Assert(IsValid);
 
+			storageContext.PerfCounters.Read();
 			if (direction == Direction.Reverse)
 			{
 				direction = Direction.Forward;
@@ -163,7 +167,7 @@
 		public void Prev()
 		{
 			Debug.Assert(IsValid);
-
+			storageContext.PerfCounters.Read();
 			if (direction == Direction.Forward)
 			{
 				// iter_ is pointing at the current entry.  Scan backwards until
@@ -258,7 +262,9 @@
 		public Stream CreateValueStream()
 		{
 			Debug.Assert(IsValid);
-			return direction == Direction.Forward ? iterator.CreateValueStream() : savedValueStream;
+			var valueStream = direction == Direction.Forward ? iterator.CreateValueStream() : savedValueStream;
+			storageContext.PerfCounters.BytesRead(valueStream.Length);
+			return valueStream;
 		}
 	}
 }

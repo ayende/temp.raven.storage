@@ -9,7 +9,7 @@
 
 	public class Snapshooter
 	{
-		private readonly IStorageContext storageContext;
+		private readonly StorageState storageContext;
 
 		private readonly ConcurrentDictionary<Snapshot, object> snapshots;
 
@@ -19,9 +19,9 @@
 			{
 				return (ReadOnlyCollection<Snapshot>) snapshots.Keys;
 			}
-		} 
+		}
 
-		public Snapshooter(IStorageContext storageContext)
+		public Snapshooter(StorageState storageContext)
 		{
 			this.storageContext = storageContext;
 			snapshots = new ConcurrentDictionary<Snapshot, object>();

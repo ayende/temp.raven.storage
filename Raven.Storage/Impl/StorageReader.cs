@@ -31,16 +31,20 @@ namespace Raven.Storage.Impl
 
 			var reference = new Reference<Slice> { Value = key };
 
+			state.PerfCounters.Read();
+
 			Stream stream;
 			GetStats stats;
 
 			if (mem.TryGet(reference.Value, snapshot, out stream))
 			{
+				state.PerfCounters.BytesRead(stream.Length);
 				return stream;
 			}
 
 			if (imm != null && imm.TryGet(reference.Value, snapshot, out stream))
 			{
+				state.PerfCounters.BytesRead(stream.Length); 
 				return stream;
 			}
 
@@ -51,6 +55,7 @@ namespace Raven.Storage.Impl
 					Background.Work(MaybeScheduleCompactionAsync());
 				}
 
+				state.PerfCounters.BytesRead(stream.Length); 
 				return stream;
 			}
 

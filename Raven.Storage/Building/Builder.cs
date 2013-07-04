@@ -24,12 +24,12 @@
 
 		private readonly Version @base;
 
-		private readonly IStorageContext storageContext;
+		private readonly StorageState storageContext;
 
 		/// <summary>
 		/// Initialize a builder with the files from *base and other info from *vset
 		/// </summary>
-		public Builder(IStorageContext storageContext, VersionSet versionSet, Version @base)
+		public Builder(StorageState storageContext, VersionSet versionSet, Version @base)
 		{
 			this.storageContext = storageContext;
 			this.versionSet = versionSet;
