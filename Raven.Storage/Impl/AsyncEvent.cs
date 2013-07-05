@@ -9,7 +9,7 @@ namespace Raven.Storage.Impl
         private int _state;
         private volatile bool _disposed;
         private readonly object _locker = new object();
-        private LinkedList<TaskCompletionSource<object>> _pending = new LinkedList<TaskCompletionSource<object>>();
+        private LinkedList<Task<bool>> _pending = new LinkedList<Task<bool>>();
 
         public async Task<bool> WaitAsync(Reference<int> callerState)
         {
@@ -22,7 +22,7 @@ namespace Raven.Storage.Impl
                 return false;
             }
 
-            TaskCompletionSource<object> taskCompletionSource;
+            Task<bool> task;
             lock (_locker)
             {
                 if (callerState.Value != _state)
@@ -31,12 +31,12 @@ namespace Raven.Storage.Impl
                     return false;
                 }
 
-                taskCompletionSource = new TaskCompletionSource<object>();
-                _pending.AddLast(taskCompletionSource);
+	            task = StorageWriter.CreateTask();
+                _pending.AddLast(task);
 
                 callerState.Value = _state;
             }
-            await taskCompletionSource.Task.ConfigureAwait(false);
+            await task.ConfigureAwait(false);
             return true;
 
         }
@@ -49,17 +49,17 @@ namespace Raven.Storage.Impl
 
         public void PulseAll()
         {
-            LinkedList<TaskCompletionSource<object>> current;
+            LinkedList<Task<bool>> current;
             lock (_locker)
             {
                 _state++;
                 current = _pending;
-                _pending = new LinkedList<TaskCompletionSource<object>>();
+                _pending = new LinkedList<Task<bool>>();
             }
 
             foreach (var source in current)
             {
-                source.TrySetResult(null);
+	            StorageWriter.SetResult(source);
             }
         }
     }
