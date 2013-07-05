@@ -210,7 +210,7 @@ namespace Raven.Storage.Impl
                 }
             }
 
-	        writer.RecordCompleted();
+	        writer.RecordCompleted(true);
         }
 
         public static VersionEdit DecodeFrom(Stream stream)
