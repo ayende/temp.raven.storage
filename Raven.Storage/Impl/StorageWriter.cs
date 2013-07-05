@@ -39,8 +39,7 @@ namespace Raven.Storage.Impl
 				if (mine.Done)
 				{
 					if (Log.IsDebugEnabled)
-						Log.Debug("Write batch #{0} was completed early, done (lock was taken & released).",
-								   batch.BatchId);
+						Log.Debug("Write batch #{0} was completed early, done (no lock needed).", batch.BatchId);
 					return;
 				}
 
