@@ -22,7 +22,7 @@ namespace Raven.Storage.Impl
 			}
 		}
 
-		public async Task<LockScope> LockAsync()
+		public Task<LockScope> LockAsync()
 		{
 			TaskCompletionSource<object> taskCompletionSource;
 			lock (locker)
@@ -30,19 +30,22 @@ namespace Raven.Storage.Impl
 				if (locked == false)
 				{
 					locked = true;
-					return new LockScope(this);
+					return Task.FromResult(new LockScope(this));
 				}
 
 				taskCompletionSource = new TaskCompletionSource<object>();
 				waiters.Enqueue(taskCompletionSource);
 			}
 
-			await taskCompletionSource.Task.ConfigureAwait(false);
-			lock (locker)
-			{
-				locked = true;
-				return new LockScope(this);
-			}
+			return taskCompletionSource.Task.ContinueWith(
+				t =>
+				{
+					lock (locker)
+					{
+						locked = true;
+						return new LockScope(this);
+					}
+				});
 		}
 
 		public void Dispose()
@@ -61,12 +64,12 @@ namespace Raven.Storage.Impl
 		{
 			private readonly AsyncLock _asyncLock;
 			private bool _locked;
-		    private int counter;
+			private int counter;
 			public LockScope(AsyncLock asyncLock)
 			{
 				_asyncLock = asyncLock;
 				_locked = true;
-			    counter = 1;
+				counter = 1;
 			}
 
 			public bool Locked
@@ -76,9 +79,9 @@ namespace Raven.Storage.Impl
 
 			public void Dispose()
 			{
-			    counter--;
-			    if (counter > 0)
-			        return;
+				counter--;
+				if (counter > 0)
+					return;
 				if (_locked)
 					_asyncLock.Exit();
 				_locked = false;
@@ -90,18 +93,20 @@ namespace Raven.Storage.Impl
 				_locked = false;
 			}
 
-			public async Task<LockScope> LockAsync()
+			public Task<LockScope> LockAsync()
 			{
 				if (_locked)
 				{
-				    counter += 1;
-				    return this;
+					counter += 1;
+					return Task.FromResult(this);
 				}
-				
-				await _asyncLock.LockAsync().ConfigureAwait(false);
-				_locked = true;
 
-				return this;
+				return _asyncLock.LockAsync().ContinueWith(
+					t =>
+					{
+						_locked = true;
+						return this;
+					});
 			}
 		}
 	}
