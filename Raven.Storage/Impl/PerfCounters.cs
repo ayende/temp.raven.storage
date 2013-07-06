@@ -71,6 +71,8 @@ namespace Raven.Storage.Impl
 
 		private string GetPerformanceCounterName(string name)
 		{
+			if (string.IsNullOrEmpty(name))
+				return "null";
 			//dealing with names who are very long (there is a limit of 80 chars for counter name)
 			return name.Length > 70 ? name.Remove(70) : name;
 		}
