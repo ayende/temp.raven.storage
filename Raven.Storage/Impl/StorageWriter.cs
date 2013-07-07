@@ -9,6 +9,8 @@ using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl
 {
+	using Raven.Storage.Data;
+
 	public class StorageWriter
 	{
 		private static readonly ILog Log = LogManager.GetCurrentClassLogger();
@@ -22,10 +24,13 @@ namespace Raven.Storage.Impl
 
 		public SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
-		public async Task WriteAsync(WriteBatch batch)
+		public async Task WriteAsync(WriteBatch batch, WriteOptions options = null)
 		{
 			if (Log.IsDebugEnabled)
 				Log.Debug(batch.DebugVal);
+
+			if (options == null)
+				options = new WriteOptions();
 
 			var mine = new OutstandingWrite(batch);
 			_pendingWrites.Enqueue(mine);
@@ -39,8 +44,7 @@ namespace Raven.Storage.Impl
 				if (mine.Done)
 				{
 					if (Log.IsDebugEnabled)
-						Log.Debug("Write batch #{0} was completed early, done (lock was taken & released).",
-								   batch.BatchId);
+						Log.Debug("Write batch #{0} was completed early, done (no lock needed).", batch.BatchId);
 					return;
 				}
 
@@ -75,7 +79,7 @@ namespace Raven.Storage.Impl
 							write.Batch.Prepare(_state.MemTable);
 						}
 
-						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state).ConfigureAwait(false);
+						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, options).ConfigureAwait(false);
 
 						foreach (var write in list)
 						{
@@ -85,7 +89,7 @@ namespace Raven.Storage.Impl
 					await locker.LockAsync().ConfigureAwait(false);
 					_state.VersionSet.LastSequence = lastSequence;
 
-					
+
 				}
 			}
 			finally

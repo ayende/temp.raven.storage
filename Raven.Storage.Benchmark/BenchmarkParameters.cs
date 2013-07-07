@@ -12,6 +12,7 @@
 			ValueSize = options.ValueSize;
 			EntriesPerBatch = 1;
 			FreshDatabase = false;
+			Sync = false;
 			NumberOfThreads = options.Threads;
 			Histogram = options.Histogram;
 		}
@@ -33,5 +34,7 @@
 		public Func<BenchmarkParameters, Task<BenchmarkResult>> Method { get; set; }
 
 		public bool Histogram { get; set; }
+
+		public bool Sync { get; set; }
 	}
 }

@@ -35,7 +35,7 @@ namespace Raven.Storage.Tests.Logs
 		{
 			logWriterStream.RecordStarted();
 			await logWriterStream.WriteAsync(buffer, 0, buffer.Length);
-			logWriterStream.RecordCompleted();
+			logWriterStream.RecordCompleted(true);
 		}
 
 		[Fact]

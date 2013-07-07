@@ -126,6 +126,12 @@ namespace Raven.Storage.Benchmark
 					parameters.FreshDatabase = true;
 					parameters.Method = WriteSeq;
 					break;
+				case "fillsync":
+					parameters.FreshDatabase = true;
+					parameters.Num /= 1000;
+					parameters.Sync = true;
+					parameters.Method = WriteRandom;
+					break;
 				case "fillbatch":
 					parameters.FreshDatabase = true;
 					parameters.EntriesPerBatch = 1000;
@@ -466,7 +472,10 @@ namespace Raven.Storage.Benchmark
 					result.FinishOperation();
 				}
 
-				tasks.Add(storage.Writer.WriteAsync(batch));
+				tasks.Add(storage.Writer.WriteAsync(batch, new WriteOptions
+															   {
+																   FlushToDisk = parameters.Sync
+															   }));
 			}
 
 			result.AddBytes(bytes);

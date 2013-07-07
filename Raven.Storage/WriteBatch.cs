@@ -99,7 +99,7 @@ namespace Raven.Storage
 			}
 		}
 
-		internal static Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state)
+		internal static Task WriteToLogAsync(WriteBatch[] writes, ulong seq, StorageState state, WriteOptions options)
 		{
 			return Task.Factory.StartNew(
 				() =>
@@ -131,7 +131,7 @@ namespace Raven.Storage
 						}
 					}
 
-					state.LogWriter.RecordCompleted();
+					state.LogWriter.RecordCompleted(options.FlushToDisk);
 
 					if (log.IsDebugEnabled) log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
 				});
