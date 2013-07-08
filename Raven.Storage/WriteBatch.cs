@@ -150,6 +150,8 @@ namespace Raven.Storage
 					}
 					catch (Exception e)
 					{
+						state.LogWriter.ResetToLastCompletedRecord();
+
 						throw new LogWriterException(e);
 					}
 				});
