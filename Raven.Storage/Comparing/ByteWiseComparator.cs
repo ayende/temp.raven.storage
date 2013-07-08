@@ -14,14 +14,18 @@ namespace Raven.Storage.Comparing
 		public string Name { get { return "ByteWiseComparator"; } }
 
 		[DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
-		static extern int memcmp(byte[] b1, byte[] b2, int count);
+		private static extern unsafe int memcmp(byte* b1, byte* b2, int count);
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public int Compare(Slice a, Slice b)
+		public unsafe int Compare(Slice a, Slice b)
 		{
 			var minLen = a.Count <= b.Count ? a.Count : b.Count;
-			var result = memcmp(a.Array, b.Array, minLen);
-			return result == 0 ? a.Count - b.Count : result;
+
+			fixed (byte* aPtr = a.Array, bPtr = b.Array)
+			{
+				var result = memcmp(aPtr + a.Offset, bPtr + b.Offset, minLen);
+				return result == 0 ? a.Count - b.Count : result;
+			}
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
