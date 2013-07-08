@@ -19,7 +19,7 @@ namespace Raven.Storage.Comparing
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int Compare(Slice a, Slice b)
 		{
-			var minLen = Math.Min(a.Count, b.Count);
+			var minLen = a.Count <= b.Count ? a.Count : b.Count;
 			var result = memcmp(a.Array, b.Array, minLen);
 			return result == 0 ? a.Count - b.Count : result;
 		}

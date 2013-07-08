@@ -94,7 +94,7 @@ namespace Raven.Storage.Memtable
 			while (true)
 			{
 				var next = x.Next(level);
-				if (KeyIsAfterNode(key, next))
+				if ((next != null) && (_comparer.Compare(next.Key, key) < 0)) // KeyIsAfterNode inline for performance
 				{
 					// Keep searching in this list
 					x = next;
