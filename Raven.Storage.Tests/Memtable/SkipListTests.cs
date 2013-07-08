@@ -119,6 +119,39 @@ namespace Raven.Storage.Tests.Memtable
 		}
 
 		[Fact]
+		public void InsertRemove()
+		{
+			const int N = 2000;
+			const int R = 5000;
+			var rnd = new Random(1000);
+			var skiplist = new SkipList<string>(StringComparer.InvariantCultureIgnoreCase);
+			var keys = new List<string>();
+			for (int i = 0; i < N; i++)
+			{
+				var key = rnd.Next() % R;
+				var item = key.ToString(CultureInfo.InvariantCulture);
+				if (keys.Contains(item) == false)
+				{
+					keys.Add(item);
+					skiplist.Insert(item);
+				}
+			}
+
+			while (true)
+			{
+				if (keys.Count == 0)
+					break;
+
+				var keyToRemove = keys[rnd.Next(0, keys.Count - 1)];
+				Assert.True(skiplist.Remove(keyToRemove));
+				Assert.False(skiplist.Contains(keyToRemove));
+				keys.Remove(keyToRemove);
+			}
+
+			Assert.Equal(0, skiplist.Count);
+		}
+
+		[Fact]
 		public void ConcurrentTest()
 		{
 			var c = new ConcurrentDictionary<int, string>();

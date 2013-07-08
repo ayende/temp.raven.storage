@@ -8,6 +8,8 @@ namespace Raven.Storage.Memtable
 	using System.Collections.Generic;
 	using System.Runtime.CompilerServices;
 
+	using Raven.Storage.Data;
+
 	/// <summary>
 	///  Thread safety
 	///  -------------
@@ -48,6 +50,35 @@ namespace Raven.Storage.Memtable
 			return (x != null && Equal(key, x.Key));
 		}
 
+		public bool Remove(TKey key)
+		{
+			Node current = head;
+
+			bool found = false;
+			for (var i = MaxHeight - 1; i >= 0; i--)
+			{
+				for (; current.Next(i) != null; current = current.Next(i))
+				{
+					var result = _comparer.Compare(current.Next(i).Key, key);
+					if (result == 0)
+					{
+						found = true;
+						current.SetNext(i, current.Next(i).Next(i));
+
+						break;
+					}
+
+					if (result > 0)
+						break;
+				}
+			}
+
+			if (found)
+				Count--;
+
+			return found;
+		}
+
 		public void Insert(TKey key, TVal val)
 		{
 			var prev = new Node[SkipListMaxHeight];
@@ -84,7 +115,7 @@ namespace Raven.Storage.Memtable
 				prev[i].SetNext(i, x);
 			}
 
-			Count ++;
+			Count++;
 		}
 
 		private Node FindGreaterOrEqual(TKey key, Node[] prev)

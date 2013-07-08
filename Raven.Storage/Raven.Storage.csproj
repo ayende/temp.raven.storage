@@ -49,6 +49,7 @@
     <Compile Include="Building\BlockBuilder.cs" />
     <Compile Include="Building\Builder.cs" />
     <Compile Include="Data\WriteOptions.cs" />
+    <Compile Include="Exceptions\LogWriterException.cs" />
     <Compile Include="Impl\AsyncEvent.cs" />
     <Compile Include="Impl\Compactions\BackgroundCompactor.cs" />
     <Compile Include="Impl\InMemoryFileSystem.cs" />

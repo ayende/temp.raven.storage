@@ -16,6 +16,8 @@ using Raven.Temp.Logging;
 
 namespace Raven.Storage
 {
+	using Raven.Storage.Exceptions;
+
 	public class WriteBatch
 	{
 		private static readonly ILog log = LogManager.GetCurrentClassLogger();
@@ -79,12 +81,21 @@ namespace Raven.Storage
 				});
 		}
 
-		internal void Apply(MemTable memTable, ulong seq)
+		internal void Apply(MemTable memTable, Reference<ulong> seq)
 		{
 			foreach (var operation in _operations)
 			{
 				var itemType = operation.Op == Operations.Delete ? ItemType.Deletion : ItemType.Value;
-				memTable.Add(seq++, itemType, operation.Key, operation.Handle);
+				memTable.Add(seq.Value++, itemType, operation.Key, operation.Handle);
+			}
+		}
+
+		public void Remove(MemTable memTable, Reference<ulong> seq)
+		{
+			foreach (var operation in _operations)
+			{
+				var itemType = operation.Op == Operations.Delete ? ItemType.Deletion : ItemType.Value;
+				memTable.Remove(seq.Value++, itemType, operation.Key);
 			}
 		}
 
@@ -104,36 +115,43 @@ namespace Raven.Storage
 			return Task.Factory.StartNew(
 				() =>
 				{
-					var opCount = writes.Sum(x => x._operations.Count);
-
-					if (log.IsDebugEnabled) log.Debug("Writing {0} operations in seq {1}", opCount, seq);
-
-					state.LogWriter.RecordStarted();
-
-					var buffer = new byte[12];
-					Bit.Set(buffer, 0, seq);
-					Bit.Set(buffer, 8, opCount);
-					state.LogWriter.Write(buffer, 0, 12);
-
-					foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
+					try
 					{
-						buffer[0] = (byte)operation.Op;
-						state.LogWriter.Write(buffer, 0, 1);
-						state.LogWriter.Write7BitEncodedInt(operation.Key.Count);
-						state.LogWriter.Write(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
-						if (operation.Op != Operations.Put) continue;
+						var opCount = writes.Sum(x => x._operations.Count);
 
-						Bit.Set(buffer, 0, operation.Handle.Size);
-						state.LogWriter.Write(buffer, 0, 4);
-						using (var stream = state.MemTable.Read(operation.Handle))
+						if (log.IsDebugEnabled) log.Debug("Writing {0} operations in seq {1}", opCount, seq);
+
+						state.LogWriter.RecordStarted();
+
+						var buffer = new byte[12];
+						Bit.Set(buffer, 0, seq);
+						Bit.Set(buffer, 8, opCount);
+						state.LogWriter.Write(buffer, 0, 12);
+
+						foreach (var operation in writes.SelectMany(writeBatch => writeBatch._operations))
 						{
-							state.LogWriter.CopyFrom(stream);
+							buffer[0] = (byte)operation.Op;
+							state.LogWriter.Write(buffer, 0, 1);
+							state.LogWriter.Write7BitEncodedInt(operation.Key.Count);
+							state.LogWriter.Write(operation.Key.Array, operation.Key.Offset, operation.Key.Count);
+							if (operation.Op != Operations.Put) continue;
+
+							Bit.Set(buffer, 0, operation.Handle.Size);
+							state.LogWriter.Write(buffer, 0, 4);
+							using (var stream = state.MemTable.Read(operation.Handle))
+							{
+								state.LogWriter.CopyFrom(stream);
+							}
 						}
+
+						state.LogWriter.RecordCompleted(options.FlushToDisk);
+
+						if (log.IsDebugEnabled) log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
 					}
-
-					state.LogWriter.RecordCompleted(options.FlushToDisk);
-
-					if (log.IsDebugEnabled) log.Debug("Wrote {0} operations in seq {1} to log.", opCount, seq);
+					catch (Exception e)
+					{
+						throw new LogWriterException(e);
+					}
 				});
 		}
 

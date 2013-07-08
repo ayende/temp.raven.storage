@@ -10,6 +10,7 @@ using Raven.Temp.Logging;
 namespace Raven.Storage.Impl
 {
 	using Raven.Storage.Data;
+	using Raven.Storage.Exceptions;
 
 	public class StorageWriter
 	{
@@ -64,6 +65,7 @@ namespace Raven.Storage.Impl
 					}
 
 					ulong currentSequence = lastSequence + 1;
+					var currentSequenceRef = new Reference<ulong> { Value = lastSequence + 1 };
 
 					lastSequence += (ulong)list.Sum(x => x.Batch.OperationCount);
 
@@ -74,22 +76,28 @@ namespace Raven.Storage.Impl
 
 					locker.Exit();
 					{
-						foreach (var write in list)
+						list.ForEach(write => write.Batch.Prepare(_state.MemTable));
+
+						try
 						{
-							write.Batch.Prepare(_state.MemTable);
+							await
+								Task.WhenAll(
+									WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, options),
+									Task.Run(() => list.ForEach(write => write.Batch.Apply(_state.MemTable, currentSequenceRef))));
 						}
-
-						await WriteBatch.WriteToLogAsync(list.Select(x => x.Batch).ToArray(), currentSequence, _state, options).ConfigureAwait(false);
-
-						foreach (var write in list)
+						catch (LogWriterException e)
 						{
-							write.Batch.Apply(_state.MemTable, currentSequence);
+							Log.ErrorException("Writing to log failed.", e);
+							
+							currentSequenceRef = new Reference<ulong> { Value = lastSequence + 1 };
+							list.ForEach(write => write.Batch.Remove(_state.MemTable, currentSequenceRef));
+
+							throw;
 						}
 					}
+
 					await locker.LockAsync().ConfigureAwait(false);
 					_state.VersionSet.LastSequence = lastSequence;
-
-
 				}
 			}
 			finally

@@ -291,7 +291,7 @@ namespace Raven.Storage.Impl
 					}
 
 					item.WriteBatch.Prepare(mem);
-					item.WriteBatch.Apply(mem, item.WriteSequence);
+					item.WriteBatch.Apply(mem, new Reference<ulong> { Value = item.WriteSequence });
 
 					if (mem.ApproximateMemoryUsage > Options.WriteBatchSize)
 					{
@@ -322,7 +322,7 @@ namespace Raven.Storage.Impl
 		public FileMetadata BuildTable(MemTable memTable, ulong fileNumber)
 		{
 			CancellationToken.ThrowIfCancellationRequested();
-			
+
 			TableBuilder builder = null;
 			var meta = new FileMetadata
 						   {

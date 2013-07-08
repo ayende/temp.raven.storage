@@ -78,6 +78,13 @@ namespace Raven.Storage.Memtable
 			_table.Insert(internalKey, memoryHandle);
 		}
 
+		public void Remove(ulong seq, ItemType type, Slice key)
+		{
+			var internalKey = new InternalKey(key, seq, type);
+
+			_table.Remove(internalKey);
+		}
+
 		/// <summary>
 		/// Returns if the value is found in this mem table or not.
 		/// Note that it is posible for the value to be found and the stream to be null, if the value
