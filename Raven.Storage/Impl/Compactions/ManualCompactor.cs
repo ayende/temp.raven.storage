@@ -138,7 +138,8 @@ namespace Raven.Storage.Impl.Compactions
 				await EnsureTableFileCreated(locker).ConfigureAwait(false);
 			}
 
-			await state.BackgroundTask.ConfigureAwait(false);
+			while (state.BackgroundCompactionScheduled)
+				await Task.Delay(50);
 		}
 	}
 }
