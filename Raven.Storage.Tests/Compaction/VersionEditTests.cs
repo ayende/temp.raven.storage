@@ -52,7 +52,7 @@ namespace Raven.Storage.Tests.Compaction
 			versionEdit.SetCompactionPointer(1, new InternalKey("end", Format.MaxSequenceNumber, ItemType.Value));
 
 			var memoryStream = new MemoryStream();
-			var logWriter = new LogWriter(memoryStream, new BufferPool());
+			var logWriter = new LogWriter(new InMemoryFileSystem("test"),memoryStream, new BufferPool());
 			versionEdit.EncodeTo(logWriter);
 
 			memoryStream.Position = 0;

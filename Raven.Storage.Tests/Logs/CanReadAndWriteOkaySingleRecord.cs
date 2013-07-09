@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using Raven.Storage.Impl;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Util;
 using Xunit;
@@ -16,7 +17,7 @@ namespace Raven.Storage.Tests.Logs
 			new Random().NextBytes(buffer);
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"), memoryStream, new BufferPool());
 			await WriteRecordAsync(logWriterStream, buffer);
 			memoryStream.Position = 0;
 
@@ -45,7 +46,7 @@ namespace Raven.Storage.Tests.Logs
 			new Random().NextBytes(buffer);
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"), memoryStream, new BufferPool());
 			await WriteRecordAsync(logWriterStream, buffer);
 		
 			memoryStream.Position = 0;
@@ -69,7 +70,7 @@ namespace Raven.Storage.Tests.Logs
 			new Random().NextBytes(buffer);
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"), memoryStream, new BufferPool());
 			await WriteRecordAsync(logWriterStream, buffer);
 
 			memoryStream.Position = 0;

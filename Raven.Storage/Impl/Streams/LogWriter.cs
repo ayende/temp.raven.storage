@@ -15,6 +15,7 @@ namespace Raven.Storage.Impl.Streams
 				.ToDictionary(x => x, x => Crc.Extend(0, (byte)x));
 
 
+		private readonly FileSystem _fileSystem;
 		private readonly BufferPool _bufferPool;
 		private readonly BinaryWriter _binaryWriter;
 
@@ -31,9 +32,10 @@ namespace Raven.Storage.Impl.Streams
 
 		private long _lastCompletedRecordStreamLength;
 
-		public LogWriter(Stream stream, BufferPool bufferPool)
+		public LogWriter(FileSystem fileSystem, Stream stream, BufferPool bufferPool)
 		{
 			_isFileSteam = stream is FileStream;
+			_fileSystem = fileSystem;
 			_bufferPool = bufferPool;
 			_buffer = bufferPool.Take(BlockSize);
 			_binaryWriter = new BinaryWriter(stream);
@@ -57,7 +59,7 @@ namespace Raven.Storage.Impl.Streams
 		public void ResetToLastCompletedRecord()
 		{
 			_binaryWriter.BaseStream.SetLength(_lastCompletedRecordStreamLength);
-			Flush(true);
+			_fileSystem.Flush(_binaryWriter.BaseStream, true);
 		}
 
 		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
@@ -125,18 +127,6 @@ namespace Raven.Storage.Impl.Streams
 			}
 		}
 
-		private void Flush(bool flushToDisk)
-		{
-			if (_isFileSteam)
-			{
-				((FileStream)_binaryWriter.BaseStream).Flush(flushToDisk);
-			}
-			else
-			{
-				_binaryWriter.Flush();
-			}
-		}
-
 		public void Dispose()
 		{
 			_bufferPool.Return(_buffer);
@@ -153,7 +143,7 @@ namespace Raven.Storage.Impl.Streams
 			_binaryWriter.Write(buffer, offset, count);
 
 			if (force)
-				Flush(flushToDisk);
+				_fileSystem.Flush(_binaryWriter.BaseStream, flushToDisk);
 
 			_bufferPos += HeaderSize;
 		}

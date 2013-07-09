@@ -84,7 +84,7 @@ namespace Raven.Storage.Impl
 			{
 				var name = FileSystem.GetLogFileName(newFileNumber);
 				var file = FileSystem.NewWritable(name);
-				LogWriter = new LogWriter(file, Options.BufferPool);
+				LogWriter = new LogWriter(FileSystem, file, Options.BufferPool);
 				LogFileNumber = newFileNumber;
 			}
 			catch (Exception)
@@ -134,7 +134,7 @@ namespace Raven.Storage.Impl
 						edit.SetNextFile(VersionSet.NextFileNumber);
 						var descriptorFile = FileSystem.NewWritable(newManifestFile);
 
-						DescriptorLogWriter = new LogWriter(descriptorFile, Options.BufferPool);
+						DescriptorLogWriter = new LogWriter(FileSystem, descriptorFile, Options.BufferPool);
 
 						Snapshooter.WriteSnapshot(DescriptorLogWriter, VersionSet);
 					}
@@ -395,7 +395,7 @@ namespace Raven.Storage.Impl
 			{
 				using (var file = FileSystem.NewWritable(manifest))
 				{
-					using (var logWriter = new LogWriter(file, Options.BufferPool))
+					using (var logWriter = new LogWriter(FileSystem, file, Options.BufferPool))
 					{
 						newDb.EncodeTo(logWriter);
 					}

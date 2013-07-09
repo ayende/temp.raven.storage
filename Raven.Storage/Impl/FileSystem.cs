@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using Microsoft.Win32.SafeHandles;
 using Raven.Storage.Memory;
 using Raven.Storage.Util;
 using System.Linq;
@@ -227,6 +230,25 @@ namespace Raven.Storage.Impl
 			var file = MemoryMappedFile.CreateFromFile(name, FileMode.Open);
 			TrackResourceUsage.Track(() => file.SafeMemoryMappedFileHandle);
 			return new MemoryMappedFileAccessor(name ,file);
+		}
+
+
+		[DllImport("kernel32.dll", SetLastError = true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		static extern bool FlushFileBuffers(SafeFileHandle hFile);
+
+		public virtual void Flush(Stream stream, bool flushToDisk)
+		{
+			var fileStream = ((FileStream) stream);
+			fileStream.Flush(false); 
+
+			if (flushToDisk == false)
+				return;
+			
+			// work around for framework issue:
+			// https://connect.microsoft.com/VisualStudio/feedback/details/792434/flush-true-does-not-always-flush-when-it-should
+			if (FlushFileBuffers(fileStream.SafeFileHandle) == false)
+				throw new Win32Exception();
 		}
 	}
 }
