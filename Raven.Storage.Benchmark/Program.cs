@@ -55,6 +55,7 @@
 					            { "cache-size:", "Number of megabytes to use as a cache of uncompressed data. Negative means use default settings.", s => options.CacheSize = int.Parse(s) },
 					            { "bloom-bits:", "Bloom filter bits per key. Negative means use default settings.", s => options.BloomBits = int.Parse(s) },
 					            { "db:", "Use the db with the following name.", s => options.DatabaseName = s },
+								{ "stress:", "Runs the stress benchmark (only).", s => options.Stress = true },
 								{ "log:", "Enables logging.", s => enableLogging = true },
 					            { "h|?|help", v => PrintUsageAndExit(0) },
 				            };

@@ -18,6 +18,7 @@
 			BloomBits = -1;
 			UseExistingDatabase = false;
 			DatabaseName = null;
+			Stress = false;
 
 			Benchmarks = new List<string>
 				             {
@@ -64,6 +65,11 @@
 		///      heapprofile -- Dump a heap profile (if supported by this port)
 		/// </summary>
 		public IList<string> Benchmarks { get; set; }
+
+		/// <summary>
+		/// Runs the stress benchmark
+		/// </summary>
+		public bool Stress { get; set; }
 
 		/// <summary>
 		/// Number of key/values to place in database

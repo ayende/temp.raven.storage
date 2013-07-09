@@ -38,6 +38,13 @@ namespace Raven.Storage.Benchmark
 
 			await OpenAsync();
 
+			if (options.Stress)
+			{
+				var benchmark = new StressBenchmark(storage);
+				await benchmark.RunAsync();
+				return;
+			}
+
 			foreach (var benchmark in options.Benchmarks)
 			{
 				var parameters = CreateBenchmarkParameters(benchmark);
@@ -304,7 +311,7 @@ namespace Raven.Storage.Benchmark
 			return Task.WhenAll(tasks).ContinueWith(t => result);
 		}
 
-		private async Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
+		private Task<BenchmarkResult> ReadHot(BenchmarkParameters parameters)
 		{
 			var random = new Random();
 			var range = (options.Num + 99) / 100;
@@ -320,7 +327,7 @@ namespace Raven.Storage.Benchmark
 				result.FinishOperation();
 			}
 
-			return result;
+			return Task.FromResult(result);
 		}
 
 		private Task<BenchmarkResult> SeekRandom(BenchmarkParameters parameters)
