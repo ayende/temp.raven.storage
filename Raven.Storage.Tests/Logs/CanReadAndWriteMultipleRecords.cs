@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Raven.Storage.Impl;
 using Raven.Storage.Impl.Streams;
 using Raven.Storage.Util;
 using Xunit;
@@ -25,7 +26,7 @@ namespace Raven.Storage.Tests.Logs
 			}
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"), memoryStream, new BufferPool());
 
 			foreach (var buffer in buffers)
 			{
@@ -62,7 +63,7 @@ namespace Raven.Storage.Tests.Logs
 			}
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"),memoryStream, new BufferPool());
 
 			foreach (var buffer in buffers)
 			{
@@ -99,7 +100,7 @@ namespace Raven.Storage.Tests.Logs
 			}
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"), memoryStream, new BufferPool());
 
 			foreach (var buffer in buffers)
 			{
@@ -137,7 +138,7 @@ namespace Raven.Storage.Tests.Logs
 			}
 
 			var memoryStream = new MemoryStream();
-			var logWriterStream = new LogWriter(memoryStream, new BufferPool());
+			var logWriterStream = new LogWriter(new InMemoryFileSystem("test"), memoryStream, new BufferPool());
 
 			foreach (var buffer in buffers)
 			{

@@ -58,6 +58,11 @@ namespace Raven.Storage.Impl
 			_files.AddOrUpdate(destination, value, (s, bytes) => value);
 		}
 
+		public override void Flush(Stream stream, bool flushToDisk)
+		{
+			// nothing to do here
+		}
+
 		public override IAccessor OpenMemoryMap(string name)
 		{
 			byte[] value;
