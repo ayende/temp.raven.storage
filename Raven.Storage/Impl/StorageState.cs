@@ -486,7 +486,7 @@ namespace Raven.Storage.Impl
 				{
 					if (BackgroundTask.IsCanceled || BackgroundTask.IsFaulted)
 					{
-						await BackgroundTask.ConfigureAwait(false); // throws
+						BackgroundTask.Wait(); // throws
 					}
 					else if (allowDelay && VersionSet.GetNumberOfFilesAtLevel(0) >= Config.SlowdownWritesTrigger)
 					{
