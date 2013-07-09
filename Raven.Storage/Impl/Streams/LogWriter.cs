@@ -32,7 +32,7 @@ namespace Raven.Storage.Impl.Streams
 
 		private long _lastCompletedRecordStreamLength;
 
-		public LogWriter(FileSystem fileSystem,Stream stream, BufferPool bufferPool)
+		public LogWriter(FileSystem fileSystem, Stream stream, BufferPool bufferPool)
 		{
 			_isFileSteam = stream is FileStream;
 			_fileSystem = fileSystem;
@@ -59,7 +59,7 @@ namespace Raven.Storage.Impl.Streams
 		public void ResetToLastCompletedRecord()
 		{
 			_binaryWriter.BaseStream.SetLength(_lastCompletedRecordStreamLength);
-			_fileSystem.Flush(_binaryWriter.BaseStream,true);
+			_fileSystem.Flush(_binaryWriter.BaseStream, true);
 		}
 
 		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
