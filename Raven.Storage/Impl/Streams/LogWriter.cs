@@ -57,14 +57,7 @@ namespace Raven.Storage.Impl.Streams
 		public void ResetToLastCompletedRecord()
 		{
 			_binaryWriter.BaseStream.SetLength(_lastCompletedRecordStreamLength);
-			if (_isFileSteam)
-			{
-				((FileStream)_binaryWriter.BaseStream).Flush(true);
-			}
-			else
-			{
-				_binaryWriter.Flush();
-			}
+			Flush(true);
 		}
 
 		public Task<int> WriteAsync(byte[] buffer, int offset, int count)
@@ -132,6 +125,18 @@ namespace Raven.Storage.Impl.Streams
 			}
 		}
 
+		private void Flush(bool flushToDisk)
+		{
+			if (_isFileSteam)
+			{
+				((FileStream)_binaryWriter.BaseStream).Flush(flushToDisk);
+			}
+			else
+			{
+				_binaryWriter.Flush();
+			}
+		}
+
 		public void Dispose()
 		{
 			_bufferPool.Return(_buffer);
@@ -148,16 +153,7 @@ namespace Raven.Storage.Impl.Streams
 			_binaryWriter.Write(buffer, offset, count);
 
 			if (force)
-			{
-				if (_isFileSteam)
-				{
-					((FileStream)_binaryWriter.BaseStream).Flush(flushToDisk);
-				}
-				else
-				{
-					_binaryWriter.Flush();
-				}
-			}
+				Flush(flushToDisk);
 
 			_bufferPos += HeaderSize;
 		}
