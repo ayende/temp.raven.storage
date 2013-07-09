@@ -33,7 +33,7 @@ namespace Raven.Storage.Impl
 			if (options == null)
 				options = new WriteOptions();
 
-			var mine = new OutstandingWrite(batch);
+			var mine = new OutstandingWrite(batch, options);
 			_pendingWrites.Enqueue(mine);
 
 			List<OutstandingWrite> list = null;
@@ -142,6 +142,9 @@ namespace Raven.Storage.Impl
 				if (item == mine)
 					continue;
 
+				if (item.Options.FlushToDisk != mine.Options.FlushToDisk)
+					break; // we can only take items that have the same flush to disk behavior
+
 				list.Add(item);
 
 				maxSize -= item.Size;
@@ -152,13 +155,15 @@ namespace Raven.Storage.Impl
 
 		private class OutstandingWrite
 		{
-			public OutstandingWrite(WriteBatch batch)
+			public OutstandingWrite(WriteBatch batch, WriteOptions options)
 			{
 				Batch = batch;
+				Options = options;
 				Size = batch.Size;
 			}
 
 			public WriteBatch Batch { get; private set; }
+			public WriteOptions Options { get; private set; }
 
 			public long Size { get; private set; }
 
