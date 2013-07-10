@@ -217,9 +217,12 @@ namespace Raven.Storage.Impl.Compactions
 
 					if (!drop)
 					{
-						using (await locker.LockAsync())
-							OpenCompactionOutputFileIfNecessary(compactionState, locker);
-						
+						if (compactionState.Builder == null)
+						{
+							using (await locker.LockAsync()) 
+								OpenCompactionOutputFileIfNecessary(compactionState, locker);
+						}
+
 						Debug.Assert(compactionState.Builder != null);
 
 						if (compactionState.Builder.NumEntries == 0)

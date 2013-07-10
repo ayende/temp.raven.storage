@@ -157,7 +157,7 @@
 
 			statistics.NumberOfWritesSinceLastReport = 0;
 
-			Console.SetCursorPosition(0, 12); // reset
+			Console.SetCursorPosition(0, 13); // reset
 		}
 
 		private void ReportWrite(int left, int top, object text)

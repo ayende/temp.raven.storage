@@ -63,18 +63,25 @@
 				double score;
 				if (level == 0)
 				{
-					// We treat level-0 specially by bounding the number of files
-					// instead of number of bytes for two reasons:
-					//
-					// (1) With larger write-buffer sizes, it is nice not to do too
-					// many level-0 compactions.
-					//
-					// (2) The files in level-0 are merged on every read and
-					// therefore we wish to avoid too many files when the individual
-					// file size is small (perhaps because of a small write-buffer
-					// setting, or very high compression ratios, or lots of
-					// overwrites/deletions).
-					score = version.Files[level].Count / (double)Config.Level0CompactionTrigger;
+					if (version.Files[level].Count >= Config.SlowdownWritesTrigger)
+					{
+						score = 99;
+					}
+					else
+					{
+						// We treat level-0 specially by bounding the number of files
+						// instead of number of bytes for two reasons:
+						//
+						// (1) With larger write-buffer sizes, it is nice not to do too
+						// many level-0 compactions.
+						//
+						// (2) The files in level-0 are merged on every read and
+						// therefore we wish to avoid too many files when the individual
+						// file size is small (perhaps because of a small write-buffer
+						// setting, or very high compression ratios, or lots of
+						// overwrites/deletions).
+						score = version.Files[level].Count / (double)Config.Level0CompactionTrigger;
+					}
 				}
 				else
 				{
