@@ -8,6 +8,7 @@
 
 	using Raven.Storage.Benchmark.Env;
 	using Raven.Storage.Benchmark.Generators;
+	using Raven.Storage.Data;
 
 	using Timer = System.Timers.Timer;
 
@@ -17,14 +18,13 @@
 
 		private readonly Statistics statistics;
 
-		private readonly IList<string> usedKeys;
+		private readonly TimeSpan readDelayInSeconds;
 
 		public StressBenchmark(Storage storage)
 		{
 			this.storage = storage;
-			this.statistics = new Statistics();
-
-			this.usedKeys = new List<string>();
+			this.readDelayInSeconds = TimeSpan.FromSeconds(5);
+			this.statistics = new Statistics(readDelayInSeconds);
 		}
 
 		private void Initialize()
@@ -55,9 +55,9 @@
 
 			var tasks = new List<Task>
 				            {
-					            ProcessWrites(1000, 0), 
-								ProcessWrites(1000, 0), 
-								ProcessWrites(1000, 0), 
+					            ProcessWrites(500, 0), 
+								ProcessWrites(500, 0), 
+								ProcessWrites(500, 0), 
 								ProcessWrites(1000 * 500, 1000), 
 								ProcessReads(),
 								ProcessReads()
@@ -68,28 +68,29 @@
 
 		private Task ProcessReads()
 		{
-			var random = new Random();
-
 			return Task.Factory.StartNew(() =>
 				{
-					Thread.Sleep(5000);
+					Thread.Sleep((int)readDelayInSeconds.TotalMilliseconds);
 
 					while (true)
 					{
 						try
 						{
-							var k = random.Next(0, usedKeys.Count);
-
-							using (var stream = storage.Reader.Read(usedKeys[k]))
+							using (var iterator = storage.Reader.NewIterator(new ReadOptions()))
 							{
-								if (stream == null)
+								iterator.SeekToFirst();
+								while (iterator.IsValid)
 								{
-									statistics.NumberOfEmptyReads++;
-									continue;
-								}
+									using (var stream = iterator.CreateValueStream())
+									{
+										statistics.NumberOfReads++;
+										statistics.NumberOfReadsSinceLastReport++;
 
-								statistics.NumberOfReads++;
-								statistics.BytesRead += stream.Length;
+										statistics.BytesRead += stream.Length;
+									}
+
+									iterator.Next();
+								}
 							}
 						}
 						catch
@@ -120,12 +121,11 @@
 
 						batch.Put(key, generator.Generate(size));
 
-						if (!usedKeys.Contains(key))
-							usedKeys.Add(key);
 					}
 
 					await storage.Writer.WriteAsync(batch);
 					statistics.NumberOfWrites += batchSize;
+					statistics.NumberOfWritesSinceLastReport += batchSize;
 					statistics.BytesWritten += batchSize * (size + 16);
 
 					await Task.Delay(timeToWait);
@@ -139,15 +139,19 @@
 
 		private void Report()
 		{
-			ReportWrite(32, 3, string.Format("{0}:{1}", statistics.NumberOfReads, statistics.NumberOfEmptyReads)); // number of reads
-			ReportWrite(32, 4, string.Format("{0:0}", statistics.NumberOfReads / statistics.ElapsedSeconds)); // reads per second
-			ReportWrite(32, 5, string.Format("{0:0}", statistics.BytesRead / (double)(1024 * 1024))); // megabytes reads
+			ReportWrite(32, 3, string.Format("{0}", statistics.NumberOfReads)); // number of reads
+			ReportWrite(32, 4, string.Format("{0:0}/s [Avg: {1:0}/s]", statistics.NumberOfReadsSinceLastReport, statistics.NumberOfReads / statistics.ElapsedSecondsForReads)); // reads per second
+			ReportWrite(32, 5, string.Format("{0:0}", statistics.BytesRead / (double)(1024 * 1024))); // megabytes read
 			ReportWrite(32, 6, string.Format("{0:0}", statistics.NumberOfReadExceptions)); // read ex
 
+			statistics.NumberOfReadsSinceLastReport = 0;
+
 			ReportWrite(32, 8, statistics.NumberOfWrites); // number of writes
-			ReportWrite(32, 9, string.Format("{0:0}", statistics.NumberOfWrites / statistics.ElapsedSeconds)); // writes per second
+			ReportWrite(32, 9, string.Format("{0:0}/s [Avg: {1:0}/s]", statistics.NumberOfWritesSinceLastReport, statistics.NumberOfWrites / statistics.ElapsedSecondsForWrites)); // writes per second
 			ReportWrite(32, 10, string.Format("{0:0}", statistics.BytesWritten / (double)(1024 * 1024))); // megabytes written
 			ReportWrite(32, 11, statistics.NumberOfWriteExceptions); // write ex
+
+			statistics.NumberOfWritesSinceLastReport = 0;
 
 			Console.SetCursorPosition(0, 12); // reset
 		}
@@ -164,12 +168,15 @@
 		{
 			private readonly Stopwatch watch;
 
-			public Statistics()
+			private readonly TimeSpan readDelayInSeconds;
+
+			public Statistics(TimeSpan readDelayInSeconds)
 			{
+				this.readDelayInSeconds = readDelayInSeconds;
 				watch = Stopwatch.StartNew();
 			}
 
-			public double ElapsedSeconds
+			public double ElapsedSecondsForWrites
 			{
 				get
 				{
@@ -177,13 +184,27 @@
 				}
 			}
 
-			public long NumberOfEmptyReads { get; set; }
+			public double ElapsedSecondsForReads
+			{
+				get
+				{
+					var result = watch.Elapsed.TotalSeconds - readDelayInSeconds.TotalSeconds;
+					if (result <= 0) 
+						return 1;
+
+					return result;
+				}
+			}
 
 			public long NumberOfReads { get; set; }
+
+			public long NumberOfReadsSinceLastReport { get; set; }
 
 			public long NumberOfReadExceptions { get; set; }
 
 			public long NumberOfWrites { get; set; }
+
+			public long NumberOfWritesSinceLastReport { get; set; }
 
 			public long NumberOfWriteExceptions { get; set; }
 

@@ -11,6 +11,8 @@ using Raven.Temp.Logging;
 
 namespace Raven.Storage.Impl.Compactions
 {
+	using System.IO;
+
 	using Raven.Storage.Impl.Caching;
 	using Raven.Storage.Util;
 
@@ -158,7 +160,7 @@ namespace Raven.Storage.Impl.Compactions
 
 			Slice currentUserKey = null;
 			var lastSequenceForKey = Format.MaxSequenceNumber;
-			
+
 			state.CancellationToken.ThrowIfCancellationRequested();
 
 			using (IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction))
@@ -168,7 +170,7 @@ namespace Raven.Storage.Impl.Compactions
 				{
 					if (state.ImmutableMemTable != null)
 						await CompactMemTableAsync(locker).ConfigureAwait(false);
-				
+
 					state.CancellationToken.ThrowIfCancellationRequested();
 					var key = input.Key;
 
@@ -215,7 +217,9 @@ namespace Raven.Storage.Impl.Compactions
 
 					if (!drop)
 					{
-						await OpenCompactionOutputFileIfNecessaryAsync(compactionState, locker).ConfigureAwait(false);
+						using (await locker.LockAsync())
+							OpenCompactionOutputFileIfNecessary(compactionState, locker);
+						
 						Debug.Assert(compactionState.Builder != null);
 
 						if (compactionState.Builder.NumEntries == 0)
@@ -260,18 +264,18 @@ namespace Raven.Storage.Impl.Compactions
 			state.CompactionStats[compactionState.Compaction.Level + 1].Add(stats);
 		}
 
-		private async Task OpenCompactionOutputFileIfNecessaryAsync(CompactionState compactionState, AsyncLock.LockScope locker)
+		private void OpenCompactionOutputFileIfNecessary(CompactionState compactionState, AsyncLock.LockScope locker)
 		{
 			if (compactionState.Builder != null)
 				return;
 
-			ulong fileNumber;
-			using (await locker.LockAsync())
-			{
-				fileNumber = state.VersionSet.NewFileNumber();
-				pendingOutputs.Add(fileNumber);
-				compactionState.AddOutput(fileNumber);
-			}
+			Debug.Assert(locker.Locked);
+
+			var fileNumber = this.state.VersionSet.NewFileNumber();
+			pendingOutputs.Add(fileNumber);
+			compactionState.AddOutput(fileNumber);
+
+			locker.Exit();
 
 			// make the output file
 			var fileName = state.FileSystem.GetTableFileName(fileNumber);
@@ -349,7 +353,7 @@ namespace Raven.Storage.Impl.Compactions
 				currentVersion = state.VersionSet.Current;
 			}
 
-			state.CancellationToken.ThrowIfCancellationRequested(); 
+			state.CancellationToken.ThrowIfCancellationRequested();
 			var edit = new VersionEdit();
 			WriteLevel0Table(immutableMemTable, currentVersion, edit);
 
@@ -412,7 +416,18 @@ namespace Raven.Storage.Impl.Compactions
 
 						log.Info("Delete type={0} {1}", fileType, number);
 
-						state.FileSystem.DeleteFile(file);
+						try
+						{
+							state.FileSystem.DeleteFile(file);
+						}
+						catch (IOException e)
+						{
+							log.ErrorException("Could not delete file: " + file, e);
+						}
+						catch (UnauthorizedAccessException e)
+						{
+							log.ErrorException("Could not delete file: " + file, e);
+						}
 					}
 				}
 			}

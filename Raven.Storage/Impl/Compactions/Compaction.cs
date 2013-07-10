@@ -1,9 +1,12 @@
 ﻿namespace Raven.Storage.Impl.Compactions
 {
+	using System;
 	using System.Collections.Generic;
 	using System.Linq;
 
 	using Data;
+
+	using Version = Raven.Storage.Impl.Version;
 
 	public class Compaction
 	{
@@ -67,7 +70,7 @@
 		{
 			this.storageContext = storageContext;
 			Level = level;
-			MaxOutputFileSize = Config.TargetFileSize;
+			MaxOutputFileSize = CalculateMaxOutputFileSize(level);
 			this.inputVersion = inputVersion;
 			Edit = new VersionEdit();
 			Inputs = new[]
@@ -86,6 +89,11 @@
 			{
 				levelPointers[lvl] = 0;
 			}
+		}
+
+		private int CalculateMaxOutputFileSize(int level)
+		{
+			return Config.TargetFileSize;
 		}
 
 		/// <summary>
