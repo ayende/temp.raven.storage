@@ -56,6 +56,9 @@
 					            { "bloom-bits:", "Bloom filter bits per key. Negative means use default settings.", s => options.BloomBits = int.Parse(s) },
 					            { "db:", "Use the db with the following name.", s => options.DatabaseName = s },
 								{ "stress:", "Runs the stress benchmark (only).", s => options.Stress = true },
+								{ "stress-readers:", "Number of readers (default: 2).", s => options.StressReaders = int.Parse(s) },
+								{ "stress-small-writers:", "Number of 500 byte writers (default: 4).", s => options.StressSmallWriters = int.Parse(s) },
+								{ "stress-large-writers:", "Number of 500000 byte writers (default: 1).", s => options.StressLargeWriters = int.Parse(s) },
 								{ "log:", "Enables logging.", s => enableLogging = true },
 					            { "h|?|help", v => PrintUsageAndExit(0) },
 				            };

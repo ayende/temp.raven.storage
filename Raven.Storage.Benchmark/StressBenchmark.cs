@@ -12,7 +12,7 @@
 
 	using Timer = System.Timers.Timer;
 
-	public class StressBenchmark
+	internal class StressBenchmark
 	{
 		private readonly Storage storage;
 
@@ -20,11 +20,14 @@
 
 		private readonly TimeSpan readDelayInSeconds;
 
-		public StressBenchmark(Storage storage)
+		private readonly BenchmarkOptions options;
+
+		public StressBenchmark(Storage storage, BenchmarkOptions options)
 		{
 			this.storage = storage;
 			this.readDelayInSeconds = TimeSpan.FromSeconds(5);
 			this.statistics = new Statistics(readDelayInSeconds);
+			this.options = options;
 		}
 
 		private void Initialize()
@@ -53,15 +56,16 @@
 			timer.Elapsed += (sender, args) => Report();
 			timer.Start();
 
-			var tasks = new List<Task>
-				            {
-					            ProcessWrites(500, 0), 
-								ProcessWrites(500, 0), 
-								ProcessWrites(500, 0), 
-								ProcessWrites(1000 * 500, 1000), 
-								ProcessReads(),
-								ProcessReads()
-				            };
+			var tasks = new List<Task>();
+
+			for(var i = 0; i < options.StressReaders; i++)
+				tasks.Add(ProcessReads());
+
+			for(var i = 0; i < options.StressSmallWriters; i++)
+				tasks.Add(ProcessWrites(500, 0));
+
+			for (var i = 0; i < options.StressLargeWriters; i++)
+				tasks.Add(ProcessWrites(1000 * 500, 1000));
 
 			return Task.WhenAll(tasks);
 		}

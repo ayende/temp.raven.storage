@@ -19,6 +19,9 @@
 			UseExistingDatabase = false;
 			DatabaseName = null;
 			Stress = false;
+			StressReaders = 2;
+			StressSmallWriters = 4;
+			StressLargeWriters = 1;
 
 			Benchmarks = new List<string>
 				             {
@@ -124,5 +127,11 @@
 		/// Use the db with the following name.
 		/// </summary>
 		public string DatabaseName { get; set; }
+
+		public int StressReaders { get; set; }
+
+		public int StressSmallWriters { get; set; }
+
+		public int StressLargeWriters { get; set; }
 	}
 }

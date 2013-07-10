@@ -40,7 +40,7 @@ namespace Raven.Storage.Benchmark
 
 			if (options.Stress)
 			{
-				var benchmark = new StressBenchmark(storage);
+				var benchmark = new StressBenchmark(storage, options);
 				await benchmark.RunAsync();
 				return;
 			}
