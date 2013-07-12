@@ -93,7 +93,7 @@
 
 		private int CalculateMaxOutputFileSize(int level)
 		{
-			return Config.TargetFileSize;
+			return (level + 1) * Config.TargetFileSize;
 		}
 
 		/// <summary>
@@ -124,8 +124,11 @@
 		/// <returns></returns>
 		public bool IsTrivialMove()
 		{
-			return (GetNumberOfInputFiles(0) == 1 && GetNumberOfInputFiles(1) == 0
-					&& Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
+			if (Level == 0)
+				return (GetNumberOfInputFiles(0) == 1 && GetNumberOfInputFiles(1) == 0
+						&& Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
+
+			return (GetNumberOfInputFiles(1) == 0 && this.Grandparents.Sum(x => x.FileSize) <= Config.MaxGrandParentOverlapBytes);
 		}
 
 		/// <summary>

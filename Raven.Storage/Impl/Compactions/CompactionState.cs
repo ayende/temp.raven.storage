@@ -55,6 +55,11 @@
 			});
 		}
 
+		public void AddOutput(FileMetadata file)
+		{
+			outputs.Add(file);
+		}
+
 		public void Dispose()
 		{
 			if (Builder != null)

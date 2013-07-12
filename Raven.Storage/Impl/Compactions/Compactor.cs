@@ -12,6 +12,7 @@ using Raven.Temp.Logging;
 namespace Raven.Storage.Impl.Compactions
 {
 	using System.IO;
+	using System.Threading;
 
 	using Raven.Storage.Impl.Caching;
 	using Raven.Storage.Util;
@@ -23,6 +24,8 @@ namespace Raven.Storage.Impl.Compactions
 		protected readonly StorageState state;
 
 		private readonly IList<ulong> pendingOutputs = new List<ulong>();
+
+		private SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
 		protected Compactor(StorageState state)
 		{
@@ -54,13 +57,13 @@ namespace Raven.Storage.Impl.Compactions
 							bool needToWait = false;
 							try
 							{
+								await semaphore.WaitAsync();
 								await BackgroundCompactionAsync(locker).ConfigureAwait(false);
 							}
 							catch (Exception e)
 							{
 								log.ErrorException(string.Format("Compaction error: {0}", e.Message), e);
 
-								state.BackgroundCompactionScheduled = false;
 								needToWait = true;
 							}
 
@@ -79,6 +82,7 @@ namespace Raven.Storage.Impl.Compactions
 						}
 						finally
 						{
+							semaphore.Release();
 							state.BackgroundCompactionScheduled = false;
 						}
 					}
@@ -163,6 +167,9 @@ namespace Raven.Storage.Impl.Compactions
 
 			state.CancellationToken.ThrowIfCancellationRequested();
 
+			await PerformRapidCompactionAsync(compactionState, watch, locker);
+			return;
+
 			using (IIterator input = state.VersionSet.MakeInputIterator(compactionState.Compaction))
 			{
 				input.SeekToFirst();
@@ -219,7 +226,7 @@ namespace Raven.Storage.Impl.Compactions
 					{
 						if (compactionState.Builder == null)
 						{
-							using (await locker.LockAsync()) 
+							using (await locker.LockAsync())
 								OpenCompactionOutputFileIfNecessary(compactionState, locker);
 						}
 
@@ -245,6 +252,244 @@ namespace Raven.Storage.Impl.Compactions
 			CreateCompactionStats(compactionState, watch);
 
 			await InstallCompactionResultsAsync(compactionState, locker).ConfigureAwait(false);
+		}
+
+		private async Task PerformRapidCompactionAsync(CompactionState compactionState, Stopwatch watch, AsyncLock.LockScope locker)
+		{
+			using (var source = CreateInputIterator(compactionState))
+			{
+				InternalKey sourceInternalKey = new InternalKey();
+				InternalKey fileInternalKey;
+				FileMetadata file = null;
+				IIterator fileIterator = null;
+
+				Slice lastKey = null;
+				ulong lastSequence = 0;
+				bool addSource = true;
+
+				try
+				{
+					var destinationFiles = compactionState.Compaction.Inputs[1].ToDictionary(x => x, x => true);
+
+					source.SeekToFirst();
+					while (source.IsValid)
+					{
+						if (state.ImmutableMemTable != null)
+							await CompactMemTableAsync(locker).ConfigureAwait(false);
+
+						state.CancellationToken.ThrowIfCancellationRequested();
+
+						if (addSource && !InternalKey.TryParse(source.Key, out sourceInternalKey))
+							throw new InvalidOperationException("Source key must be a valid internal key.");
+
+						addSource = false;
+
+						if (destinationFiles.Count > 0 && file == null)
+						{
+							file = PickOverlapingFile(sourceInternalKey, destinationFiles);
+							CleanupIfNecessary(sourceInternalKey, compactionState, null, destinationFiles);
+						}
+
+						if (file != null && fileIterator == null)
+						{
+							fileIterator = CreateFileIterator(file);
+							fileIterator.SeekToFirst();
+						}
+
+						if (fileIterator != null)
+						{
+							while (fileIterator.IsValid)
+							{
+								if (!InternalKey.TryParse(fileIterator.Key, out fileInternalKey))
+									throw new InvalidOperationException("File key must be a valid internal key.");
+
+								if (state.InternalKeyComparator.Compare(sourceInternalKey, fileInternalKey) <= 0)
+								{
+									addSource = true;
+									break;
+								}
+
+								MaybeAddFile(fileInternalKey, source, compactionState, locker, ref lastKey, ref lastSequence);
+								fileIterator.Next();
+							}
+
+							if (!fileIterator.IsValid)
+							{
+								file = null;
+								fileIterator.Dispose();
+								fileIterator = null;
+							}
+						}
+						else
+						{
+							addSource = true;
+						}
+
+						if (!addSource)
+							continue;
+
+						MaybeAddFile(sourceInternalKey, source, compactionState, locker, ref lastKey, ref lastSequence);
+						source.Next();
+					}
+
+					if (fileIterator != null)
+					{
+						while (fileIterator.IsValid)
+						{
+							if (!InternalKey.TryParse(fileIterator.Key, out fileInternalKey))
+								throw new InvalidOperationException("File key must be a valid internal key.");
+
+							MaybeAddFile(fileInternalKey, fileIterator, compactionState, locker, ref lastKey, ref lastSequence);
+
+							fileIterator.Next();
+						}
+					}
+
+					if (sourceInternalKey.UserKey.IsEmpty() == false)
+						CleanupIfNecessary(sourceInternalKey, compactionState, null, destinationFiles);
+				}
+				finally
+				{
+					if (fileIterator != null)
+						fileIterator.Dispose();
+				}
+
+				FinishCompactionOutputFileIfNecessary(compactionState, source, force: true);
+
+				CreateCompactionStats(compactionState, watch);
+
+				await InstallCompactionResultsAsync(compactionState, locker).ConfigureAwait(false);
+			}
+		}
+
+		private void CleanupIfNecessary(InternalKey key, CompactionState compactionState, IIterator iterator, IDictionary<FileMetadata, bool> destinationFiles)
+		{
+			var filesToRemove = new List<KeyValuePair<FileMetadata, bool>>();
+			foreach (var pair in destinationFiles)
+			{
+				var r = state.InternalKeyComparator.UserComparator.Compare(key.UserKey, pair.Key.LargestKey.UserKey);
+				if (r > 0)
+				{
+					// past the file
+					filesToRemove.Add(pair);
+				}
+				else if (r < 0)
+				{
+					// past the file - no need to check further
+					break;
+				}
+			}
+
+			if (filesToRemove.Count == 0)
+				return;
+
+			foreach (var pair in filesToRemove)
+			{
+				destinationFiles.Remove(pair);
+
+				if (pair.Value)
+					compactionState.Compaction.Inputs[1].Remove(pair.Key);
+			}
+
+			if (filesToRemove.Any(x => x.Value))
+				FinishCompactionOutputFileIfNecessary(compactionState, iterator, true);
+		}
+
+		public void MaybeAddFile(InternalKey key, IIterator iterator, CompactionState compactionState, AsyncLock.LockScope locker, ref Slice lastKey, ref ulong lastSequence)
+		{
+			var drop = false;
+			if (lastKey.IsEmpty()
+				|| state.InternalKeyComparator.UserComparator.Compare(key.UserKey, lastKey) != 0)
+			{
+				// First occurrence of this user key
+				lastKey = key.UserKey.Clone();
+				lastSequence = Format.MaxSequenceNumber;
+			}
+
+			if (lastSequence <= compactionState.SmallestSnapshot)
+			{
+				// Hidden by an newer entry for same user key
+				drop = true;
+			}
+			else if (key.Type == ItemType.Deletion && key.Sequence <= compactionState.SmallestSnapshot
+					 && compactionState.Compaction.IsBaseLevelForKey(key.UserKey))
+			{
+				// For this user key:
+				// (1) there is no data in higher levels
+				// (2) data in lower levels will have larger sequence numbers
+				// (3) data in layers that are being compacted here and have
+				//     smaller sequence numbers will be dropped in the next
+				//     few iterations of this loop (by rule (A) above).
+				// Therefore this deletion marker is obsolete and can be dropped.
+
+				drop = true;
+			}
+
+			lastSequence = key.Sequence;
+
+			if (!drop)
+			{
+				if (compactionState.Builder == null)
+				{
+					using (locker.LockAsync().Result)
+						OpenCompactionOutputFileIfNecessary(compactionState, locker);
+				}
+
+				Debug.Assert(compactionState.Builder != null);
+
+				if (compactionState.Builder.NumEntries == 0)
+					compactionState.CurrentOutput.SmallestKey = new InternalKey(key.TheInternalKey.Clone());
+
+				compactionState.CurrentOutput.LargestKey = new InternalKey(key.TheInternalKey.Clone());
+
+				//Console.WriteLine("Adding " + compactionState.CurrentOutput.LargestKey);
+
+				using (var stream = iterator.CreateValueStream())
+					compactionState.Builder.Add(key.TheInternalKey, stream);
+
+				FinishCompactionOutputFileIfNecessary(compactionState, iterator);
+			}
+		}
+
+		private IIterator CreateFileIterator(FileMetadata file)
+		{
+			var readOptions = new ReadOptions
+			{
+				VerifyChecksums = state.Options.ParanoidChecks,
+				FillCache = false
+			};
+
+			return state.TableCache.NewIterator(readOptions, file.FileNumber, file.FileSize);
+		}
+
+		private FileMetadata PickOverlapingFile(InternalKey sourceKey, IDictionary<FileMetadata, bool> destinationFiles)
+		{
+			if (destinationFiles.Count == 0)
+				return null;
+
+			foreach (var pair in destinationFiles)
+			{
+				// is inside this file
+				if (state.InternalKeyComparator.UserComparator.Compare(sourceKey.UserKey, pair.Key.SmallestKey.UserKey) >= 0
+					&& state.InternalKeyComparator.UserComparator.Compare(sourceKey.UserKey, pair.Key.LargestKey.UserKey) <= 0)
+				{
+					destinationFiles[pair.Key] = false;
+					return pair.Key;
+				}
+			}
+
+			return null;
+		}
+
+		private IIterator CreateInputIterator(CompactionState compactionState)
+		{
+			var readOptions = new ReadOptions
+			{
+				VerifyChecksums = state.Options.ParanoidChecks,
+				FillCache = false
+			};
+
+			return new MergingIterator(state.InternalKeyComparator, compactionState.Compaction.Inputs[0].Select(x => state.TableCache.NewIterator(readOptions, x.FileNumber, x.FileSize)).ToList());
 		}
 
 		private void CreateCompactionStats(CompactionState compactionState, Stopwatch watch)
@@ -309,9 +554,11 @@ namespace Raven.Storage.Impl.Compactions
 			// 2. When we should stop before input key
 			// 3. When forced
 			if (compactionState.Builder.FileSize < compactionState.Compaction.MaxOutputFileSize
-				&& (input.IsValid == false || !compactionState.Compaction.ShouldStopBefore(input.Key))
-				&& force == false)
+				&& force == false
+				&& (input.IsValid == false || !compactionState.Compaction.ShouldStopBefore(input.Key)))
 				return;
+
+			//Console.WriteLine("Finishing");
 
 			var outputNumber = compactionState.CurrentOutput.FileNumber;
 			Debug.Assert(outputNumber != 0);

@@ -5,12 +5,12 @@
 		/// <summary>
 		/// Soft limit on number of level-0 files.  We slow down writes at this point.
 		/// </summary>
-		public const int SlowdownWritesTrigger = 8;
+		public const int SlowdownWritesTrigger = 12;
 
 		/// <summary>
 		/// Maximum number of level-0 files.  We stop writes at this point.
 		/// </summary>
-		public const int StopWritesTrigger = 12;
+		public const int StopWritesTrigger = 16;
 
 		/// <summary>
 		/// Header is checksum (4 bytes), type (1 byte), length (2 bytes).

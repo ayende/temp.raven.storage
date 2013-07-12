@@ -14,6 +14,46 @@ namespace Raven.Storage.Tests.Compaction
 	public class CompactionTests : StorageTestBase
 	{
 		[Fact]
+		public async Task CornerCaseCompaction()
+		{
+			using (var storage = await NewStorageAsync())
+			{
+				await MakeTables(storage, 1, "a", "z");
+
+				var statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 0, 0, 1, 0, 0, 0, 0);
+
+				await MakeTables(storage, 1, "b", "e");
+
+				statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 0, 1, 1, 0, 0, 0, 0);
+
+				await MakeTables(storage, 1, "f", "i");
+
+				statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 0, 2, 1, 0, 0, 0, 0);
+
+				await MakeTables(storage, 1, "j", "m");
+
+				statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 0, 3, 1, 0, 0, 0, 0);
+
+				await MakeTables(storage, 1, "b", "l");
+
+				statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 1, 3, 1, 0, 0, 0, 0);
+
+				await storage.Commands.CompactAsync(0, "b", "n");
+				statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 0, 3, 1, 0, 0, 0, 0);
+
+				await storage.Commands.CompactRangeAsync("a", "z");
+				statistics = await storage.Commands.GetStatisticsAsync();
+				AssertNumberOfFilesPerLevel(statistics, 0, 0, 1, 0, 0, 0, 0);
+			}
+		}
+
+		[Fact]
 		public async Task CompactMemTableShouldCreateFilesAtDifferentLevels()
 		{
 			using (var storage = await NewStorageAsync())
